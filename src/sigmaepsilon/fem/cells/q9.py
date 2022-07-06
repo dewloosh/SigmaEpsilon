@@ -3,7 +3,9 @@ from dewloosh.math.numint import GaussPoints as Gauss
 
 from dewloosh.mesh.cells import Q9 as Quadrilateral
 
-from ..elem import FiniteElement
+from dewloosh.solid.fem.elem import FiniteElement
+from dewloosh.solid.fem.meta import ABCFiniteElement as ABC
+
 from ..model.membrane import Membrane
 from ..model.plate import Plate
 

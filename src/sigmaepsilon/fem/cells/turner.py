@@ -8,9 +8,11 @@ from dewloosh.math.array import atleast2d
 from dewloosh.mesh.cells import T3 as Triangle
 from dewloosh.mesh.tri.triutils import area_tri
 
+from dewloosh.solid.fem.elem import FiniteElement
+from dewloosh.solid.fem.meta import ABCFiniteElement as ABC
+from dewloosh.solid.fem.utils import topo_to_gnum
+
 from ..model.membrane import Membrane
-from ..elem import FiniteElement
-from ..utils import topo_to_gnum
 
 
 __cache = True

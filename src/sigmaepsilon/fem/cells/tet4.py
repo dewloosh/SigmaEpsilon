@@ -3,8 +3,11 @@ import numpy as np
 
 from dewloosh.mesh.cells import TET4 as Tetra
 
+from dewloosh.solid.fem.elem import FiniteElement
+from dewloosh.solid.fem.meta import ABCFiniteElement as ABC
+
 from ..model.solid3d import Solid3d
-from ..elem import FiniteElement
+
 
 
 class TET4(Tetra, Solid3d, FiniteElement):

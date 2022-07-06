@@ -3,13 +3,14 @@ from dewloosh.math.numint import GaussPoints as Gauss
 
 from dewloosh.mesh.cells import L2 as Line
 
+from dewloosh.solid.fem.elem import FiniteElement
+from dewloosh.solid.fem.meta import ABCFiniteElement as ABC
+
 from .bernoulli import BernoulliBase as Bernoulli
 
 from .gen.b2 import shape_function_values_bulk as shpB2, \
     shape_function_derivatives_bulk as dshpB2
 
-from ..elem import FiniteElement
-from ..meta import ABCFiniteElement as ABC
 
 __all__ = ['Bernoulli2']
 

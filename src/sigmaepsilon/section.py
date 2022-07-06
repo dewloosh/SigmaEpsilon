@@ -11,11 +11,11 @@ from sectionproperties.pre.library.steel_sections import tapered_flange_channel 
 from sectionproperties.pre.library.steel_sections import tee_section
 from sectionproperties.analysis.section import Section
 
-from dewloosh.core.abc.wrap import Wrapper
+from dewloosh.core.wrapping import Wrapper
 from dewloosh.core.tools.kwargtools import getallfromkwargs
 
-from dewloosh.geom.tri.trimesh import TriMesh
-from dewloosh.geom.utils import centralize
+from dewloosh.mesh.tri.trimesh import TriMesh
+from dewloosh.mesh.utils import centralize
 
 from typing import Tuple
 

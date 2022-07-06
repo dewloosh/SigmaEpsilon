@@ -3,14 +3,15 @@ from dewloosh.math.numint import GaussPoints as Gauss
 
 from dewloosh.mesh.cells import QuadraticLine as Line
 
+from dewloosh.solid.fem.elem import FiniteElement
+from dewloosh.solid.fem.meta import ABCFiniteElement as ABC
+
 from .bernoulli import BernoulliBase as Bernoulli
 
 from .gen.b3 import shape_function_values_bulk as shpB3, \
     shape_function_derivatives_bulk as dshpB3
     
-from ..elem import FiniteElement
-from ..meta import ABCFiniteElement as ABC
-
+    
 __all__ = ['Bernoulli3']
 
 

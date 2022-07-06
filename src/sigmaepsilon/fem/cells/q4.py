@@ -9,8 +9,9 @@ from dewloosh.mesh.tri.triutils import area_tri_bulk
 from dewloosh.mesh.utils import cells_coords
 from dewloosh.mesh.cells import Q4 as Quadrilateral
 
-from ..elem import FiniteElement
-from ..meta import ABCFiniteElement as ABC
+from dewloosh.solid.fem.elem import FiniteElement
+from dewloosh.solid.fem.meta import ABCFiniteElement as ABC
+
 from ..model.membrane import Membrane
 from ..model.plate import Plate
 

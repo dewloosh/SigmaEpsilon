@@ -3,8 +3,10 @@ from dewloosh.math.numint import GaussPoints as Gauss
 
 from dewloosh.mesh.cells import H8 as HexaHedron
 
+from dewloosh.solid.fem.elem import FiniteElement
+from dewloosh.solid.fem.meta import ABCFiniteElement as ABC
+
 from ..model.solid3d import Solid3d
-from ..elem import FiniteElement
 
 
 class H8(HexaHedron, Solid3d, FiniteElement):

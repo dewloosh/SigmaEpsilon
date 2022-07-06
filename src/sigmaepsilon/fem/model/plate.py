@@ -3,8 +3,10 @@ from numba import njit, prange
 import numpy as np
 from numpy import ndarray
 
+from dewloosh.solid.material.utils import HMH_S
+
 from ..model.surface import Surface
-from ...material.utils import HMH_S
+
 
 __cache = True
 

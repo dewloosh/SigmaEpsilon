@@ -3,7 +3,9 @@ import numpy as np
 
 from dewloosh.mesh.cells import T3 as Triangle
 
-from ..elem import FiniteElement
+from dewloosh.solid.fem.elem import FiniteElement
+from dewloosh.solid.fem.meta import ABCFiniteElement as ABC
+
 from ..model.membrane import Membrane
 from ..model.plate import Plate
 

@@ -4,7 +4,7 @@ import numpy as np
 from numpy import ndarray
 from typing import Union
 
-from .solid import Solid
+from dewloosh.solid.fem.model.solid import Solid
 
 __cache = True
 

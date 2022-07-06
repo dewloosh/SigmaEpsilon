@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 from dewloosh.math.array import atleast2d
 
-from ..utils import topo_to_gnum
-from .solid import Solid
-from .utils import stresses_from_strains
+from dewloosh.solid.fem.utils import topo_to_gnum
+from dewloosh.solid.fem.model.solid import Solid
+from dewloosh.solid.fem.model.utils import stresses_from_strains
 
 
 class Surface(Solid):

@@ -6,7 +6,9 @@ from numba import njit, prange
 from dewloosh.mesh.cells import T3 as Triangle
 from dewloosh.mesh.tri.triutils import lcoords_tri, shp_tri_loc
 
-from ..elem import FiniteElement
+from dewloosh.solid.fem.elem import FiniteElement
+from dewloosh.solid.fem.meta import ABCFiniteElement as ABC
+
 from ..model.membrane import Membrane
 
 __cache = True

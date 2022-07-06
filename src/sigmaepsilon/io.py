@@ -12,7 +12,7 @@ from randomdict import RandomDict
 
 from dewloosh.core.tools.kwargtools import getallfromkwargs
 from dewloosh.math.array import atleastnd, ascont
-from dewloosh.geom.space import frames_of_lines
+from dewloosh.mesh.space import frames_of_lines
 from dewloosh.solid.fem.cells import B2, B3
 
 from .section import BeamSection, get_section_metadata, get_section
