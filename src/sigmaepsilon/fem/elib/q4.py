@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from numpy import ndarray
 from numba import njit
 
 from dewloosh.math.numint import GaussPoints as Gauss
