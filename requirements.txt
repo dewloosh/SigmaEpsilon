@@ -1,0 +1,5 @@
+setuptools
+wheel
+pypardiso
+dewloosh.solid
+sectionproperties
