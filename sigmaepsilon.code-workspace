@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "..\\dewloosh-solid\\src\\dewloosh\\solid"
+		},
+		{
+			"path": "..\\dewloosh-mesh\\src\\dewloosh\\mesh"
+		}
+	],
+	"settings": {}
+}

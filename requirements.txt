@@ -1,5 +1,13 @@
+#dewloosh.solid
 setuptools
 wheel
 pypardiso
-dewloosh.solid
 sectionproperties
+pyvistaqt
+plotly
+dash
+pylatex
+matplotlib
+pyqt5
+pythreejs
+ipyvtklink

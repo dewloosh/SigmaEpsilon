@@ -9,7 +9,7 @@ from dewloosh.solid.fem.meta import ABCFiniteElement as ABC
 from ..model.solid3d import Solid3d
 
 
-class H8(HexaHedron, Solid3d, FiniteElement):
+class H8(ABC, Solid3d, HexaHedron, FiniteElement):
 
     qrule = 'selective'
     quadrature = {
