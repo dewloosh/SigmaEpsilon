@@ -8,4 +8,4 @@ from dewloosh.solid.fem.pointdata import PointData
 
 from .fem.structure import Structure
 from .fem.linemesh import LineMesh
-from .section import BeamSection
+from .model.bernoulli.section import BeamSection, get_section

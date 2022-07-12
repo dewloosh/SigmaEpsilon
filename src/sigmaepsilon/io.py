@@ -1,21 +1,15 @@
 # -*- coding: utf-8 -*-
 from copy import deepcopy
-from collections import Iterable
 from ctypes import ArgumentError
 
 import numpy as np
-from numpy import concatenate as conc
-
-from sectionproperties.analysis.section import Section
 
 from randomdict import RandomDict
 
-from dewloosh.core.tools.kwargtools import getallfromkwargs
-from dewloosh.math.array import atleastnd, ascont
 from dewloosh.mesh.space import frames_of_lines
-from dewloosh.solid.fem.cells import B2, B3
+from sigmaepsilon.fem.cells import B2, B3
 
-from .section import BeamSection, get_section_metadata, get_section
+from .model.bernoulli.section import BeamSection, get_section
 
 
 def structure_from_json(path):

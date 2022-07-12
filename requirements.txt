@@ -11,3 +11,4 @@ matplotlib
 pyqt5
 pythreejs
 ipyvtklink
+randomdict

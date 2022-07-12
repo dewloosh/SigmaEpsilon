@@ -9,7 +9,7 @@ from ..model.solid3d import Solid3d
 
 
 
-class TET4(Tetra, Solid3d, FiniteElement):
+class TET4(ABC, Solid3d, Tetra, FiniteElement):
 
     qrule = 'full'
     quadrature = {
