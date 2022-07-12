@@ -8,10 +8,13 @@ from dewloosh.math import squeeze, is_none_or_false
 from dewloosh.math.array import atleast1d, atleastnd, ascont
 from dewloosh.math.utils import to_range
 
+from dewloosh.solid.fem.cells.utils.bernoulli import (
+    shape_function_matrix_bulk, body_load_vector_bulk,
+    global_shape_function_derivatives_bulk as gdshpB,
+    lumped_mass_matrices_direct as dlump
+)
+
 from ..model.beam import BernoulliBeam, calculate_shear_forces
-from .utils.bernoulli import shape_function_matrix_bulk, body_load_vector_bulk
-from .utils.bernoulli import global_shape_function_derivatives_bulk as gdshpB
-from .utils.bernoulli import lumped_mass_matrices_direct as dlump
 
 
 __all__ = ['BernoulliBase']

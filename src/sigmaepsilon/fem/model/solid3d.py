@@ -3,9 +3,9 @@ from numba import njit, prange
 import numpy as np
 from numpy import ndarray
 
-from dewloosh.solid.material.utils import HMH_3d
 from dewloosh.solid.fem.model.solid import Solid
 
+from ...material.utils import HMH_3d
 
 __cache = True
 
@@ -50,6 +50,8 @@ def HMH(estrs: np.ndarray):
 
 
 class Solid3d(Solid):
+    
+    dofs = ('UX', 'UY', 'UZ')
 
     NDOFN = 3
     NSTRE = 6

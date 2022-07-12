@@ -3,8 +3,7 @@ import numpy as np
 
 from dewloosh.mesh.cells import TET10 as Tetra
 
-from dewloosh.solid.fem.elem import FiniteElement
-from dewloosh.solid.fem.meta import ABCFiniteElement as ABC
+from dewloosh.solid.fem.cells import FiniteElement, ABCFiniteElement as ABC
 
 from ..model.solid3d import Solid3d
 

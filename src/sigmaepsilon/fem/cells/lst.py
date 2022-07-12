@@ -3,10 +3,10 @@ import numpy as np
 
 from dewloosh.mesh.cells import T6 as Triangle
 
-from dewloosh.solid.fem.elem import FiniteElement
+from dewloosh.solid.fem.cells import FiniteElement, ABCFiniteElement as ABC
 
-from dewloosh.solid.fem.model.membrane import Membrane
-from dewloosh.solid.fem.model.plate import Plate
+from ..model.membrane import Membrane
+from ..model.plate import Plate
 
 
 class LSTM(Triangle, Membrane, FiniteElement):

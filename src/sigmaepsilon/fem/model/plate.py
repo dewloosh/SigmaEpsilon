@@ -3,9 +3,9 @@ from numba import njit, prange
 import numpy as np
 from numpy import ndarray
 
-from dewloosh.solid.material.utils import HMH_S
+from ...material.utils import HMH_S
 
-from ..model.surface import Surface
+from .surface import Surface
 
 
 __cache = True
@@ -72,7 +72,7 @@ def model_stiffness_iso_homg(C: ndarray, t: ndarray):
 
 class Plate(Surface):
     
-    dofs = ('UZ', 'ROTY', 'ROTZ')
+    dofs = ('UZ', 'ROTX', 'ROTY')
     
     NDOFN = _NDOFN_
     NSTRE = _NSTRE_

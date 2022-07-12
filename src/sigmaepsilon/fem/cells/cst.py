@@ -3,15 +3,14 @@ import numpy as np
 
 from dewloosh.mesh.cells import T3 as Triangle
 
-from dewloosh.solid.fem.elem import FiniteElement
-from dewloosh.solid.fem.meta import ABCFiniteElement as ABC
+from dewloosh.solid.fem.cells import FiniteElement, ABCFiniteElement as ABC
 
 from ..model.membrane import Membrane
 from ..model.plate import Plate
 
 
 
-class CSTM(Triangle, Membrane, FiniteElement):
+class CSTM(ABC, Membrane, Triangle, FiniteElement):
     """
     The constant-strain triangle (a.k.a., CST triangle, Turner triangle)
     """
@@ -25,7 +24,7 @@ class CSTM(Triangle, Membrane, FiniteElement):
         super().__init__(*args, **kwargs)
 
 
-class CSTP(Triangle, Plate, FiniteElement):
+class CSTP(ABC, Plate, Triangle, FiniteElement):
     """
     The constant-strain triangle (a.k.a., CST triangle, Turner triangle)
     """
@@ -37,7 +36,3 @@ class CSTP(Triangle, Plate, FiniteElement):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-
-if __name__ == '__main__':
-    pass
