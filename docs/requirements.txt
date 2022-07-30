@@ -7,3 +7,4 @@ nbsphinx-link
 sphinxcontrib-svg2pdfconverter
 sphinx_design
 furo
+pyvista
