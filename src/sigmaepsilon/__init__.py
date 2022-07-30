@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 __version__ = "v0.0.1-alpha1"
 
-from dewloosh.math.linalg.vector import Vector
-
-from dewloosh.solid.fem.mesh import FemMesh
-from dewloosh.solid.fem.pointdata import PointData
-
-from .fem.structure import Structure
-from .fem.linemesh import LineMesh
-from .model.bernoulli.section import BeamSection, get_section
+from .math.linalg.vector import Vector
+from .solid.fem.mesh import FemMesh
+from .solid.fem.pointdata import PointData
+from .solid.fem.structure import Structure
+from .solid.fem.linemesh import LineMesh
+from .solid.fem.surfacemesh import SurfaceMesh
+from .solid.model.bernoulli.section import BeamSection, get_section

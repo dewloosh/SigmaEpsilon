@@ -6,10 +6,10 @@ import numpy as np
 
 from randomdict import RandomDict
 
-from dewloosh.mesh.space import frames_of_lines
-from sigmaepsilon.fem.cells import B2, B3
+from .mesh.space import frames_of_lines
+from .solid.fem.cells import B2, B3
 
-from .model.bernoulli.section import BeamSection, get_section
+from .solid.model.bernoulli.section import BeamSection, get_section
 
 
 def structure_from_json(path):
