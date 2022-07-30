@@ -46,7 +46,7 @@ author = 'Bence Balogh'
 # get version from python package:
 here = os.path.dirname(__file__)
 repo = os.path.join(here, '..', '..')
-_version_py = os.path.join(repo, 'src', 'dewloosh', 'mesh', '__init__.py')
+_version_py = os.path.join(repo, 'src', 'sigmaepsilon', 'core', '__init__.py')
 release = get_version(_version_py)
 
 try:
@@ -212,7 +212,7 @@ htmlhelp_basename = 'nbsphinx-linkdoc'
 # a list of builtin themes.
 #
 html_theme = 'furo'
-#html_title = "dewloosh.mesh"
+#html_title = "SigmaEpsilon"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -251,7 +251,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'dewloosh-mesh.tex', 'DewLoosh.Mesh Documentation',
+    (master_doc, 'SigmaEpsilon.tex', "SigmaEpsilon's Documentation",
      'Bence Balogh', 'manual'),
 ]
 
@@ -261,7 +261,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'dewloosh-mesh', 'DewLoosh.Mesh Documentation',
+    (master_doc, 'SigmaEpsilon', "SigmaEpsilon's Documentation",
      [author], 1)
 ]
 
@@ -272,8 +272,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'dewloosh-mesh', 'DewLoosh.Mesh Documentation',
-     author, 'dewloosh-mesh', 'One line description of project.',
+    (master_doc, 'SigmaEpsilon', "SigmaEpsilon's Documentation",
+     author, 'SigmaEpsilon', 'One line description of project.',
      'Miscellaneous'),
 ]
 
@@ -299,7 +299,7 @@ nbsphinx_prolog = (
     .. nbinfo::
         This page was generated from `{{ docpath }}`__.
         
-    __ https://github.com/dewloosh/dewloosh-mesh/blob/
+    __ https://github.com/dewloosh/sigmaepsilon/blob/
         """ +
     git_rev + r"{{ docpath }}"
 )
@@ -317,12 +317,12 @@ nbsphinx_prolog = (
     .. role:: raw-html(raw)
         :format: html
 
-    .. _this: https://github.com/dewloosh/dewloosh-mesh/blob/main/{{ docpath }}
+    .. _this: https://github.com/dewloosh/sigmaepsilon/blob/main/{{ docpath }}
     
-    .. _binder: https://github.com/dewloosh/dewloosh-mesh/blob/main/{{ docpath }}
+    .. _binder: https://github.com/dewloosh/sigmaepsilon/blob/main/{{ docpath }}
     
     .. nbinfo::
         This page was generated from 
-        `{{ docpath }} <https://github.com/dewloosh/dewloosh-mesh/blob/main/{{ docpath }}>`_."""
+        `{{ docpath }} <https://github.com/dewloosh/sigmaepsilon/blob/main/{{ docpath }}>`_."""
     
 )

@@ -4,7 +4,8 @@ import unittest
 
 from sigmaepsilon.math.linalg import Vector
 
-from sigmaepsilon.mesh import TriMesh, PolyData, grid, PointCloud, CartesianFrame
+from sigmaepsilon.mesh import (TriMesh, PolyData, grid, PointCloud, 
+                               CartesianFrame, LineData)
 from sigmaepsilon.mesh.grid import grid
 from sigmaepsilon.mesh.cells import T3
 
@@ -116,6 +117,62 @@ class TestPolyData(unittest.TestCase):
         if not np.max(np.abs(V - mesh3d.volume())) < 1e-8:
             return False
         return True
+    
+    class TestParametric(unittest.TestCase):
+
+        def test_circular_helix(self):
+            def circular_helix(a=None, b=None, *args, slope=None, pitch=None):
+                """A circular helix of radius a and slope a/b (or pitch 2πb)"""
+                if pitch is not None:
+                    b = b if b is not None else pitch / 2 / np.pi
+                if slope is not None:
+                    a = a if a is not None else slope * b
+                    b = b if b is not None else slope / a
+                def inner(t):
+                    return a * np.cos(t), a * np.sin(t), b * t
+                return inner
+            
+            frame = CartesianFrame(dim=3)
+
+            coords = np.array(list(map(circular_helix(5, slope=5), np.linspace(0, 25, 100))))
+            topo = np.zeros((coords.shape[0]-1, 2))
+            topo[:, 0] = np.arange(topo.shape[0])
+            topo[:, 1] = topo[:, 0] + 1
+
+            mesh = PolyData(coords=coords, frame=frame)
+            mesh['helix'] = LineData(topo=topo, frame=frame)
+            
+        def random_brownian(self):
+            rs = np.random.RandomState()
+            #rs.seed(0)
+
+            def brownian_motion(T=1, N=100, mu=0.1, sigma=0.01, S0=20):
+                dt = float(T)/N
+                t = np.linspace(0, T, N)
+                W = rs.standard_normal(size=N)
+                W = np.cumsum(W)*np.sqrt(dt)  # standard brownian motion
+                X = (mu-0.5*sigma**2)*t + sigma*W
+                S = S0*np.exp(X)  # geometric brownian motion
+                return S
+
+
+            params = dict(T=0.1, N=100, mu=0.5, sigma=0.1)
+
+            x = brownian_motion(**params)
+            y = brownian_motion(**params)
+            z = brownian_motion(**params)
+            
+            frame = CartesianFrame(dim=3)
+
+            coords = np.stack([x, y, z], axis=1)
+            topo = np.zeros((coords.shape[0]-1, 2))
+            topo[:, 0] = np.arange(topo.shape[0])
+            topo[:, 1] = topo[:, 0] + 1
+
+            mesh = PolyData(coords=coords, frame=frame)
+            mesh['lines'] = LineData(topo=topo, frame=frame)
+
+            mesh.plot(notebook=False)
 
 
 if __name__ == "__main__":

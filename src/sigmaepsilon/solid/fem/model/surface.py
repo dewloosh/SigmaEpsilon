@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from dewloosh.math.array import atleast2d
+from ....math.array import atleast2d
 
 from ..utils import topo_to_gnum
 

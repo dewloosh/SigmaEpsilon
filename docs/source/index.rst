@@ -1,16 +1,6 @@
-==================================================================
-**DewLoosh.Mesh** - A Python Library for Compound Polygonal Meshes
-==================================================================
-
-This library is part of `DewLoosh`, a rapid prototyping platform focused on numerical calculations 
-mainly corcerned with simulations of natural phenomena.
-
-The current namespace is responsible to handle the gometry and the topolgy related
-to `DewLoosh` projects. We basically only use it directly for testing and core developments,
-but considering the popularity of similar projects like `PyVista`, we decided to
-create a separate namespace. However, we try not to reinvent the weel, but to fill
-the gaps where necessary for domain specific applications. 
-
+====================================================
+**SigmaEpsilon** - Computanional Mechanics in Python
+====================================================
 
 Features
 --------

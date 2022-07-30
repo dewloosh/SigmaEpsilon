@@ -10,7 +10,7 @@ from numba import njit, prange
 from numba.typed import Dict as nbDict
 from numba import types as nbtypes
 
-from dewloosh.math.array import minmax
+from ...math.array import minmax
 
 __cache = True
 

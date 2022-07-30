@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from dewloosh.mesh.topo import detach_mesh_bulk
+from ....mesh.topo import detach_mesh_bulk
 import numpy as np
 from typing import Tuple
 
@@ -14,11 +14,11 @@ from sectionproperties.pre.library.steel_sections import tapered_flange_channel 
 from sectionproperties.pre.library.steel_sections import tee_section
 from sectionproperties.analysis.section import Section
 
-from dewloosh.core.wrapping import Wrapper
-from dewloosh.core.tools.kwargtools import getallfromkwargs
+from ....core.wrapping import Wrapper
+from ....core.tools.kwargtools import getallfromkwargs
 
-from dewloosh.mesh.utils import centralize
-from dewloosh.mesh.tri.trimesh import TriMesh
+from ....mesh.utils import centralize
+from ....mesh.tri.trimesh import TriMesh
 
 
 def get_section_metadata(shape: str, material=None, **section: dict) -> Tuple[Geometry, float]:
