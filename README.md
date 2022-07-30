@@ -1,4 +1,4 @@
-# **SigmaEpsilon** - Computational Mechanics in Python
+# **SigmaEpsilon** - High-Performance Computational Mechanics in Python
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/dewloosh/sigmaepsilon/main?labpath=examples%2Flpp.ipynb?urlpath=lab)
 [![CircleCI](https://circleci.com/gh/dewloosh/sigmaepsilon.svg?style=shield)](https://circleci.com/gh/dewloosh/sigmaepsilon) 
@@ -10,13 +10,9 @@
 > **Warning**
 > This package is under active development and in an **alpha stage**. Come back later, or star the repo to make sure you don’t miss the first stable release!
 
-`SigmaEpsilon` is a high-performance Python library for structural analysis and optimization.  
-
 ## Highlights
 
-Head over to the Quick Examples page in the docs to explore our gallery of examples showcasing what PyVista can do! Want to test-drive PyVista? All of the examples from the gallery are live on MyBinder for you to test drive without installing anything locally: Launch on Binder.
-
-The namespace `sigmaepsilon` consists of four main blocks:
+Head over to the Quick Examples page in the docs to explore our gallery of examples showcasing what SigmaEpsilon can do! Want to test-drive SigmaEpsilon? All of the examples from the gallery are live on MyBinder for you to test drive without installing anything locally: Launch on Binder.
 
 ### Overview
 
@@ -25,11 +21,6 @@ The namespace `sigmaepsilon` consists of four main blocks:
 * A `mesh` submodule to handle compound polygonal meshes, with support for transformations, mesh analysis, simple mesh generation, plotting etc. 
 
 * A `solid` submodule to analyze and optimize solid structures of all kinds with the **Finite Element Method**. The implementations so far only cover linear behaviour, but with practically no limits on the complexity of the shape and topology of the domain under investigation.
-
-
-## **Documentation**
-
-Click [here](https://sigmaepsilon.readthedocs.io/en/latest/) to read the documentation.
 
 ## **Installation**
 This is optional, but we suggest you to create a dedicated virtual enviroment at all times to avoid conflicts with your other projects. Create a folder, open a command shell in that folder and use the following command
@@ -49,6 +40,10 @@ Once the enviroment is created, activate it via typing
 ```console
 >>> pip install sigmaepsilon
 ```
+
+## **Documentation**
+
+Refer to the [docs](https://sigmaepsilon.readthedocs.io/en/latest/) for further details on installation and usage.
 
 ## **Testing**
 
