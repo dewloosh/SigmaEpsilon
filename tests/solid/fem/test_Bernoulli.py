@@ -7,8 +7,7 @@ from sigmaepsilon.mesh.space import StandardFrame, \
 from sigmaepsilon.solid.fem import LineMesh
 from sigmaepsilon.solid.fem import Structure
 from sigmaepsilon.math.array import repeat
-from hypothesis import given, settings, HealthCheck, \
-    strategies as st
+from hypothesis import given, settings, HealthCheck, strategies as st
 import unittest
 import numpy as np
 from numpy import pi as PI
