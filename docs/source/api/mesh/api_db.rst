@@ -15,7 +15,7 @@ TODO
 Mesh Classes
 ------------
 
-Mesh classes are all subclasses of :class:`dewloosh.core.DeepDict`, which means
+Mesh classes are all subclasses of :class:`sigmaepsilon.core.DeepDict`, which means
 that in the first place a mesh is a nested dictionary, with a self-replicating
 default factory. Every dictionary inside a sturcure like this can hold on to either
 points or cells, or both. They also can store data related to the points or the cells,
@@ -28,33 +28,33 @@ algorithms specific to the cell type, which makes calculations go faster.
 These topology-specific classes have presets, which results in a fewer number of 
 arguments in overall, resulting in more readable code. 
 
-.. autoclass:: dewloosh.mesh.PolyData
+.. autoclass:: sigmaepsilon.mesh.PolyData
     :members:
 
 Line Meshes
 ===========
 
-.. autoclass:: dewloosh.mesh.linedata.LineData
+.. autoclass:: sigmaepsilon.mesh.linedata.LineData
     :members:
 
 Triangulations
 ==============
 
-.. autoclass:: dewloosh.mesh.tri.trimesh.TriMesh
+.. autoclass:: sigmaepsilon.mesh.tri.trimesh.TriMesh
     :members:
 
 
 Tetrahedralizations
 ===================
 
-.. autoclass:: dewloosh.mesh.tet.tetmesh.TetMesh
+.. autoclass:: sigmaepsilon.mesh.tet.tetmesh.TetMesh
     :members: 
 
 
 Grids
 =====
 
-.. autoclass:: dewloosh.mesh.rgrid.Grid
+.. autoclass:: sigmaepsilon.mesh.grid.Grid
     :members: 
 
 
@@ -62,8 +62,8 @@ Grids
 Data Classes
 ------------
 
-.. autoclass:: dewloosh.mesh.pointdata.PointData
+.. autoclass:: sigmaepsilon.mesh.pointdata.PointData
     :members:
 
-.. autoclass:: dewloosh.mesh.celldata.CellData
+.. autoclass:: sigmaepsilon.mesh.celldata.CellData
     :members:  

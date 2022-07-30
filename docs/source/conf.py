@@ -39,7 +39,7 @@ def get_version(rel_path):
 
 # -- Project information -----------------------------------------------------
 
-project = 'dewloosh.mesh'
+project = 'SigmaEpsilon'
 copyright = '2022, Bence Balogh'
 author = 'Bence Balogh'
 
@@ -83,6 +83,9 @@ extensions = [
     # for automatic exploration of the source files
     'sphinx.ext.autodoc',
     
+    # automatic lebel creation -> {path/to/page}:{title-of-section}
+    'sphinx.ext.autosectionlabel',
+    
     #'sphinx.ext.autosummary',
 
     # to enable cross referencing other documents on the internet
@@ -104,7 +107,13 @@ extensions = [
 
     # 'sphinx.ext.coverage',
     "pyvista.ext.plot_directive",
+    
+    "sphinx_design",
 ]
+
+# Make sure the target is unique
+autosectionlabel_prefix_document = True
+autosectionlabel_maxdepth = 4
 
 intersphinx_mapping = {
     'sphinx': ('https://www.sphinx-doc.org/en/master/', None),
@@ -152,16 +161,16 @@ autosummary_generate = True
 
 """sphinx_gallery_conf = {
     
-    'examples_dirs': ['../../examples'],
+    #'examples_dirs' : ['../../examples'],
     
-    'default_thumb_file': '_static/mesh_advanced.png',
+    #'default_thumb_file' : '_static/mesh_advanced.png',
     
     # directory where function/class granular galleries are stored
-    'backreferences_dir'  : 'gen_modules/backreferences',
+    'backreferences_dir' : 'gen_modules/backreferences',
 
     # Modules for which function/class level galleries are created. In
     # this case sphinx_gallery and numpy in a tuple of strings.
-    'doc_module'          : ('sphinx_gallery', 'dewloosh.mesh')
+    'doc_module' : ('sigmaepsilon.mesh')
     }"""
 
 """nbsphinx_thumbnails = {
@@ -212,7 +221,7 @@ htmlhelp_basename = 'nbsphinx-linkdoc'
 # a list of builtin themes.
 #
 html_theme = 'furo'
-#html_title = "SigmaEpsilon"
+html_title = "SigmaEpsilon"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

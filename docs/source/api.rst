@@ -1,10 +1,7 @@
-dewloosh.geom API reference
-===========================
+SigmaEpsilon API Reference
+==========================
 
 .. toctree::
-    api_db
-    api_space
-    api_cell
-    api_trimesh
-    api_recipes
-    api_routines
+    /api/math/api_math
+    /api/mesh/api_mesh
+    

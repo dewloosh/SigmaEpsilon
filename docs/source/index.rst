@@ -1,6 +1,6 @@
-====================================================
-**SigmaEpsilon** - Computanional Mechanics in Python
-====================================================
+=====================================================================
+**SigmaEpsilon** - High-Performance Computational Mechanics in Python
+=====================================================================
 
 Features
 --------
@@ -41,7 +41,6 @@ Gallery
 -------
 
 .. nbgallery::
-    :caption: Gallery
     :name: rst-gallery
     :glob:
     :reversed:
@@ -53,17 +52,14 @@ Contents
 --------
 
 .. toctree::
-    :caption: Contents
     :maxdepth: 2
    
     user_guide
-    notebooks
 
 API
 ---
 
 .. toctree::
-    :caption: API
     :maxdepth: 3
    
     api
