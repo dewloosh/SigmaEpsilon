@@ -21,7 +21,6 @@ sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('../..'))
 sys.path.insert(0, os.path.abspath('../../src'))
 
-
 def read(rel_path):
     here = os.path.abspath(os.path.dirname(__file__))
     with open(os.path.join(here, rel_path), 'r') as fp:
@@ -36,13 +35,35 @@ def get_version(rel_path):
     else:
         raise RuntimeError("Unable to find version string.")
 
-
 # -- Project information -----------------------------------------------------
 
 project = 'SigmaEpsilon'
 copyright = '2022, Bence Balogh'
 author = 'Bence Balogh'
 
+# The short X.Y version
+
+"""here = os.path.dirname(__file__)
+print('HERE : {}'.format(here))
+#repo = os.path.join(here, '..', '..')
+repo = os.path.abspath('../..')
+print('REPO : {}'.format(repo))
+print(os.path.join(repo, "/src/dewloosh"))
+_module = os.listdir(os.path.join(repo, "/src/dewloosh"))[0]
+_version_py = os.path.join(repo, "/src/dewloosh/{}/__init__.py".format(_module))"""
+
+# get version from python package:
+"""here = os.path.dirname(__file__)
+repo = os.path.join(here, '..', '..')
+_version_py = os.path.join(repo, 'src', 'sigmaepsilon', 'core', '__init__.py')
+version_ns = {}
+with open(_version_py) as f:
+    exec(f.read(), version_ns)
+# The short X.Y version.
+#version = '%i.%i' % version_ns['version_info'][:2]
+# The full version, including alpha/beta/rc tags.
+release = version_ns['__version__']"""
+    
 # get version from python package:
 here = os.path.dirname(__file__)
 repo = os.path.join(here, '..', '..')
@@ -82,11 +103,6 @@ extensions = [
 
     # for automatic exploration of the source files
     'sphinx.ext.autodoc',
-    
-    # automatic lebel creation -> {path/to/page}:{title-of-section}
-    'sphinx.ext.autosectionlabel',
-    
-    #'sphinx.ext.autosummary',
 
     # to enable cross referencing other documents on the internet
     'sphinx.ext.intersphinx',
@@ -98,36 +114,13 @@ extensions = [
     'nbsphinx_link',  # for including notebook files from outside the sphinx source root
 
     'sphinx_copybutton',  # for "copy to clipboard" buttons
-    'sphinx.ext.mathjax',  # for mesh equations
+    'sphinx.ext.mathjax',  # for math equations
     'sphinxcontrib.bibtex',  # for bibliographic references
     'sphinxcontrib.rsvgconverter',  # for SVG->PDF conversion in LaTeX output
-    
     'sphinx_gallery.load_style',  # load CSS for gallery (needs SG >= 0.6)
-    #'sphinx_gallery.gen_gallery',
 
     # 'sphinx.ext.coverage',
-    "pyvista.ext.plot_directive",
-    
-    "sphinx_design",
 ]
-
-# Make sure the target is unique
-autosectionlabel_prefix_document = True
-autosectionlabel_maxdepth = 4
-
-intersphinx_mapping = {
-    'sphinx': ('https://www.sphinx-doc.org/en/master/', None),
-    'python': ('https://docs.python.org/3', None),
-    'numpy' : ('https://numpy.org/doc/stable/', None),
-    'scipy' : ('https://docs.scipy.org/doc/scipy/', None),
-    #'sympy' : ('https://readthedocs.org/projects/sympy/', None),
-    'awkward' : ('https://awkward-array.readthedocs.io/en/latest/', None),
-    #'numba' : ('', None),
-    #'networkx' : ('', None),
-    #'pyvista' : ('', None),
-    'dewloosh_core': ('https://dewloosh-core.readthedocs.io/en/latest/', None),
-    'dewloosh_math': ('https://dewloosh-math.readthedocs.io/en/latest/', None)
-}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -156,27 +149,6 @@ exclude_patterns = []
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 
-# generate autosummary even if no references
-autosummary_generate = True
-
-"""sphinx_gallery_conf = {
-    
-    #'examples_dirs' : ['../../examples'],
-    
-    #'default_thumb_file' : '_static/mesh_advanced.png',
-    
-    # directory where function/class granular galleries are stored
-    'backreferences_dir' : 'gen_modules/backreferences',
-
-    # Modules for which function/class level galleries are created. In
-    # this case sphinx_gallery and numpy in a tuple of strings.
-    'doc_module' : ('sigmaepsilon.mesh')
-    }"""
-
-"""nbsphinx_thumbnails = {
-    'examples/thumbnail-from-conf-py': 'examples/mesh_advanced.png',
-}
-"""
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -221,7 +193,7 @@ htmlhelp_basename = 'nbsphinx-linkdoc'
 # a list of builtin themes.
 #
 html_theme = 'furo'
-html_title = "SigmaEpsilon"
+#html_title = "SigmaEpsilon"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -260,7 +232,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'SigmaEpsilon.tex', "SigmaEpsilon's Documentation",
+    (master_doc, 'sigmaepsilon.tex', 'SigmaEpsilon Documentation',
      'Bence Balogh', 'manual'),
 ]
 
@@ -270,7 +242,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'SigmaEpsilon', "SigmaEpsilon's Documentation",
+    (master_doc, 'sigmaepsilon', 'SigmaEpsilon Documentation',
      [author], 1)
 ]
 
@@ -281,8 +253,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'SigmaEpsilon', "SigmaEpsilon's Documentation",
-     author, 'SigmaEpsilon', 'One line description of project.',
+    (master_doc, 'sigmaepsilon', 'SigmaEpsilon Documentation',
+     author, 'sigmaepsilon', 'One line description of project.',
      'Miscellaneous'),
 ]
 

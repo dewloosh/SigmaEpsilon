@@ -1,7 +1,5 @@
-SigmaEpsilon API Reference
-==========================
+dewloosh.math API reference
+===========================
 
 .. toctree::
-    /api/math/api_math
-    /api/mesh/api_mesh
-    
+    api_vs

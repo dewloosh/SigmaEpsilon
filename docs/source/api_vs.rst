@@ -2,6 +2,8 @@
 Linear Algebra
 ==============
 
+.. _LinAlg:
+
 These classes are meant to provide a usable representation of a vectorspace.
 At the moment, the capabilities are limited to vectors and their transformations 
 in coordinate frames with orthonormal basis vectors, but allows for arbitrary 
@@ -29,7 +31,7 @@ The notion of the *Direction Cosine Matrix* (DCM) is meant to unify the directio
 relative transformation between two frames.
 
 .. note::
-   Click :download:`here <../../_static/linalgR3.pdf>` to read the extended version of this
+   Click :download:`here <_static/linalgR3.pdf>` to read the extended version of this
    brief intro as a pdf document.
 
 If a vector :math:`\mathbf{v}` is given in frames :math:`\mathbf{A}` and :math:`\mathbf{B}` as
