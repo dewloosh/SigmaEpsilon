@@ -13,6 +13,50 @@ from .preproc import fem_load_vector, fem_penalty_matrix_coo, \
 
 
 class FemMesh(PolyData):
+    """
+    A class to handle polygonal meshes for the **Finite Element Method**.
+
+    Parameters
+    ----------
+    pd : `PolyData` or `CellData`, Optional
+        A PolyData or a CellData instance. Dafault is None.
+
+    cd : `CellData`, Optional
+        A CellData instance, if the first argument is provided. Dafault is None.
+        
+    coords : ndarray, Optional.
+        2d numpy array of floats, describing a pointcloud. Default is None.
+
+    topo : ndarray, Optional.
+        2d numpy array of integers, describing the topology of a polygonal mesh. 
+        Default is None.
+
+    celltype : int, Optional.
+        An integer spcifying a valid celltype.
+        
+    Note
+    ----
+    The suggested way of usage is to create the pointdata and celldata
+    objects in advance, and provide them as the firts argument when building the model.
+    See below for how it works!
+
+    Examples
+    --------
+    >>> from sigmaepsilon.solid import FemMesh
+    >>> from sigmaepsilon.mesh.grid import grid
+    >>> size = Lx, Ly, Lz = 100, 100, 100
+    >>> shape = nx, ny, nz = 10, 10, 10
+    >>> coords, topo = grid(size=size, shape=shape, eshape='H27')
+    >>> pd = FemMesh(coords=coords)
+    >>> pd['A']['Part1'] = FemMesh(topo=topo[:10])
+    >>> pd['B']['Part2'] = FemMesh(topo=topo[10:-10])
+    >>> pd['C']['Part3'] = FemMesh(topo=topo[-10:])
+
+    See also
+    --------
+    :class:`sigmaepsilon.mesh.PolyData`
+    
+    """
 
     dofs = ('UX', 'UY', 'UZ', 'ROTX', 'ROTY', 'ROTZ')
     NDOFN = 6

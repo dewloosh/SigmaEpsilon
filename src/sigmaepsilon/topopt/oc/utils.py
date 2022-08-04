@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+from typing import Union
 from numba import njit, prange
 import numpy as np
+from numpy import ndarray
 from numba import types as nbtypes
 from numba.typed import Dict as nbDict
 
@@ -22,7 +24,8 @@ def filter_stiffness(K_bulk: np.ndarray, edofs: np.ndarray,
 
 
 @njit(nogil=True, cache=__cache)
-def get_filter_factors(centers: np.ndarray, neighbours: nbDict, r_max: float):
+def get_filter_factors(centers: np.ndarray, neighbours: Union[nbDict, ndarray], 
+                       r_max: float):
     nE = len(centers)
     res = nbDict.empty(
         key_type=nbint64,

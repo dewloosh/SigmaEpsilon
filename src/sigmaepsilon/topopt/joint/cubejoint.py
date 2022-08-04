@@ -5,22 +5,22 @@ import tetgen
 
 from sectionproperties.analysis.section import Section
 
-from dewloosh.math.linalg import linspace, Vector
+from sigmaepsilon.math.linalg import linspace, Vector
 
-from dewloosh.geom import PolyData
-from dewloosh.geom.rgrid import grid
-from dewloosh.geom.tri.triang import triangulate
-from dewloosh.geom.space import StandardFrame, PointCloud
-from dewloosh.geom.utils import centralize, center_of_points
-from dewloosh.geom.tri.triutils import get_points_inside_triangles, \
+from sigmaepsilon.mesh import PolyData
+from sigmaepsilon.mesh.grid import grid
+from sigmaepsilon.mesh.tri.triang import triangulate
+from sigmaepsilon.mesh.space import StandardFrame, PointCloud
+from sigmaepsilon.mesh.utils import centralize, center_of_points
+from sigmaepsilon.mesh.tri.triutils import get_points_inside_triangles, \
     approx_data_to_points
-from dewloosh.geom.topo import remap_topo
-from dewloosh.geom.topo.tr import T6_to_T3
+from sigmaepsilon.mesh.topo import remap_topo
+from sigmaepsilon.mesh.topo.tr import T6_to_T3
 
-from dewloosh.solid.fem import FemMesh
-from dewloosh.solid.fem.cells import TET4, H8
+from sigmaepsilon.solid.fem import FemMesh
+from sigmaepsilon.solid.fem.cells import TET4, H8
 
-from dewloosh.optimus.fem import Structure
+from ..fem.structure.structure import Structure
 
 
 
@@ -119,7 +119,7 @@ def joint_cube_voxelize(size, shape, *args, sections_dict=None,
         coords_ = coords.show(f_frame)
         f_inds = np.where(np.abs(coords_[:, 0]) < 1e-8)[0]
         f_coords = coords_[f_inds, 1:]
-        f_section = sections_dict[face]['geom']
+        f_section = sections_dict[face]['mesh']
         f_section.create_mesh(mesh_sizes=[mesh_size])
         f_coords_s = centralize(np.array(f_section.mesh['vertices']))
         f_topo_s = np.array(f_section.mesh['triangles'])
@@ -128,7 +128,7 @@ def joint_cube_voxelize(size, shape, *args, sections_dict=None,
         if 'dynams' in sections_dict[face]:
             dyn = sections_dict[face]['dynams']
             _section = Section(f_section)
-            _section.calculate_geometric_properties()
+            _section.calculate_meshetric_properties()
             _section.calculate_warping_properties()
             stress_post = _section.calculate_stress(
                 N=dyn['N'], Vy=dyn['Vy'], Vx=dyn['Vx'],
@@ -175,7 +175,7 @@ def joint_cube(size, shape, *args, sections_dict=None, material=None,
         return joint_cube_voxelize(size, shape, *args,
                                    sections_dict=sections_dict,
                                    material=material, **kwargs)
-    from dewloosh.geom.rgrid import grid
+    from sigmaepsilon.mesh.grid import grid
     Lx, Ly, Lz = size
     points_per_edge = shape + 1
     mesh_size = min(size) / (points_per_edge-1)
@@ -236,7 +236,7 @@ def joint_cube(size, shape, *args, sections_dict=None, material=None,
             # 1) create the mesh of the section
             # 2) rule out points of the base grid that the section covers
             # 3) add corner and edge nodes and do a triangulation
-            f_section = sections_dict[face]['geom']
+            f_section = sections_dict[face]['mesh']
             f_section.create_mesh(mesh_sizes=[mesh_size])
             f_coords = centralize(np.array(f_section.mesh['vertices']))
 
@@ -246,7 +246,7 @@ def joint_cube(size, shape, *args, sections_dict=None, material=None,
             if 'dynams' in sections_dict[face]:
                 dyn = sections_dict[face]['dynams']
                 _section = Section(f_section)
-                _section.calculate_geometric_properties()
+                _section.calculate_meshetric_properties()
                 _section.calculate_warping_properties()
                 stress_post = _section.calculate_stress(
                     N=dyn['N'], Vy=dyn['Vy'], Vx=dyn['Vx'],
@@ -359,25 +359,25 @@ if __name__ == '__main__':
 
     sections_dict = {
         'left': {
-            'geom': CHS(d=100, t=10, n=64),
+            'mesh': CHS(d=100, t=10, n=64),
             'support': True},
         'right': {
-            'geom': RHS(d=100, b=100, t=10, r_out=0, n_r=0),
+            'mesh': RHS(d=100, b=100, t=10, r_out=0, n_r=0),
             'support': True},
         'front': {
-            'geom': ISection(d=170, b=110, t_f=7.8, t_w=5.8, r=8.9, n_r=16, material=steel),
+            'mesh': ISection(d=170, b=110, t_f=7.8, t_w=5.8, r=8.9, n_r=16, material=steel),
             'dynams': {'N': 1e3, 'Vx': 0., 'Vy': 3e3,
                        'T': 0.,  'Mx': 5e6, 'My': 0.}},
     }
 
     sections_dict = {
         'left': {
-            'geom': CHS(d=100, t=10, n=64),
+            'mesh': CHS(d=100, t=10, n=64),
             'dynams': {'N': 0, 'Vx': 0., 'Vy': 0,
                        'T': 1e9,  'Mx': 0, 'My': 0.}
             },
         'right': {
-            'geom': RHS(d=100, b=100, t=10, r_out=0, n_r=0),
+            'mesh': RHS(d=100, b=100, t=10, r_out=0, n_r=0),
             'support': True},
     }
 

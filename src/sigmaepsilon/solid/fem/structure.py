@@ -16,7 +16,7 @@ __all__ = ['Structure']
 
 class Structure(Wrapper):
 
-    def __init__(self, *args, mesh: FemMesh = None, **kwargs):
+    def __init__(self, *args, mesh: FemMesh = None, constraints=None, **kwargs):
         if not isinstance(mesh, FemMesh):
             raise NotImplementedError
         super().__init__(wrap=mesh)
@@ -25,6 +25,7 @@ class Structure(Wrapper):
         self.summary = DeepDict()
         self.solver = 'scipy'
         self.Solver = None
+        self._constraints = constraints
         
     @property
     def mesh(self):

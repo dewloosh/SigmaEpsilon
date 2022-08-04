@@ -78,11 +78,11 @@ class PolyData(PolyDataBase):
 
     Parameters
     ----------
-    pd : PolyData, Optional
-        A PolyData instance. Dafault is None.
+    pd : PolyData or CellData, Optional
+        A PolyData or a CellData instance. Dafault is None.
 
     cd : CellData, Optional
-        A CellData instance. Dafault is None.
+        A CellData instance, if the first argument is provided. Dafault is None.
 
     coords : ndarray, Optional.
         2d numpy array of floats, describing a pointcloud. Default is None.
@@ -343,6 +343,12 @@ class PolyData(PolyDataBase):
             ugrid = pvobj.cast_to_unstructured_grid()
             coords = pvobj.points.astype(float)
             cells_dict = ugrid.cells_dict
+        else:
+            try:
+                ugrid = pvobj.cast_to_unstructured_grid()
+                return cls.from_pv(ugrid)
+            except Exception:
+                raise TypeError
 
         A = CartesianFrame(dim=3)
         pd = PolyData(coords=coords, frame=A)  # this fails without a frame
@@ -865,6 +871,16 @@ class PolyData(PolyDataBase):
 
         The argument `knn_options` is passed to the KNN search algorithm,
         the rest to the `centers` function of the mesh.
+        
+        Examples
+        --------
+        >>> from sigmaepsilon.mesh.grid import Grid
+        >>> from sigmaepsilon.mesh import KNN
+        >>> size = 80, 60, 20
+        >>> shape = 10, 8, 4
+        >>> grid = Grid(size=size, shape=shape, eshape='H8')
+        >>> X = grid.centers()
+        >>> i = KNN(X, X, k=3, max_distance=10.0)
         """
         c = self.centers(*args, **kwargs)
         knn_options = {} if knn_options is None else knn_options

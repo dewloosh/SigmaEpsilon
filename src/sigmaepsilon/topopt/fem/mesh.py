@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
-from dewloosh.core import squeeze
+from sigmaepsilon.core import squeeze
 
-from dewloosh.math.linalg.sparse.csr import csr_matrix as csr
+from sigmaepsilon.math.linalg.sparse.csr import csr_matrix as csr
 
-from dewloosh.solid.fem.mesh import FemMesh as Mesh
+from sigmaepsilon.solid.fem.mesh import FemMesh as Mesh
 
 __all__ = ['FemMesh']
 

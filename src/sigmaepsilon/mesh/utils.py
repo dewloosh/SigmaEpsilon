@@ -96,8 +96,8 @@ def k_nearest_neighbours(X: ndarray, Y: ndarray=None, *args, backend='scipy',
      
     Examples
     --------
-    >>> from dewloosh.mesh.rgrid import Grid
-    >>> from dewloosh.mesh import KNN
+    >>> from sigmaepsilon.mesh.grid import Grid
+    >>> from sigmaepsilon.mesh import KNN
     >>> size = 80, 60, 20
     >>> shape = 10, 8, 4
     >>> grid = Grid(size=size, shape=shape, eshape='H8')
