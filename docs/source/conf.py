@@ -35,41 +35,18 @@ def get_version(rel_path):
     else:
         raise RuntimeError("Unable to find version string.")
 
+
 # -- Project information -----------------------------------------------------
 
 project = 'SigmaEpsilon'
 copyright = '2022, Bence Balogh'
 author = 'Bence Balogh'
 
-# The short X.Y version
-
-"""here = os.path.dirname(__file__)
-print('HERE : {}'.format(here))
-#repo = os.path.join(here, '..', '..')
-repo = os.path.abspath('../..')
-print('REPO : {}'.format(repo))
-print(os.path.join(repo, "/src/dewloosh"))
-_module = os.listdir(os.path.join(repo, "/src/dewloosh"))[0]
-_version_py = os.path.join(repo, "/src/dewloosh/{}/__init__.py".format(_module))"""
-
-# get version from python package:
-"""here = os.path.dirname(__file__)
-repo = os.path.join(here, '..', '..')
-_version_py = os.path.join(repo, 'src', 'sigmaepsilon', 'core', '__init__.py')
-version_ns = {}
-with open(_version_py) as f:
-    exec(f.read(), version_ns)
-# The short X.Y version.
-#version = '%i.%i' % version_ns['version_info'][:2]
-# The full version, including alpha/beta/rc tags.
-release = version_ns['__version__']"""
-    
 # get version from python package:
 here = os.path.dirname(__file__)
 repo = os.path.join(here, '..', '..')
 _version_py = os.path.join(repo, 'src', 'sigmaepsilon', 'core', '__init__.py')
 release = get_version(_version_py)
-
 try:
     git_rev = subprocess.check_output(
         ['git', 'describe', '--exact-match', 'HEAD'], universal_newlines=True)
@@ -103,6 +80,8 @@ extensions = [
 
     # for automatic exploration of the source files
     'sphinx.ext.autodoc',
+    
+    #'sphinx.ext.autosummary',
 
     # to enable cross referencing other documents on the internet
     'sphinx.ext.intersphinx',
@@ -114,13 +93,31 @@ extensions = [
     'nbsphinx_link',  # for including notebook files from outside the sphinx source root
 
     'sphinx_copybutton',  # for "copy to clipboard" buttons
-    'sphinx.ext.mathjax',  # for math equations
+    'sphinx.ext.mathjax',  # for mesh equations
     'sphinxcontrib.bibtex',  # for bibliographic references
     'sphinxcontrib.rsvgconverter',  # for SVG->PDF conversion in LaTeX output
+    
     'sphinx_gallery.load_style',  # load CSS for gallery (needs SG >= 0.6)
+    #'sphinx_gallery.gen_gallery',
 
     # 'sphinx.ext.coverage',
+    #"pyvista.ext.plot_directive",
 ]
+
+intersphinx_mapping = {
+    'sphinx': ('https://www.sphinx-doc.org/en/master/', None),
+    'python': ('https://docs.python.org/3', None),
+    'numpy' : ('https://numpy.org/doc/stable/', None),
+    'scipy' : ('https://docs.scipy.org/doc/scipy/', None),
+    #'sympy' : ('https://readthedocs.org/projects/sympy/', None),
+    'awkward' : ('https://awkward-array.readthedocs.io/en/latest/', None),
+    #'numba' : ('', None),
+    #'networkx' : ('', None),
+    #'pyvista' : ('', None),
+    'dewloosh_core': ('https://dewloosh-core.readthedocs.io/en/latest/', None),
+    'dewloosh_math': ('https://dewloosh-math.readthedocs.io/en/latest/', None)
+}
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -148,6 +145,9 @@ exclude_patterns = []
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
+
+# generate autosummary even if no references
+autosummary_generate = True
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -193,7 +193,7 @@ htmlhelp_basename = 'nbsphinx-linkdoc'
 # a list of builtin themes.
 #
 html_theme = 'furo'
-#html_title = "SigmaEpsilon"
+#html_title = "dewloosh.math"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -263,7 +263,6 @@ texinfo_documents = [
 # points relative to repo root:
 nbsphinx_link_target_root = repo
 
-
 nbsphinx_prolog = (
     r"""
 {% if env.metadata[env.docname]['nbsphinx-link-target'] %}
@@ -277,30 +276,9 @@ nbsphinx_prolog = (
     .. role:: raw-html(raw)
         :format: html
 
-    .. nbinfo::
-        This page was generated from `{{ docpath }}`__.
-        
-    __ https://github.com/dewloosh/sigmaepsilon/blob/
-        """ +
-    git_rev + r"{{ docpath }}"
-)
-
-nbsphinx_prolog = (
-    r"""
-{% if env.metadata[env.docname]['nbsphinx-link-target'] %}
-{% set docpath = env.metadata[env.docname]['nbsphinx-link-target'] %}
-{% else %}
-{% set docpath = env.doc2path(env.docname, base='docs/source/') %}
-{% endif %}
-
-.. only:: html
-
-    .. role:: raw-html(raw)
-        :format: html
-
-    .. _this: https://github.com/dewloosh/sigmaepsilon/blob/main/{{ docpath }}
+    .. _this: https://github.com/dewloosh/dewloosh-math/blob/main/{{ docpath }}
     
-    .. _binder: https://github.com/dewloosh/sigmaepsilon/blob/main/{{ docpath }}
+    .. _binder: https://github.com/dewloosh/dewloosh-math/blob/main/{{ docpath }}
     
     .. nbinfo::
         This page was generated from 

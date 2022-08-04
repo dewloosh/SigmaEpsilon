@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from scipy.sparse import coo_matrix as npcoo, csc_matrix as npcsc
+import time
+
+from sigmaepsilon.core import DeepDict
 
 from .utils import irows_icols_bulk
 from .linsolve import box_fem_data_bulk, solve_standard_form, unbox_lhs
@@ -60,6 +63,8 @@ class FemSolver:
         self.regular = False if imap is not None else regular
         self.core = self.encode()
         self.READY = False
+        self.summary = []
+        self._summary = DeepDict()
 
     def encode(self) -> 'FemSolver':
         if self.imap is None and not self.regular:
@@ -70,11 +75,13 @@ class FemSolver:
             return self
 
     def preproc(self, force=False):
+        _t0 = time.time()
         if self.READY and not force:
             return
         self.N = self.gnum.max() + 1
-        self.f = npcsc(self.f) if self.config.get(
-            'sparsify', False) else self.f
+        if self.config.get('sparsify', False):
+            if not isinstance(self.f, npcsc):
+                self.f = npcsc(self.f)
         self.krows, self.kcols = irows_icols_bulk(self.gnum)
         self.krows = self.krows.flatten()
         self.kcols = self.kcols.flatten()
@@ -86,29 +93,50 @@ class FemSolver:
             self.Ke = npcoo((self.K.flatten(), (self.krows, self.kcols)),
                             shape=(self.N, self.N), dtype=self.K.dtype)
         self.READY = True
+        _dt = time.time() - _t0
+        self._summary['preproc', 'regular'] = self.regular
+        self._summary['preproc', 'time'] = _dt
+        self._summary['preproc', 'N'] = self.N
 
-    def proc(self, core=None):
+    def update_stiffness(self, K):
+        self.K = K
+        self.preproc(force=True)
+
+    def proc(self, preproc=False, solver=None):
+        if preproc:
+            self.preproc(force=True)
+        _t0 = time.time()
         if not self.regular:
-            return self.core.proc()
+            self.core.proc()
+            _dt = time.time() - _t0
+            self._summary['proc']['time'] = _dt
+            return self
         Kcoo = self.Ke + self.Kp
         Kcoo.eliminate_zeros()
         Kcoo.sum_duplicates()
-        self.u, self.summary = solve_standard_form(
-            Kcoo, self.f, summary=True, core=core)
+        self.u, summary = solve_standard_form(
+            Kcoo, self.f, summary=True, solver=solver)
+        self._summary['proc'] = summary
 
     def postproc(self):
+        _t0 = time.time()
         if not self.regular:
             self.core.postproc()
+            self._summary['core'] = self.core._summary
             return self.decode()
         self.r = np.reshape(self.Ke.dot(self.u), self.f.shape) - self.f
+        _dt = time.time() - _t0
+        self._summary['postproc', 'time'] = _dt
 
-    def linsolve(self, *args, core=None, summary=False, **kwargs):
-        self.summary = {}
+    def linsolve(self, *args, solver=None, summary=False, **kwargs):
+        self._summary = DeepDict()
 
         self.preproc()
-        self.proc(core=core)
+        self.proc(solver=solver)
         self.postproc()
 
+        self.summary.append(self._summary)
+        
         if summary:
             return self.u, self.summary
         else:

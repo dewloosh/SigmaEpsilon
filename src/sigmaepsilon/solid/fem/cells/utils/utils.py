@@ -484,6 +484,17 @@ def element_dof_solution_bulk(dofsol1d: ndarray, gnum: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
+def element_dof_solution_bulk_multi(dofsol: ndarray, gnum: ndarray):
+    nRHS = dofsol.shape[-1]
+    nE, nEVAB = gnum.shape
+    res = np.zeros((nRHS, nE, nEVAB), dtype=dofsol.dtype)
+    for i in prange(nE):
+        for j in prange(nRHS):
+            res[j, i, :] = dofsol[gnum[i, :], j]
+    return res
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
 def avg_nodal_data_bulk(data: np.ndarray, topo: np.ndarray):
     nE, nNE, nD = data.shape
     nP = np.max(topo) + 1

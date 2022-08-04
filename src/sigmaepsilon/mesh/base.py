@@ -13,6 +13,8 @@ from numpy import ndarray
 
 from ..core import DeepDict
 
+from ..mesh.topo import TopologyArray
+
 from .akwrap import AkWrapper
 from .abc import ABC_MeshData
 
@@ -48,7 +50,7 @@ class CellDataBase(AkWrapper, ABC_MeshData):
         ...
 
     @abstractmethod
-    def topology(self, *args, **kwargs) -> ndarray:
+    def topology(self, *args, **kwargs) -> TopologyArray:
         """Ought to return the topology associated with the object."""
         ...
 
@@ -61,6 +63,10 @@ class CellDataBase(AkWrapper, ABC_MeshData):
     def measure(self, *args, **kwargs) -> ndarray:
         """Ought to return a single measure for a collection of cells."""
         ...
+        
+    def to_triangles(self, *args, **kwargs) -> ndarray:
+        """Ought to return a triangular representation of the mesh."""
+        raise NotImplementedError
 
 
 class PolyDataBase(DeepDict):
@@ -71,6 +77,6 @@ class PolyDataBase(DeepDict):
         ...
 
     @abstractmethod
-    def topology(self, *args, **kwargs) -> ndarray:
+    def topology(self, *args, **kwargs) -> TopologyArray:
         """Ought to return the topology associated with the object."""
         ...

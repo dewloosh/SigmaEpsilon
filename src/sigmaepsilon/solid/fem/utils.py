@@ -226,6 +226,38 @@ def topo_to_gnum(topo: np.ndarray, ndofn: int):
     return gnum
 
 
+@njit(nogil=True, cache=__cache, parallel=True)
+def topo_to_gnum_jagged(topo, gnum, ndofn: int):
+    """
+    Returns global dof numbering based on element 
+    topology data.
+
+    Parameters
+    ----------
+    topo : np.ndarray
+        2d array of integers. Topology array listing global
+        node numbers for several elements.
+        
+    gnum : np.ndarray
+        2d buffer array for the results.
+
+    ndofn : int
+        Number of degrees of freedoms per node.
+
+    Returns
+    -------
+    gnum : np.ndarray
+        2d numpy array of integers.
+
+    """
+    nE, _ = topo.shape
+    for i in prange(nE):
+        for j in prange(len(topo[i])):
+            for k in prange(ndofn):
+                gnum[i, j*ndofn + k] = topo[i, j]*ndofn + k
+    return gnum
+
+
 @njit(nogil=True, parallel=True, fastmath=True, cache=__cache)
 def assemble_load_vector(values: ndarray, gnum: ndarray, N: int = -1):
     """

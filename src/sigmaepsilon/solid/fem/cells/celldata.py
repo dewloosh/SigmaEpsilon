@@ -13,6 +13,7 @@ class CellData(MeshCellData):
         'loads': 'loads',
         'strain-loads': 'strain-loads',
         'density': 'density',
+        'activity' : 'activity',
         'connectivity' : 'connectivity',
         'areas' : 'areas',
     }
@@ -123,6 +124,19 @@ class CellData(MeshCellData):
         assert isinstance(value, ndarray)
         self._wrapped[self.__class__._attr_map_['density']] = value
         
+    @property
+    def activity(self) -> ndarray:
+        key = self.__class__._attr_map_['activity']
+        if key in self._wrapped.fields:
+            return self._wrapped[key].to_numpy()
+        else:
+            return None
+
+    @activity.setter
+    def activity(self, value: ndarray):
+        assert isinstance(value, ndarray)
+        self._wrapped[self.__class__._attr_map_['activity']] = value
+    
     @property
     def connectivity(self) -> ndarray:
         key = self.__class__._attr_map_['connectivity']

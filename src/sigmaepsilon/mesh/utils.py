@@ -659,10 +659,11 @@ def explode_mesh_data_bulk(coords: ndarray, topo: ndarray, data: ndarray):
 
 @njit(nogil=True, parallel=True, cache=__cache)
 def decompose(ecoords, topo, coords_out):
-    """Example usage at AxisVM domains."""
+    """
+    Example usage at AxisVM domains. Works for all kinds of arrays."""
     for iE in prange(len(topo)):
         for jNE in prange(len(topo[iE])):
-            coords_out[topo[iE, jNE]] = np.array(ecoords[iE][jNE])
+            coords_out[topo[iE][jNE]] = np.array(ecoords[iE][jNE])
 
 
 @njit(nogil=True, parallel=True, cache=__cache)

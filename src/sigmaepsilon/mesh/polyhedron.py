@@ -1,34 +1,17 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
-from .cell import PolyCell3d
-from .tet.tetutils import tet_vol_bulk
-from .utils import cells_coords
+from .polygon import Triangle
+from .cell import PolyCell2d, PolyCell3d
 from .topo.tr import H8_to_TET4
 
 
 class PolyHedron(PolyCell3d):
+    
+    _face_cls_ = Triangle
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-    def to_tetrahedra(self, coords, topo):
-        raise NotImplementedError
-
-    def volume(self, *args, coords=None, topo=None, **kwargs):
-        if coords is None:
-            coords = self.container.root().coords()
-        topo = self.nodes if topo is None else topo
-        return np.sum(self.volumes(coords, topo))
-
-    def volumes(self, *args, coords=None, topo=None, **kwargs):
-        if coords is None:
-            coords = self.container.root().coords()
-        topo = self.nodes if topo is None else topo
-        volumes = tet_vol_bulk(cells_coords(*self.to_tetrahedra(coords, topo)))
-        res = np.sum(volumes.reshape(topo.shape[0], int(
-            len(volumes) / topo.shape[0])), axis=1)
-        return np.squeeze(res)
 
 
 class TetraHedron(PolyHedron):
@@ -36,12 +19,12 @@ class TetraHedron(PolyHedron):
     NNODE = 4
     vtkCellType = 10
     __label__ = 'TET4'
-
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def to_tetrahedra(self, coords, topo):
-        return coords, topo
+    def to_tetrahedra(self) -> np.ndarray:
+        return self.topology().to_numpy()
 
 
 class QuadraticTetraHedron(PolyHedron):
@@ -53,9 +36,6 @@ class QuadraticTetraHedron(PolyHedron):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def to_tetrahedra(self, coords, topo):
-        raise NotImplementedError
-
 
 class HexaHedron(PolyHedron):
 
@@ -65,9 +45,9 @@ class HexaHedron(PolyHedron):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-    def to_tetrahedra(self, coords, topo, data=None):
-        return H8_to_TET4(coords, topo, data)
+    
+    def to_tetrahedra(self) -> np.ndarray:
+        return H8_to_TET4(None, self.topology().to_numpy())[1]
 
 
 class TriquadraticHexaHedron(PolyHedron):

@@ -29,7 +29,8 @@ def mesh_to_vtkdata(coords, topo, deepcopy=True):
 
 
 def mesh_to_UnstructuredGrid(coords, topo, vtkCellType, deepcopy=True):
-    vtkpoints, vtkcells = mesh_to_vtkdata(coords, topo, deepcopy)
+    vtkpoints, vtkcells = mesh_to_vtkdata(coords.astype(np.float64), 
+                                          topo.astype(np.int64), deepcopy)
     ugrid = vtk.vtkUnstructuredGrid()
     ugrid.SetPoints(vtkpoints)
     ugrid.SetCells(vtkCellType, vtkcells)

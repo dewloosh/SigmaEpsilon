@@ -193,6 +193,12 @@ def triplot_data(triobj, ax, data, *args, cmap='winter', fig=None,
                  ecolor='k', lw=0.1, title=None, suptitle=None, label=None,
                  nlevels=None, refine=False, refiner=None, 
                  subdiv=3, cbpad = "2%", cbsize="5%", cbpos='right', **kwargs):
+    """
+    Plots data over a triangulation using `matplotlib`. The provided data may be
+    aligned with the points, or it can be defined over the cells. The shape of the
+    data governs the behaviour of the plot.
+    
+    """
 
     axobj = None
     tri = triobj_to_mpl(triobj)

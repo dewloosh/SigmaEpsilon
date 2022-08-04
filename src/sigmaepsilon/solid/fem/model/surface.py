@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ....math.array import atleast2d
+from ....math.array import atleast2d, atleastnd
 
 from ..utils import topo_to_gnum
 
@@ -29,13 +29,22 @@ class Surface(Solid):
 
     def strains_at(self, lcoords, *args,  z=None, topo=None, **kwargs):
         if topo is None:
-            topo = self.nodes.to_numpy()
+            topo = self.topology().to_numpy()
         lcoords = atleast2d(lcoords)
         dshp = self.shape_function_derivatives(lcoords)
         ecoords = self.local_coordinates(topo=topo)
         jac = self.jacobian_matrix(dshp, ecoords)
         gnum = topo_to_gnum(topo, self.NDOFN)
+        
+        
         dofsol1d = self.pointdata.dofsol.to_numpy().flatten()
+        
+        dofsol = self.pointdata.dofsol
+        dofsol = atleastnd(dofsol, 3, back=True)
+        nP, nDOF, nRHS = dofsol.shape
+        dofsol = dofsol.reshape(nP * nDOF, nRHS)
+        
+        
         B = self.strain_displacement_matrix(dshp, jac)
         if z is None:
             # return generalized model strains

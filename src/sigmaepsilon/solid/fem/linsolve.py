@@ -8,6 +8,7 @@ from typing import Union
 from time import time
 #from concurrent.futures import ThreadPoolExecutor
 
+from ...core import DeepDict
 from ...math.array import matrixform
 
 from .imap import index_mappers, box_spmatrix, box_rhs, unbox_lhs, box_dof_numbering
@@ -24,19 +25,19 @@ arraylike = Union[ndarray, spmatrix]
 
 
 def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack=True, summary=False,
-                        permc_spec='COLAMD', core=None, mtype=11, assume_regular=False,
+                        permc_spec='COLAMD', solver=None, mtype=11, assume_regular=False,
                         **kwargs):
-    core = 'pardiso' if __haspardiso__ else 'scipy' if core is None else core
-    if core == 'pardiso' and not __haspardiso__:
+    solver = 'pardiso' if __haspardiso__ else 'scipy' if solver is None else solver
+    if solver == 'pardiso' and not __haspardiso__:
         raise ImportError(
-            "You need to install 'pypardiso' for core type <{}>".format(core))
+            "You need to install 'pypardiso' for solver type <{}>".format(solver))
 
     if not assume_regular:
         K.eliminate_zeros()
         K.sum_duplicates()
         f = matrixform(f)
 
-    if core == 'pardiso':
+    if solver == 'pardiso':
         if mtype == 11:
             t0 = time()
             u = ppd.spsolve(K, f)
@@ -46,20 +47,20 @@ def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack=True, summary=
             t0 = time()
             u = pds.solve(K, f)
             dt = time() - t0
-    elif core == 'scipy':
+    elif solver == 'scipy':
         if len(args) > 0:
             if 'lower' in args:
-                core = 'scipy.sparse.linalg.spsolve_triangular (lower)'
+                solver = 'scipy.sparse.linalg.spsolve_triangular (lower)'
                 t0 = time()
                 u = spsolve_triangular(K, f, lower=True)
                 dt = time() - t0
             elif 'upper' in args:
-                core = 'scipy.sparse.linalg.spsolve_triangular (upper)'
+                solver = 'scipy.sparse.linalg.spsolve_triangular (upper)'
                 t0 = time()
                 u = spsolve_triangular(K, f, lower=False)
                 dt = time() - t0
             elif 'SLU' in args:
-                core = 'scipy.sparse.linalg.SuperLU'
+                solver = 'scipy.sparse.linalg.SuperLU'
                 K = K.tocsc()
                 t0 = time()
                 LU = splu(K)
@@ -68,13 +69,13 @@ def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack=True, summary=
         else:
             if use_umfpack:
                 use_umfpack = True if f.shape[1] == 1 else False
-            core = 'scipy.sparse.linalg.spsolve'
+            solver = 'scipy.sparse.linalg.spsolve'
             t0 = time()
             u = spsolve(K, f, permc_spec=permc_spec, use_umfpack=use_umfpack)
             dt = time() - t0
     else:
         raise NotImplementedError(
-            "Selected core '{}' is not supported!".format(core))
+            "Selected solver '{}' is not supported!".format(solver))
 
     if isspmatrix_np(u):
         u = u.todense()
@@ -82,15 +83,16 @@ def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack=True, summary=
 
     # residual
     if summary:
-        d = {
-            'time [s]': dt * 1000,
+        d = DeepDict(**{
+            'time': dt,
             'N': u.shape[0],
-            'core': core,
-            'options': {}}
-        if core == 'scipy':
+            'solver': solver,
+            'options': {}
+            })
+        if solver == 'scipy':
             d['options']['use_umfpack'] = use_umfpack
             d['options']['permc_spec'] = permc_spec
-        elif core == 'pardiso':
+        elif solver == 'pardiso':
             d['options']['mtype'] = mtype
         return u, d
     else:
@@ -121,29 +123,6 @@ def box_fem_data_bulk(Kp_coo: coo, gnum: ndarray, f: ndarray):
     """
     # data for boxing and unboxing
     N = f.shape[0]
-    loc_to_glob, glob_to_loc = index_mappers(gnum, N=N, return_inverse=True)
-    # boxing
-    gnum = box_dof_numbering(gnum, glob_to_loc)
-    Kp_coo = box_spmatrix(Kp_coo, glob_to_loc)
-    f = box_rhs(matrixform(f), loc_to_glob)
-    return Kp_coo, gnum, f, loc_to_glob
-
-
-def box_fem_data_bulk2(Kp_coo: coo, gnum: ndarray, f: ndarray):
-    """
-    Notes:
-    ------
-        (1) If the load vector 'f' is dense, it must contain values for all
-            nodes, even the passive ones.
-    """
-    # data for boxing and unboxing
-    N = f.shape[0]
-    glob_to_loc = np.full(N, -1, dtype=int)
-    inds = np.unique(gnum.flatten())
-    glob_to_loc[inds] = np.arange(len(inds))
-    gnum = box_dof_numbering(gnum, glob_to_loc)
-    Kp_coo = box_spmatrix(Kp_coo, glob_to_loc)
-
     loc_to_glob, glob_to_loc = index_mappers(gnum, N=N, return_inverse=True)
     # boxing
     gnum = box_dof_numbering(gnum, glob_to_loc)

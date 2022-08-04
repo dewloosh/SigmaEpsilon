@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
+from ...core import DeepDict
 from ...core.wrapping import Wrapper
 from ...math import squeeze
 from ...math.array import repeat
@@ -13,39 +14,6 @@ from .femsolver import FemSolver as Solver
 __all__ = ['Structure']
 
 
-"""
-PARDISO MATRIX TYPES
-
-1
-real and structurally symmetric
-
-2
-real and symmetric positive definite
-
--2
-real and symmetric indefinite
-
-3
-complex and structurally symmetric
-
-4
-complex and Hermitian positive definite
-
--4
-complex and Hermitian indefinite
-
-6
-complex and symmetric
-
-11
-real and nonsymmetric
-
-13
-complex and nonsymmetric
-
-"""
-
-
 class Structure(Wrapper):
 
     def __init__(self, *args, mesh: FemMesh = None, **kwargs):
@@ -54,8 +22,9 @@ class Structure(Wrapper):
         super().__init__(wrap=mesh)
         assert mesh is not None, "Some kind of a finite element mesh must be \
             provided with keyword 'mesh'!"
-        self.summary = {}
+        self.summary = DeepDict()
         self.solver = 'scipy'
+        self.Solver = None
         
     @property
     def mesh(self):
@@ -93,7 +62,7 @@ class Structure(Wrapper):
                                               as_dense=as_dense, **kwargs)
 
     def initialize(self, *args, **kwargs):
-        self.summary = {}
+        self.summary = DeepDict()
         blocks = self.mesh.cellblocks(inclusive=True)
         for block in blocks:
             nE = len(block.celldata)
@@ -111,10 +80,10 @@ class Structure(Wrapper):
                 block.celldata._wrapped['frames'] = frames
 
     def preprocess(self, *args, **kwargs):
-        mesh = self._wrapped
         self.initialize()
-        #mesh.nodal_distribution_factors(store=True, key='ndf')  # sets mesh.celldata.ndf
+        #self.mesh.nodal_distribution_factors(store=True, key='ndf')  # sets mesh.celldata.ndf
         self.Solver = self.to_standard_form()
+        return self
 
     def to_standard_form(self, *args, ensure_comp=False, **kwargs) -> Solver:
         mesh = self._wrapped
@@ -127,8 +96,8 @@ class Structure(Wrapper):
     def process(self, *args, summary=False, **kwargs):
         self.Solver.linsolve(*args, summary=True, **kwargs)
         if summary:
-            self.summary = self.Solver.summary
-        return self.summary
+            self.summary['linsolve'] = self.Solver.summary[-1]
+        return self
 
     def postprocess(self, *args, summary=True, cleanup=False, **kwargs):
         mesh = self._wrapped
@@ -163,11 +132,8 @@ class Structure(Wrapper):
 
         # clean up
         _ = self.cleanup() if cleanup else None
-
-        if summary:
-            self.summary['number of elements'] = mesh.number_of_cells()
-            self.summary['number of nodes'] = nN
-            self.summary['dofs per node'] = nDOFN
+           
+        return self
 
     def cleanup(self):
         self.Solver = None

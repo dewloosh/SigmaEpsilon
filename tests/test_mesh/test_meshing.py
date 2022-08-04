@@ -6,7 +6,7 @@ from sigmaepsilon.mesh import TriMesh, grid, Grid, PolyData, CartesianFrame, Lin
 from sigmaepsilon.mesh.recipes import circular_disk, cylinder
 from sigmaepsilon.mesh.voxelize import voxelize_cylinder
 from sigmaepsilon.mesh.cells import H8, TET4
-from sigmaepsilon.mesh.topo import detach_mesh_bulk
+from sigmaepsilon.mesh.topo import detach_mesh_bulk, extract_surface
 from sigmaepsilon.mesh.extrude import extrude_T3_TET4
 from sigmaepsilon.mesh.topo.tr import Q4_to_T3, H8_to_L2, H8_to_TET4
 from sigmaepsilon.mesh.tri.trimesh import triangulate
@@ -43,6 +43,7 @@ class TestMeshing(unittest.TestCase):
         bins = xbins, ybins, zbins
         coords, topo = grid(bins=bins, eshape='H8')
         PolyData(coords=coords, topo=topo, celltype=H8)
+        #extract_surface(topo)
         
         gridparams = {
             'size' : (1200, 600),
@@ -89,6 +90,7 @@ class TestMeshing(unittest.TestCase):
         points, triangles = detach_mesh_bulk(points, triangles)            
         coords, topo = extrude_T3_TET4(points, triangles, h, zres)       
         PolyData(coords=coords, topo=topo, celltype=TET4, frame=A)
+        #extract_surface(topo)
 
 
 if __name__ == "__main__":

@@ -2,15 +2,13 @@
 Linear Algebra
 ==============
 
-.. _LinAlg:
-
 These classes are meant to provide a usable representation of a vectorspace.
 At the moment, the capabilities are limited to vectors and their transformations 
 in coordinate frames with orthonormal basis vectors, but allows for arbitrary 
 interrelations of them.
 
-The Data Model
-==============
+Data Model
+==========
 
 Every vector and frame class is a subclass of ``numpy.ndarray``. The way of inheritance
 is the mixture of both approaches suggested in `NumPy`'s docs. A data class is inherited
@@ -24,14 +22,16 @@ this is the ``TopologyArray`` class, which operates on either a ``numpy.ndarray`
 or an ``awkward.Array`` (depending on the arguments at object creation), yet the
 frontend provides a unified interface.
 
-The Direction Cosine Matrix
-===========================
+.. _DCM:
+
+Direction Cosine Matrix
+=======================
 
 The notion of the *Direction Cosine Matrix* (DCM) is meant to unify the direction of 
 relative transformation between two frames.
 
 .. note::
-   Click :download:`here <_static/linalgR3.pdf>` to read the extended version of this
+   Click :download:`here <../../_static/linalgR3.pdf>` to read the extended version of this
    brief intro as a pdf document.
 
 If a vector :math:`\mathbf{v}` is given in frames :math:`\mathbf{A}` and :math:`\mathbf{B}` as

@@ -5,7 +5,7 @@ from typing import Callable
 from ..typing import issequence
 
 
-__all__ = ['float_to_str_sig', 'floatformatter', 'issequence']
+__all__ = ['float_to_str_sig', 'floatformatter', 'issequence', 'suppress']
 
 
 def floatformatter(*args, sig: int=6, **kwargs) -> str:
@@ -22,15 +22,7 @@ def floatformatter(*args, sig: int=6, **kwargs) -> str:
     -------
     string
         The string to be formatted.
-    
-    Examples
-    --------    
-    >>> from dewloosh.core import DeepDict
-    >>> data = DeepDict()
-    >>> data['a']['b']['c']['e'] = 1
-    >>> data['a']['b']['d'] = 2
-    >>> data.containers()
-            
+                
     """
     return "{" + "0:.{}g".format(sig) + "}"
 
@@ -103,10 +95,10 @@ def suppress(fnc: Callable) -> Callable:
     """
     Decorator that wraps a function to suppress it's calls to `print`.
     """
-    def inner(*arg):
+    def inner(*args, **kwargs):
         original_stdout = sys.stdout
         sys.stdout = None
-        res = fnc(*arg)
+        res = fnc(*args, **kwargs)
         sys.stdout = original_stdout
         return res
     return inner

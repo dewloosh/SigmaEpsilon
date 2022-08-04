@@ -37,6 +37,8 @@ class PointData(PointDataBase):
                  activity=None, db=None, **kwargs):
         if db is not None:
             wrap = db
+        elif wrap is not None:
+            pass
         else:
             amap = self.__class__._attr_map_
             fields = {} if fields is None else fields
@@ -128,3 +130,4 @@ class PointData(PointDataBase):
     def id(self, value: ndarray):
         assert isinstance(value, ndarray)
         self._wrapped[self.__class__._attr_map_['id']] = value
+        

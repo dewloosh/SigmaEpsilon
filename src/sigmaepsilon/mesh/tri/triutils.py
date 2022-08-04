@@ -467,7 +467,7 @@ def tri_glob_to_loc(points: np.ndarray, triangles: np.ndarray):
             res[iE, jN, 0] = np.dot(tr[iE, 0, :], vj)
             res[iE, jN, 1] = np.dot(tr[iE, 1, :], vj)
     return res, centers, tr
-  
+ 
     
 if __name__ == '__main__':
     from dewloosh.mesh.tri.triang import triangulate

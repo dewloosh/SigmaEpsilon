@@ -10,6 +10,8 @@ from ....math.linalg import ReferenceFrame
 from ....math.array import atleast1d, atleastnd, ascont
 from ....math.utils import to_range
 from ....mesh.utils import distribute_nodal_data, collect_nodal_data
+from ....mesh.topo import TopologyArray
+from ....math.linalg.sparse.jaggedarray import JaggedArray
 
 from ..preproc import fem_coeff_matrix_coo
 from ..postproc import approx_element_solution_bulk, calculate_internal_forces_bulk, \
@@ -19,7 +21,7 @@ from ..utils import topo_to_gnum, approximation_matrix, nodal_approximation_matr
     compatibility_factors, penalty_factor_matrix, assemble_load_vector, \
     tr_cells_1d_in_multi, tr_cells_1d_out_multi, element_dof_solution_bulk, \
     transform_stiffness, constrain_local_stiffness_bulk, assert_min_stiffness_bulk, \
-    expand_stiffness_bulk, element_dofmap_bulk
+    expand_stiffness_bulk, element_dofmap_bulk, topo_to_gnum_jagged
 from ..tr import nodal_dcm, element_dcm
 
 from .meta import FemMixin
@@ -510,9 +512,17 @@ class FiniteElement(FemCellData, FemMixin):
         return fem_coeff_matrix_coo(K_bulk, *args, inds=gnum, N=N, **kwargs)
 
     def global_dof_numbering(self, *args, topo=None, **kwargs):
-        topo = self.topology().to_numpy() if topo is None else topo
-        return topo_to_gnum(topo, self.container.NDOFN)
-
+        topo = self.topology() if topo is None else topo
+        nDOFN = self.container.NDOFN
+        if not topo.is_jagged():
+            return topo_to_gnum(topo.to_numpy(), nDOFN)
+        else:
+            cuts = topo.widths() * nDOFN
+            data1d = np.zeros(np.sum(cuts), dtype=int)
+            gnum = JaggedArray(data1d, cuts=cuts)
+            topo_to_gnum_jagged(topo, gnum, nDOFN)
+            return TopologyArray(gnum, to_numpy=False)
+        
     @squeeze(True)
     def stiffness_matrix(self, *args, transform=True, **kwargs):
         # build

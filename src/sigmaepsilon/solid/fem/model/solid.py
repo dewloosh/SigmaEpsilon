@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 from abc import abstractmethod
 
-from ....math.array import atleast2d
+from ....math.array import atleast2d, atleast3d
 
-from .utils import model_strains, stresses_from_strains
+from .utils import (model_strains, model_strains_multi,
+                    stresses_from_strains, stresses_from_strains_multi)
 from ..utils import topo_to_gnum
 from ..cells.meta import FemModel
 
@@ -29,27 +30,26 @@ class Solid(FemModel):
         return self.material_stiffness_matrix()
 
     @classmethod
-    def strains_at(cls, *args,  **kwargs):
-        raise NotImplementedError
-
-    @classmethod
     def HMH(cls, *args,  **kwargs):
         raise NotImplementedError
 
     @classmethod
     def model_strains(cls, dofsol1d, gnum, B, *args, **kwargs):
+        if len(dofsol1d.shape) == 2:
+            return model_strains_multi(dofsol1d, gnum, B)
         return model_strains(dofsol1d, gnum, B)
 
     def strains_at(self, lcoords, *args,  z=None, topo=None, **kwargs):
-        topo = self.topology() if topo is None else topo
+        topo = self.topology().to_numpy() if topo is None else topo
+        gnum = topo_to_gnum(topo, self.NDOFN)
         lcoords = atleast2d(lcoords)
         dshp = self.shape_function_derivatives(lcoords)
         ecoords = self.local_coordinates(topo=topo)
         jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)
-        gnum = topo_to_gnum(topo, self.NDOFN)
-        dofsol1d = self.pointdata.dofsol.flatten()
-        B = self.strain_displacement_matrix(dshp=dshp, jac=jac)
-        return self.model_strains(dofsol1d, gnum, B)
+        B = self.strain_displacement_matrix(dshp=dshp, jac=jac)   
+        dofsol = self.pointdata.dofsol.to_numpy()
+        dofsol = atleast3d(dofsol, back=True)  
+        return self.model_strains(dofsol, gnum, B)
 
     def stresses_at(self, *args, z=None, topo=None, **kwargs):
         """

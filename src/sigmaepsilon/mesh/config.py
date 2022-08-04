@@ -33,6 +33,11 @@ try:
 except Exception:
     __hasnx__ = False
 
+try:
+    import k3d
+    __hask3d__ = True
+except Exception:
+    __hask3d__ = False
 
 def set_config_file(filepath):
     try:

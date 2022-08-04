@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # !TODO  handle decimation in all transformations, template : T6_to_T3
 import numpy as np
+from awkward import Array
 from numba import njit, prange
 from typing import Union, Sequence
 try:
@@ -27,6 +28,7 @@ __all__ = [
     'Q8_to_T3',
     'Q9_to_T6',
     'Q4_to_T3',
+    'H8_to_Q4',
     'H8_to_H27',
     'H8_to_TET4'
 ]
@@ -44,6 +46,11 @@ def transform_topo(topo: ndarray, path: ndarray, data: ndarray = None,
     if data is None:
         return _transform_topo_(topo, path)
     else:
+        if isinstance(data, Array):
+            try:
+                data = data.to_numpy()
+            except Exception:
+                raise TypeError("Invalid data type '{}'".format(data.__class__))
         if isinstance(data, ndarray):
             data = transform_topo_data(topo, data, path)
             return _transform_topo_(topo, path), data
@@ -59,8 +66,7 @@ def transform_topo(topo: ndarray, path: ndarray, data: ndarray = None,
 
 def transform_topo_data(topo: ndarray, data: ndarray, path: ndarray):
     if data.shape[:2] == topo.shape[:2]:
-        # it is assumed that values are provided for each node of each
-        # cell
+        # it is assumed that values are provided for each node of each cell
         res = repeat_cell_nodal_data(data, path)
     elif data.shape[0] == topo.shape[0]:
         # assume that data is constant over the elements
@@ -167,10 +173,27 @@ def H8_to_TET4(coords: ndarray, topo: ndarray, data: DataLike = None,
         return coords, + transform_topo(topo, path, *args, **kwargs)
     else:
         return (coords,) + transform_topo(topo, path, data, *args, **kwargs)
-    
-    
+
+
+def H8_to_Q4(coords: ndarray, topo: ndarray, data: DataLike = None,
+             *args, path: ndarray = None, **kwargs):
+    if isinstance(path, ndarray):
+        assert path.shape[1] == 4
+    else:
+        if path is None:
+            path = np.array([[0, 4, 7, 3], [1, 2, 6, 5], [0, 1, 5, 4],
+                             [2, 3, 7, 6], [0, 3, 2, 1], [4, 5, 6, 7]],
+                            dtype=topo.dtype)
+        elif isinstance(path, str):
+            raise NotImplementedError
+    if data is None:
+        return coords, + transform_topo(topo, path, *args, **kwargs)
+    else:
+        return (coords,) + transform_topo(topo, path, data, *args, **kwargs)
+
+
 def TET4_to_L2(coords: ndarray, topo: ndarray, data: DataLike = None,
-               *args, path: ndarray=None, **kwargs):
+               *args, path: ndarray = None, **kwargs):
     if isinstance(path, ndarray):
         assert path.shape[0] == 6, "Invalid shape!"
         assert path.shape[1] == 2, "Invalid shape!"
@@ -190,7 +213,7 @@ def TET4_to_L2(coords: ndarray, topo: ndarray, data: DataLike = None,
 
 
 def H8_to_L2(coords: ndarray, topo: ndarray, data: DataLike = None,
-            *args, path: ndarray=None, **kwargs):
+             *args, path: ndarray = None, **kwargs):
     if isinstance(path, ndarray):
         assert path.shape[0] == 12, "Invalid shape!"
         assert path.shape[1] == 2, "Invalid shape!"
@@ -223,7 +246,7 @@ def Q4_to_T3(coords: ndarray, topo: ndarray, data: DataLike = None,
         return coords, + transform_topo(topo, path, *args, **kwargs)
     else:
         return (coords,) + transform_topo(topo, path, data, *args, **kwargs)
-    
+
 
 def Q8_to_T3(coords: ndarray, topo: ndarray, data: DataLike = None,
              *args, path: ndarray = None, **kwargs):
@@ -232,13 +255,13 @@ def Q8_to_T3(coords: ndarray, topo: ndarray, data: DataLike = None,
     else:
         if path is None:
             path = np.array([
-                [0, 4, 7], 
+                [0, 4, 7],
                 [4, 1, 5],
                 [5, 2, 6],
                 [6, 3, 7],
                 [4, 6, 7],
                 [4, 5, 6],
-                ], dtype=topo.dtype)
+            ], dtype=topo.dtype)
         elif isinstance(path, str):
             raise NotImplementedError
     if data is None:
@@ -279,7 +302,7 @@ def Q4_to_Q8(coords: ndarray, topo: ndarray):
     new_coords = np.mean(coords[edges], axis=1)
     new_topo = edgeIDs + nP
     topo_res = np.hstack((topo, new_topo))
-    coords_res= np.vstack((coords, new_coords))
+    coords_res = np.vstack((coords, new_coords))
     return coords_res, topo_res
 
 

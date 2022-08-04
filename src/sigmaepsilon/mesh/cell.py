@@ -7,13 +7,18 @@ from typing import Union, MutableMapping
 
 import numpy as np
 from numpy import ndarray
+import pyvista as pv
 
 from ..math.array import atleast1d, ascont
 from ..math.utils import to_range
 
 from .celldata import CellData
-from .utils import jacobian_matrix_bulk, points_of_cells, pcoords_to_coords_1d
-from .topo import rewire, TopologyArray
+from .utils import (jacobian_matrix_bulk, points_of_cells, 
+                    pcoords_to_coords_1d, cells_coords)
+from .tri.triutils import area_tri_bulk
+from .tet.tetutils import tet_vol_bulk
+from .vtkutils import mesh_to_UnstructuredGrid as mesh_to_vtk
+from .topo import detach_mesh_bulk, rewire, TopologyArray
 
 
 MapLike = Union[ndarray, MutableMapping]
@@ -24,6 +29,7 @@ class PolyCell(CellData):
     NNODE = None
     NDIM = None
     vtkCellType = None
+    _face_cls_ = None
 
     def __init__(self, *args, i: ndarray=None, **kwargs):
         if isinstance(i, ndarray):
@@ -37,10 +43,20 @@ class PolyCell(CellData):
     def measure(self, *args, **kwargs):
         return np.sum(self.measure(*args, **kwargs))
 
+    def area(self, *args, **kwargs):
+        return np.sum(self.areas(*args, **kwargs))
+
+    def areas(self, *args, **kwargs):
+        raise NotImplementedError
+    
     def volume(self, *args, **kwargs):
         return np.sum(self.volumes(*args, **kwargs))
 
     def volumes(self, *args, **kwargs):
+        raise NotImplementedError
+    
+    def extract_surface(self, detach=False):
+        """Only for 3d meshes."""
         raise NotImplementedError
 
     def jacobian_matrix(self, *args, dshp=None, ecoords=None, topo=None, **kwargs):
@@ -103,7 +119,7 @@ class PolyCell(CellData):
         else:
             return None
 
-    def rewire(self, imap: MapLike = None):
+    def rewire(self, imap: MapLike = None, invert=False):
         """
         Rewires the topology of the block according to the mapping
         described by the argument `imap`. The mapping happens the
@@ -114,11 +130,18 @@ class PolyCell(CellData):
         Parameters
         ----------
         imap : MapLike
-            Mapping from old to new node indices.
+            Mapping from old to new node indices (global to local).
+            
+        invert : bool, Optional
+            If `True` the argument `imap` describes a local to global
+            mapping and an inversion takes place. In this case, 
+            `imap` must be a `numpy` array. Default is False.
 
         """
-        topo = rewire(self.topology().to_array(), imap)
-        self.nodes = topo
+        topo32 = self.topology().to_array().astype(np.int32)
+        topo = rewire(topo32, imap, invert=invert).astype(int)
+        key = self.__class__._attr_map_['nodes']
+        self._wrapped[key] = topo
 
 
 class PolyCell1d(PolyCell):
@@ -215,7 +238,38 @@ class PolyCell2d(PolyCell):
 
     def areas(self, *args, **kwargs):
         raise NotImplementedError
-
+    
+    def to_triangles(self):
+        raise NotImplementedError
+    
+    def areas(self, *args, coords=None, topo=None, **kwargs):
+        if coords is None:
+            coords = self.container.root().coords()
+        topo = self.topology().to_numpy() if topo is None else topo
+        topo_tri = self.to_triangles()
+        areas = area_tri_bulk(cells_coords(coords, topo_tri))
+        res = np.sum(areas.reshape(topo.shape[0], int(
+            len(areas)/topo.shape[0])), axis=1)
+        return np.squeeze(res)
+    
+    def area(self, *args, coords=None, topo=None, **kwargs):
+        if coords is None:
+            coords = self.container.root().coords()
+        topo = self.topology().to_numpy() if topo is None else topo
+        return np.sum(self.areas(coords=coords, topo=topo))
+    
+    def volumes(self, *args, **kwargs):
+        dbkey = self.__class__._attr_map_['t']
+        areas = self.areas(*args, **kwargs)
+        if dbkey in self.fields:
+            t = self.db[dbkey].to_numpy()
+            return areas * t
+        else:
+            return areas
+        
+    def volume(self, *args, **kwargs):
+        return np.sum(self.volumes(*args, **kwargs))
+    
     def measures(self, *args, **kwargs):
         return self.areas(*args, **kwargs)
 
@@ -236,3 +290,44 @@ class PolyCell3d(PolyCell):
 
     def measures(self, *args, **kwargs):
         return self.volumes(*args, **kwargs)
+    
+    def to_tetrahedra(self) -> np.ndarray:
+        raise NotImplementedError
+
+    def to_vtk(self, detach=False):
+        coords = self.container.root().coords()
+        topo = self.topology().to_numpy()
+        vtkid = self.__class__.vtkCellType
+        if detach:
+            ugrid = mesh_to_vtk(*detach_mesh_bulk(coords, topo), vtkid)
+        else:
+            ugrid = mesh_to_vtk(coords, topo, vtkid)
+        return ugrid
+    
+    def to_pv(self, detach=False) -> pv.UnstructuredGrid:
+        return pv.wrap(self.to_vtk(detach=detach))
+        
+    def extract_surface(self, detach=False):
+        pvs = self.to_pv(detach=detach).extract_surface(pass_pointid=True)
+        s = pvs.triangulate().cast_to_unstructured_grid()
+        topo = s.cells_dict[5]
+        imap = s.point_data['vtkOriginalPointIds']
+        topo = rewire(topo, imap)
+        if detach:
+            return s.points, topo
+        else:
+            return self.container.root().coords(), topo
+        
+    def boundary(self, detach=False):
+        return self.surface(detach=detach)
+            
+    def volumes(self, *args, coords=None, topo=None, **kwargs):
+        if coords is None:
+            coords = self.container.root().coords()
+        topo = self.topology().to_numpy() if topo is None else topo
+        topo_tet = self.to_tetrahedra()
+        volumes = tet_vol_bulk(cells_coords(coords, topo_tet))
+        res = np.sum(volumes.reshape(topo.shape[0], int(
+            len(volumes) / topo.shape[0])), axis=1)
+        return np.squeeze(res)
+    

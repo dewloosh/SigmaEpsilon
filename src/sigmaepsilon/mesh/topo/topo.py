@@ -3,6 +3,7 @@ import numpy as np
 from numpy import ndarray
 from numba import njit, prange
 from typing import MutableMapping, Union, Dict, List, Tuple
+import awkward as ak
 from awkward import Array as akarray
 from scipy.sparse import csr_matrix as csr_scipy
 
@@ -14,6 +15,9 @@ from .. space import PointCloud
 from ..utils import explode_mesh_bulk
 from ..config import __hasnx__
 
+from .topoarray import TopologyArray
+from .topodata import faces_TET4, faces_H8
+
 
 if __hasnx__:
     import networkx as nx
@@ -21,7 +25,7 @@ if __hasnx__:
 
 __all__ = ['is_regular', 'regularize', 'count_cells_at_nodes', 'cells_at_nodes',
            'nodal_adjacency', 'unique_topo_data', 'remap_topo', 'detach_mesh_bulk',
-           'rewire', 'detach']
+           'rewire', 'detach', 'extract_tet_surface']
 
 
 __cache = True
@@ -83,8 +87,13 @@ def rewire(topo: TopoLike, imap: MappingLike, invert=False):
             return remap_topo(topo, imap)
         elif len(topo.shape) == 1:
             return remap_topo_1d(topo, imap)
-    elif hasattr(topo, '__array_function__'):
+    elif isinstance(topo, TopologyArray):
         cuts, topo1d = topo.flatten(return_cuts=True)
+        topo1d = remap_topo_1d(topo1d, imap)
+        return TopologyArray(JaggedArray(topo1d, cuts=cuts))
+    elif isinstance(topo, akarray):
+        cuts = count_cols(topo)
+        topo1d = ak.flatten(topo).to_numpy()
         topo1d = remap_topo_1d(topo1d, imap)
         return JaggedArray(topo1d, cuts=cuts)
     else:
@@ -139,7 +148,7 @@ def is_regular(topo: TopoLike) -> bool:
 def regularize(topo: TopoLike) -> Tuple[TopoLike, ndarray]:
     """
     Returns a regularized topology and the unique indices.
-    The returned topology array contain indices of the unique
+    The returned topology array contains indices of the unique
     array.
     """
     if isinstance(topo, ndarray):
@@ -521,7 +530,7 @@ def dol_to_jagged_data(dol: DoL) -> Tuple[ndarray, ndarray]:
     return widths, data1d
 
 
-def detach(coords: CoordsLike, topo: TopoLike, inds: ndarray = None):
+def detach(coords: CoordsLike, topo: TopoLike, inds: ndarray=None, return_indices=False):
     """
     Given a topology array and the coordinate array it refers to, 
     the function returns the coordinate array of the points involved 
@@ -548,6 +557,10 @@ def detach(coords: CoordsLike, topo: TopoLike, inds: ndarray = None):
         where `imap` is a mapping from local to global indices, and gets
         automatically generated from `inds`.  Default is None.
 
+    return_indices : bool, Optional.
+        If True, an index array for inverse mapping of point indices is returned.
+        Default is False.
+    
     Returns
     -------
     ndarray
@@ -711,6 +724,24 @@ def nodal_adjacency(topo: TopoLike, *args, frmt=None,
     return dol
 
 
+def extract_tet_surface(topo: TopoLike):
+    if isinstance(topo, ndarray):
+        nNE = topo.shape[-1]
+        if nNE == 4:
+            faces3d = faces_TET4(topo)
+            return unique_topo_data(faces3d)[0]
+        elif nNE == 8:
+            from .tr import Q4_to_T3
+            faces3d = faces_H8(topo)
+            unique_faces = unique_topo_data(faces3d)[0]
+            return Q4_to_T3(None, unique_faces)[1]
+            from .tr import H8_to_TET4
+            _, topo = H8_to_TET4(None, topo)
+            faces3d = faces_TET4(topo)
+            return unique_topo_data(faces3d)[0]
+    raise NotImplementedError
+
+
 def unique_topo_data(topo3d: TopoLike):
     """
     Returns information about unique topological elements
@@ -759,6 +790,16 @@ def unique_topo_data(topo3d: TopoLike):
     True
 
     """
+    """if isinstance(topo3d, ndarray):
+        nE, nD, nN = topo3d.shape
+        topo3d = topo3d.reshape((nE * nD, nN))
+        
+        i = np.argsort(topo3d, axis=1)
+        topo = np.take_along_axis(topo3d, i, axis=1)
+        #topo = np.sort(topo, axis=1)
+        
+        _, topoIDs = np.unique(topo, axis=0, return_inverse=True)
+        return topo3d[topoIDs], topoIDs.reshape((nE, nD))"""
     if isinstance(topo3d, ndarray):
         nE, nD, nN = topo3d.shape
         topo3d = topo3d.reshape((nE * nD, nN))

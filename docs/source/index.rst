@@ -1,26 +1,27 @@
-============================================================
-**SigmaEpsilon** - Numerical and Symbolic Methods in Python
-============================================================
-
-`DewLoosh` is a rapid prototyping platform focused on numerical calculations 
-mainly corcerned with simulations of natural phenomena. It provides a set of common 
-functionalities and interfaces with a number of state-of-the-art open source 
-packages to combine their power seamlessly under a single development
-environment.
-
-
+=====================================================================
+**SigmaEpsilon** - High-Performance Computational Mechanics in Python
+=====================================================================
+  
 Features
 --------
 
-* | Numba-jitted classes and an extendible factory to define and manipulate 
-  | vectors and tensors.
+* Batteries to handle linear algebra in Euclidean Space. The class architecture 
+  allows for an arbitrary level of nested frames embedded into one another, 
+  as well as the transformation of any number of vectors between any two of these 
+  frames. 
 
-* | Classes to define and solve linear and nonlinear optimization
-  | problems.
+* It can be used as a configurator for plots produced with `PyVista`.
 
-* | A set of array routines for fast prorotyping, including random data creation
-  | to assure well posedness, or other properties of test problems.
+* A set of classes and routines to handle jagged topologies. 
 
+* A facility for plotting over flat traingulations in 2d using `matplotlib`.
+
+* A small set of recipes for mesh generation. It includes a grid generator that
+  generates all kinds of grids suitable for the **Finite Element Method**, as it
+  is capable of using a wide range of linear and nonlinear base classes. 
+  
+* A set of utility routines for various operations on meshes. Voxelization, 
+  extrusion, tiling, etc.
 
 Requirements
 ------------
@@ -34,34 +35,19 @@ The implementations in this module are created on top of
 * | the `awkward` library for its high performance data structures, gpu support
   | and general `Numba` compliance.
 
-
-Gallery
--------
-
-.. nbgallery::
-    :caption: Gallery
-    :name: rst-gallery
-    :glob:
-    :reversed:
-
-    _notebooks/*
-    
-        
 Contents
 --------
 
 .. toctree::
-    :caption: Contents
-    :maxdepth: 3
+    :maxdepth: 2
    
     user_guide
-    notebooks
+    tutorials
 
 API
 ---
 
 .. toctree::
-    :caption: API
     :maxdepth: 3
    
     api

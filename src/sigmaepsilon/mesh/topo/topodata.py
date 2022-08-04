@@ -66,6 +66,25 @@ def edges_H8(topo: np.ndarray):
 
 
 @njit(nogil=True, cache=__cache)
+def faces_TET4(topo: np.ndarray):
+    nE = len(topo)
+    faces = np.zeros((nE, 4, 3), dtype=topo.dtype)
+    faces[:, 0, 0] = topo[:, 0]
+    faces[:, 0, 1] = topo[:, 1]
+    faces[:, 0, 2] = topo[:, 3]
+    faces[:, 1, 0] = topo[:, 1]
+    faces[:, 1, 1] = topo[:, 2]
+    faces[:, 1, 2] = topo[:, 3]
+    faces[:, 2, 0] = topo[:, 2]
+    faces[:, 2, 1] = topo[:, 0]
+    faces[:, 2, 2] = topo[:, 3]
+    faces[:, 3, 0] = topo[:, 0]
+    faces[:, 3, 1] = topo[:, 2]
+    faces[:, 3, 2] = topo[:, 1]
+    return faces
+
+
+@njit(nogil=True, cache=__cache)
 def faces_H8(topo: np.ndarray):
     nE = len(topo)
     faces = np.zeros((nE, 6, 4), dtype=topo.dtype)
@@ -86,9 +105,9 @@ def faces_H8(topo: np.ndarray):
     faces[:, 3, 2] = topo[:, 7]
     faces[:, 3, 3] = topo[:, 6]
     faces[:, 4, 0] = topo[:, 0]
-    faces[:, 4, 1] = topo[:, 1]
+    faces[:, 4, 1] = topo[:, 3]
     faces[:, 4, 2] = topo[:, 2]
-    faces[:, 4, 3] = topo[:, 3]
+    faces[:, 4, 3] = topo[:, 1]
     faces[:, 5, 0] = topo[:, 4]
     faces[:, 5, 1] = topo[:, 5]
     faces[:, 5, 2] = topo[:, 6]
