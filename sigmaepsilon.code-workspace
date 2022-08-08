@@ -11,6 +11,12 @@
 		},
 		{
 			"path": "..\\Bernoulli-Dash"
+		},
+		{
+			"path": "..\\LinkedDeepDict"
+		},
+		{
+			"path": "..\\latexdocs"
 		}
 	],
 	"settings": {}
