@@ -1,16 +1,16 @@
-flake8 
-pytest 
-pytest-cov
-
-pandas
 networkx
-
 matplotlib
 vtk
 pyvista
+sectionproperties
+pythreejs
+pandas
+plotly
+tetgen
+
+
 pyqt5
 pyvistaqt
-plotly
 pythreejs
 
 sectionproperties
