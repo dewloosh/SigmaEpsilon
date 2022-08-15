@@ -3,8 +3,8 @@ import numpy as np
 from numba import njit, prange
 from collections import Iterable
 
-from dewloosh.math.array import (ascont, atleast1d, atleast2d,
-                                 atleast3d, atleast4d)
+from neumann.array import (ascont, atleast1d, atleast2d,
+                           atleast3d, atleast4d)
 
 from ..utils import layers_of_points, points_of_layers
 from .utils import (z_to_shear_factors, shear_correction_data,

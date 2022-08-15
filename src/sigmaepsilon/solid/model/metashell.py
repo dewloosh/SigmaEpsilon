@@ -2,12 +2,12 @@
 import numpy as np
 from abc import abstractmethod
 
-from ...core import DeepDict
-from ...core.tools.kwargtools import getasany, allinkwargs, anyinkwargs
-from ...core.tools.dtk import parsedicts_addr
+from linkeddeepdict import LinkedDeepDict
+from linkeddeepdict.tools.kwargtools import getasany, allinkwargs, anyinkwargs
+from linkeddeepdict.tools.dtk import parsedicts_addr
 
 
-class MetaSurface(DeepDict):
+class MetaSurface(LinkedDeepDict):
     """
     Base object implementing methods that both a folder (a shell) and a
     file (a layer) can posess.

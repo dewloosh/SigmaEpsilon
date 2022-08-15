@@ -4,9 +4,9 @@ from numba import njit, prange
 import numpy as np
 from numpy import ndarray
 
-from .....math.linalg import inv
+from neumann.linalg import inv
 
-from .....mesh.utils import cells_coords
+from polymesh.utils import cells_coords
 
 __cache = True
 
