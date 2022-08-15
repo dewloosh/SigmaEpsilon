@@ -5,15 +5,15 @@ from numpy import sin, cos, ndarray, pi as PI
 from numba import njit, prange
 from collections import Iterable
 
-from ...core import DeepDict
-from ...core.tools.dtk import parsedicts_addr
-from ...core.tools import allinkwargs, popfromkwargs, float_to_str_sig
+from linkeddeepdict import LinkedDeepDict
+from linkeddeepdict.tools.dtk import parsedicts_addr
+from dewloosh.core.tools import allinkwargs, popfromkwargs, float_to_str_sig
 
-from ...math import squeeze
-from ...math.array import atleast1d, atleast2d, atleast3d
+from neumann import squeeze
+from neumann.array import atleast1d, atleast2d, atleast3d
 
 
-class LoadGroup(DeepDict):
+class LoadGroup(LinkedDeepDict):
     _typestr_ = None
 
     def __init__(self, *args, Navier=None, **kwargs):

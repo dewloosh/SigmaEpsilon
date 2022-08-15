@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
-from ...mesh.config import __hasplotly__, __hasmatplotlib__
+from polymesh.config import __hasplotly__, __hasmatplotlib__
 
 from .mesh import FemMesh
 

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
-from ...math.linalg import normalize as norm
-from ...mesh.utils import distances_of_points
+from neumann.linalg import normalize as norm
+from polymesh.utils import distances_of_points
 
 
 def plot_path(ax, data, coords, *args, 

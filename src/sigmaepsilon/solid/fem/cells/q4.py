@@ -2,11 +2,11 @@
 import numpy as np
 from numba import njit
 
-from ....math.numint import GaussPoints as Gauss
+from neumann.numint import GaussPoints as Gauss
 
-from ....mesh.tri.triutils import area_tri_bulk
-from ....mesh.utils import cells_coords
-from ....mesh.cells import Q4 as Quadrilateral
+from polymesh.tri.triutils import area_tri_bulk
+from polymesh.utils import cells_coords
+from polymesh.cells import Q4 as Quadrilateral
 
 from ..model.membrane import Membrane
 from ..model.plate import Plate

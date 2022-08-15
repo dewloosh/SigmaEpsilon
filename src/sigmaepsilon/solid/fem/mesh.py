@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
-from ...math import squeeze
-from ...math.array import atleast3d
+from neumann import squeeze
+from neumann.array import atleast3d
 
-from ...mesh import PolyData
+from polymesh import PolyData
 
 from .pointdata import PointData
 from .cells.celldata import CellData

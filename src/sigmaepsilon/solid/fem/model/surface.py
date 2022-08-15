@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ....math.array import atleast2d, atleastnd
+from neumann.array import atleast2d, atleastnd
 
 from ..utils import topo_to_gnum
 

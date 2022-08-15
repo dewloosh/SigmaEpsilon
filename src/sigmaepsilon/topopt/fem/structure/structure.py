@@ -2,6 +2,7 @@
 from copy import deepcopy
 
 from sigmaepsilon.solid.fem.structure import Structure as SolidStructure
+
 from ...oc.SIMP_OC_FEM import OC_SIMP_COMP as OC
 
 __all__ = ['Structure']

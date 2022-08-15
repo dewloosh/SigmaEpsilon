@@ -2,9 +2,9 @@
 import numpy as np
 from numpy import ndarray
 
-from ...math.array import atleastnd
+from neumann.array import atleastnd
 
-from ...mesh.pointdata import PointData as MeshPointData
+from polymesh.pointdata import PointData as MeshPointData
 
 
 class PointData(MeshPointData):

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from abc import abstractmethod
 
-from ....math.array import atleast2d, atleast3d
+from neumann.array import atleast2d, atleast3d
 
 from .utils import (model_strains, model_strains_multi,
                     stresses_from_strains, stresses_from_strains_multi)

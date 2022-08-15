@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
-from ...core import DeepDict
-from ...core.wrapping import Wrapper
-from ...math import squeeze
-from ...math.array import repeat
+from linkeddeepdict import LinkedDeepDict
+from dewloosh.core.wrapping import Wrapper
+from neumann import squeeze
+from neumann.array import repeat
 
 from .mesh import FemMesh
 
@@ -22,7 +22,7 @@ class Structure(Wrapper):
         super().__init__(wrap=mesh)
         assert mesh is not None, "Some kind of a finite element mesh must be \
             provided with keyword 'mesh'!"
-        self.summary = DeepDict()
+        self.summary = LinkedDeepDict()
         self.solver = 'scipy'
         self.Solver = None
         self._constraints = constraints
@@ -63,7 +63,7 @@ class Structure(Wrapper):
                                               as_dense=as_dense, **kwargs)
 
     def initialize(self, *args, **kwargs):
-        self.summary = DeepDict()
+        self.summary = LinkedDeepDict()
         blocks = self.mesh.cellblocks(inclusive=True)
         for block in blocks:
             nE = len(block.celldata)

@@ -5,17 +5,17 @@ import tetgen
 
 from sectionproperties.analysis.section import Section
 
-from sigmaepsilon.math.linalg import linspace, Vector
+from neumann.linalg import linspace, Vector
 
-from sigmaepsilon.mesh import PolyData
-from sigmaepsilon.mesh.grid import grid
-from sigmaepsilon.mesh.tri.triang import triangulate
-from sigmaepsilon.mesh.space import StandardFrame, PointCloud
-from sigmaepsilon.mesh.utils import centralize, center_of_points
-from sigmaepsilon.mesh.tri.triutils import get_points_inside_triangles, \
+from polymesh import PolyData
+from polymesh.grid import grid
+from polymesh.tri.triang import triangulate
+from polymesh.space import StandardFrame, PointCloud
+from polymesh.utils import centralize, center_of_points
+from polymesh.tri.triutils import get_points_inside_triangles, \
     approx_data_to_points
-from sigmaepsilon.mesh.topo import remap_topo
-from sigmaepsilon.mesh.topo.tr import T6_to_T3
+from polymesh.topo import remap_topo
+from polymesh.topo.tr import T6_to_T3
 
 from sigmaepsilon.solid.fem import FemMesh
 from sigmaepsilon.solid.fem.cells import TET4, H8
@@ -175,7 +175,7 @@ def joint_cube(size, shape, *args, sections_dict=None, material=None,
         return joint_cube_voxelize(size, shape, *args,
                                    sections_dict=sections_dict,
                                    material=material, **kwargs)
-    from sigmaepsilon.mesh.grid import grid
+    from polymesh.grid import grid
     Lx, Ly, Lz = size
     points_per_edge = shape + 1
     mesh_size = min(size) / (points_per_edge-1)

@@ -6,7 +6,7 @@ import numpy as np
 
 from randomdict import RandomDict
 
-from .mesh.space import frames_of_lines
+from polymesh.space import frames_of_lines
 from .solid.fem.cells import B2, B3
 
 from .solid.model.bernoulli.section import BeamSection, get_section

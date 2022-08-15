@@ -3,8 +3,8 @@ import numpy as np
 from numpy import ndarray
 from numba import njit, prange
 
-from ...math import squeeze
-from ...math.linalg.solve import npsolve
+from neumann import squeeze
+from neumann.linalg.solve import npsolve
 
 
 @squeeze(True)

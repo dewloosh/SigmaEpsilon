@@ -5,7 +5,7 @@ import numpy as np
 from numpy import sin, cos, ndarray as nparray, pi as PI
 from numba import njit, prange
 
-from ...math.array import atleast2d, atleast3d, atleast4d, itype_of_ftype
+from neumann.array import atleast2d, atleast3d, atleast4d, itype_of_ftype
 
 
 __all__ = ['postproc']
@@ -48,6 +48,7 @@ def postproc(ABDS: nparray, points: nparray, *args,
     assert points is not None
     assert points.shape[0] == res2d.shape[2]
     if nD == 2 and C_126 is not None:
+        # lamination scheme may br provided
         assert bounds is not None
         raise NotImplementedError
     elif nD == 3 and C_126 is not None:

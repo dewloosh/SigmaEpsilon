@@ -17,6 +17,9 @@
 		},
 		{
 			"path": "..\\latexdocs"
+		},
+		{
+			"path": "..\\dewloosh\\EngOpt"
 		}
 	],
 	"settings": {}

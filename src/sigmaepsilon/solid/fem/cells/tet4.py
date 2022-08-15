@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
-from ....mesh.cells import TET4 as Tetra
+from polymesh.cells import TET4 as Tetra
 
 from ..model.solid3d import Solid3d
 

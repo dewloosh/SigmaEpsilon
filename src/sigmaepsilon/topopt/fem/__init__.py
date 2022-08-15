@@ -1,4 +1,4 @@
 # -*- coding: utf-8 -*-
-from dewloosh.optimus.fem.structure import *
-from dewloosh.optimus.fem.lib import *
-from dewloosh.optimus.fem.mesh import *
+from sigmaepsilon.topopt.fem.structure import *
+from sigmaepsilon.topopt.fem.cells import *
+from sigmaepsilon.topopt.fem.mesh import *

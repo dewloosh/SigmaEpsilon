@@ -3,8 +3,8 @@ import numpy as np
 from numpy import ndarray
 from numba import njit, prange
 
-from ....mesh.cells import T3 as Triangle
-from ....mesh.tri.triutils import lcoords_tri, shp_tri_loc
+from polymesh.cells import T3 as Triangle
+from polymesh.tri.triutils import lcoords_tri, shp_tri_loc
 
 from ..model.membrane import Membrane
 

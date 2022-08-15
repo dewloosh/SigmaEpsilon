@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ....core.tools.kwargtools import getasany
+from dewloosh.core.tools.kwargtools import getasany
 
 
 standard_keys_ortho = ['E1', 'E2', 'E3',

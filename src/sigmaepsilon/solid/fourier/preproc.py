@@ -3,8 +3,8 @@ import numpy as np
 from numba import njit, prange
 from numpy import ndarray, pi as PI
 
-from ...math import squeeze
-from ...math.array import atleast3d
+from neumann import squeeze
+from neumann.array import atleast3d
 
 
 @squeeze(True)

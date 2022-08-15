@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from ....math.numint import GaussPoints as Gauss
+from neumann.numint import GaussPoints as Gauss
 
-from ....mesh.cells import Q9 as Quadrilateral
+from polymesh.cells import Q9 as Quadrilateral
 
 from ..model.membrane import Membrane
 from ..model.plate import Plate

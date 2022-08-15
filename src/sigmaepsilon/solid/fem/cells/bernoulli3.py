@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from ....math.numint import GaussPoints as Gauss
-from ....mesh.cells import QuadraticLine as Line
+from neumann.numint import GaussPoints as Gauss
+from polymesh.cells import QuadraticLine as Line
 
 from .bernoulli import BernoulliBase as Bernoulli
 from .gen.b3 import shape_function_values_bulk as shpB3, \

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
-from ....mesh.cells import T3 as Triangle
+from polymesh.cells import T3 as Triangle
 
 from ..model.membrane import Membrane
 from ..model.plate import Plate

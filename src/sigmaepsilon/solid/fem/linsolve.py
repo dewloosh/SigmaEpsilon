@@ -8,8 +8,8 @@ from typing import Union
 from time import time
 #from concurrent.futures import ThreadPoolExecutor
 
-from ...core import DeepDict
-from ...math.array import matrixform
+from linkeddeepdict import LinkedDeepDict
+from neumann.array import matrixform
 
 from .imap import index_mappers, box_spmatrix, box_rhs, unbox_lhs, box_dof_numbering
 from .preproc import fem_coeff_matrix_coo
@@ -83,7 +83,7 @@ def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack=True, summary=
 
     # residual
     if summary:
-        d = DeepDict(**{
+        d = LinkedDeepDict(**{
             'time': dt,
             'N': u.shape[0],
             'solver': solver,

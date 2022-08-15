@@ -5,13 +5,13 @@ from collections import namedtuple, Iterable
 from typing import Iterable
 from functools import partial
 
-from ....math import squeeze, config
-from ....math.linalg import ReferenceFrame
-from ....math.array import atleast1d, atleastnd, ascont
-from ....math.utils import to_range
-from ....mesh.utils import distribute_nodal_data, collect_nodal_data
-from ....mesh.topo import TopologyArray
-from ....math.linalg.sparse.jaggedarray import JaggedArray
+from neumann import squeeze, config
+from neumann.linalg import ReferenceFrame
+from neumann.array import atleast1d, atleastnd, ascont
+from neumann.utils import to_range
+from polymesh.utils import distribute_nodal_data, collect_nodal_data
+from polymesh.topo import TopologyArray
+from neumann.linalg.sparse.jaggedarray import JaggedArray
 
 from ..preproc import fem_coeff_matrix_coo
 from ..postproc import approx_element_solution_bulk, calculate_internal_forces_bulk, \

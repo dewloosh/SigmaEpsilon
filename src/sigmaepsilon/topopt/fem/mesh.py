@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
-from sigmaepsilon.core import squeeze
-
-from sigmaepsilon.math.linalg.sparse.csr import csr_matrix as csr
+from neumann import squeeze
+from neumann.linalg.sparse.csr import csr_matrix as csr
 
 from sigmaepsilon.solid.fem.mesh import FemMesh as Mesh
 

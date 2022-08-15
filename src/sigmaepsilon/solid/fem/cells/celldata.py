@@ -2,9 +2,9 @@
 import numpy as np
 from numpy import ndarray
 
-from ....math.array import atleastnd
-from ....math.array import atleastnd, isboolarray, is1dfloatarray
-from ....mesh.celldata import CellData as MeshCellData
+from neumann.array import atleastnd
+from neumann.array import atleastnd, isboolarray, is1dfloatarray
+from polymesh.celldata import CellData as MeshCellData
 
 
 class CellData(MeshCellData):

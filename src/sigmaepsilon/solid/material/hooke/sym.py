@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import sympy as sy
 
-from ....math.linalg.tensor3333 import ComplianceTensor
+from neumann.linalg.tensor3333 import ComplianceTensor
 
 
 __all__ = ['smat_sym_ortho_3d', 'cmat_sym_ortho_3d']

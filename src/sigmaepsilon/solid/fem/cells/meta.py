@@ -3,8 +3,8 @@ from abc import abstractmethod
 from inspect import signature, Parameter
 import numpy as np
 
-from ....mesh.abc import ABCMeta_MeshData
-from ....mesh.cell import PolyCell
+from polymesh.abc import ABCMeta_MeshData
+from polymesh.cell import PolyCell
 
 from copy import deepcopy
 from functools import partial

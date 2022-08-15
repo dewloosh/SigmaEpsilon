@@ -3,7 +3,7 @@ import numpy as np
 from scipy.sparse import coo_matrix as npcoo, csc_matrix as npcsc
 import time
 
-from sigmaepsilon.core import DeepDict
+from linkeddeepdict import LinkedDeepDict
 
 from .utils import irows_icols_bulk
 from .linsolve import box_fem_data_bulk, solve_standard_form, unbox_lhs
@@ -64,7 +64,7 @@ class FemSolver:
         self.core = self.encode()
         self.READY = False
         self.summary = []
-        self._summary = DeepDict()
+        self._summary = LinkedDeepDict()
 
     def encode(self) -> 'FemSolver':
         if self.imap is None and not self.regular:
@@ -129,7 +129,7 @@ class FemSolver:
         self._summary['postproc', 'time'] = _dt
 
     def linsolve(self, *args, solver=None, summary=False, **kwargs):
-        self._summary = DeepDict()
+        self._summary = LinkedDeepDict()
 
         self.preproc()
         self.proc(solver=solver)

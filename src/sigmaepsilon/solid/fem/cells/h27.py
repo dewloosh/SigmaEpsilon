@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from ....math.numint import GaussPoints as Gauss
+from neumann.numint import GaussPoints as Gauss
 
-from ....mesh.cells import H27 as HexaHedron
+from polymesh.cells import H27 as HexaHedron
 
 from ..model.solid3d import Solid3d
 

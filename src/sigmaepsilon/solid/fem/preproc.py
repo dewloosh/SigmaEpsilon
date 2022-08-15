@@ -3,10 +3,10 @@ from scipy.sparse import coo_matrix
 import numpy as np
 from numpy import ndarray
 
-from ...math import squeeze
-from ...math.array import isintegerarray, isfloatarray, \
+from neumann import squeeze
+from neumann.array import isintegerarray, isfloatarray, \
     isboolarray, bool_to_float, atleastnd
-from ...math.linalg.sparse.utils import lower_spdata, upper_spdata
+from neumann.linalg.sparse.utils import lower_spdata, upper_spdata
 
 from .utils import nodes2d_to_dofs1d, irows_icols_bulk, nodal_mass_matrix_data
 
