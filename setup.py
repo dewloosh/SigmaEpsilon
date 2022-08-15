@@ -36,7 +36,7 @@ with open('requirements.txt') as f:
     required = f.read().splitlines()
 
 
-_init_path = "src/sigmaepsilon/core/__init__.py"
+_init_path = "src/sigmaepsilon/solid/__init__.py"
 _version = get_version(_init_path)
 _description = get_description(_init_path)
 _url = 'https://github.com/dewloosh/sigmaepsilon'
@@ -57,7 +57,6 @@ setup(
 	classifiers=[
         'Development Status :: 4 - Beta',     
         'License :: OSI Approved :: MIT License',   
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
