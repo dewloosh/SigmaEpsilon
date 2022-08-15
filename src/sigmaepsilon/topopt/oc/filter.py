@@ -3,7 +3,7 @@ from numba import njit, prange
 import numpy as np
 from numba.typed import Dict as nbDict
 
-from sigmaepsilon.math.linalg.sparse.csr import csr_matrix as csr
+from neumann.linalg.sparse.csr import csr_matrix as csr
 
 __cache = True
 

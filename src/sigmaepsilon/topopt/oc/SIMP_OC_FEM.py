@@ -3,8 +3,8 @@ import numpy as np
 from collections import namedtuple
 from copy import deepcopy
 
-from sigmaepsilon.math.linalg.sparse.csr import csr_matrix as csr
-from sigmaepsilon.mesh.utils import cells_around
+from neumann.linalg.sparse.csr import csr_matrix as csr
+from polymesh.utils import cells_around
 from sigmaepsilon.solid.fem.structure import Structure
 
 from .filter import sensitivity_filter, sensitivity_filter_csr
