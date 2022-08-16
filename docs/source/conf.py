@@ -346,6 +346,10 @@ intersphinx_mapping = {
     'sklearn': ('https://scikit-learn.org/stable', None),
     'sphinx': ('https://www.sphinx-doc.org/en/master', None),
     'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
+    'linkeddeepdict' : ('https://linkeddeepdict.readthedocs.io/en/latest/', None),
+    'latexdocs' : ('https://latexdocs.readthedocs.io/en/latest/', None),
+    'polymesh' : ('https://polymesh.readthedocs.io/en/latest/', None),
+    'neumann' : ('https://neumann.readthedocs.io/en/latest/', None)
 }
 
 examples_dirs = ['../../examples']
@@ -441,10 +445,10 @@ warnings.filterwarnings("ignore", category=UserWarning,
                         message='Matplotlib is currently using agg, which is a'
                                 ' non-GUI backend, so cannot show the figure.')
 
-"""html_context = {
+html_context = {
     'current_version': 'dev' if 'dev' in version else 'stable',
     'versions': (
         ('dev', 'https://github.com/dewloosh/SigmaEpsilon/tree/main'),
         ('stable', 'https://github.com/dewloosh/SigmaEpsilon/tree/main'),
     )
-}"""
+}

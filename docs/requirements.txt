@@ -14,4 +14,4 @@ tetgen
 matplotlib
 plotly
 ipython
-polymesh
+sigmaepsilon
