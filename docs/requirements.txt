@@ -5,5 +5,13 @@ sphinx_copybutton
 sphinxcontrib-bibtex==1.0.0
 nbsphinx-link
 sphinxcontrib-svg2pdfconverter
-networkx
 furo
+sphinx-rtd-theme
+memory_profiler
+pyvista
+pandas
+tetgen
+matplotlib
+plotly
+ipython
+polymesh

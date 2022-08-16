@@ -1,10 +1,10 @@
 # **SigmaEpsilon** - High-Performance Computational Mechanics in Python
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/dewloosh/sigmaepsilon/main?labpath=examples%2Flpp.ipynb?urlpath=lab)
-[![CircleCI](https://circleci.com/gh/dewloosh/sigmaepsilon.svg?style=shield)](https://circleci.com/gh/dewloosh/sigmaepsilon) 
-[![Documentation Status](https://readthedocs.org/projects/sigmaepsilon/badge/?version=latest)](https://sigmaepsilon.readthedocs.io/en/latest/?badge=latest) 
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/dewloosh/SigmaEpsilon/main?labpath=notebooksnotebooks%2Flpp.ipynb?urlpath=lab)
+[![CircleCI](https://circleci.com/gh/dewloosh/SigmaEpsilon.svg?style=shield)](https://circleci.com/gh/dewloosh/SigmaEpsilon) 
+[![Documentation Status](https://readthedocs.org/projects/SigmaEpsilon/badge/?version=latest)](https://SigmaEpsilon.readthedocs.io/en/latest/?badge=latest) 
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PyPI](https://badge.fury.io/py/sigmaepsilon.svg)](https://pypi.org/project/sigmaepsilon) 
+[![PyPI](https://badge.fury.io/py/SigmaEpsilon.svg)](https://pypi.org/project/SigmaEpsilon) 
 
 
 > **Warning**
