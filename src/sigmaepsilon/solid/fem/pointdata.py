@@ -8,6 +8,60 @@ from polymesh.pointdata import PointData as MeshPointData
 
 
 class PointData(MeshPointData):
+    """
+    A class to handle data related to the pointcloud of a finite element mesh.
+
+    Technicall this is a wrapper around an :class:`awkward.Record` instance.
+
+    Parameters
+    ----------
+    fields : `dict`, Optional
+        Every value of this dictionary is added to the dataset. Default is `None`.
+        
+    Examples
+    --------
+    
+    We will define the point-related data of a simple linear console. At the
+    moment this means the specification of cordinates, nodal loads, and boundary 
+    conditions. The common properties of these attributes is that each of these
+    can be best described by arrays having the same length as the pointcloud itself.
+    Import the necessary stuff:
+    
+    >>> from sigmaepsilon.solid import Structure, LineMesh, PointData
+    >>> from neumann.linalg import linspace, Vector
+    >>> from polymesh.space import StandardFrame, PointCloud, frames_of_lines
+    >>> import numpy as np
+    
+    Define a coordinate frame, and a coordinate array,
+
+    >>> GlobalFrame = StandardFrame(dim=3)
+    >>> nElem = 20  # number of finite elements to use
+    >>> p0 = np.array([0., 0., 0.])
+    >>> p1 = np.array([L, 0., 0.])
+    >>> coords = linspace(p0, p1, nElem+1)
+    >>> coords = PointCloud(coords, frame=GlobalFrame).show()
+
+    two numpy arrays resembling the boundary conditions,
+
+    >>> # support at the leftmost, load at the rightmost node
+    >>> loads = np.zeros((coords.shape[0], 6))
+    >>> fixity = np.zeros((coords.shape[0], 6)).astype(bool)
+    >>> global_load_vector = Vector([0., 0, F], frame=GlobalFrame).show()
+    >>> loads[-1, :3] = global_load_vector
+    >>> fixity[0, :] = True
+
+    and finally we can define our dataset.  
+
+    >>> pd = PointData(coords=coords, frame=GlobalFrame, 
+    >>>                loads=loads, fixity=fixity)
+
+    See also
+    --------
+    :class:`polymesh.PolyData`
+    :class:`polymesh.CellData`
+    :class:`awkward.Record`
+    
+    """
 
     _attr_map_ = {
         'loads': 'loads',

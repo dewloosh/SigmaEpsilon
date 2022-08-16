@@ -14,24 +14,24 @@ from .preproc import fem_load_vector, fem_penalty_matrix_coo, \
 
 class FemMesh(PolyData):
     """
-    A class to handle polygonal meshes for the **Finite Element Method**.
+    A descendant of :class:`polymesh.PolyData` to handle polygonal meshes for the **Finite Element Method**.
 
     Parameters
     ----------
-    pd : `PolyData` or `CellData`, Optional
+    pd : :class:`polymesh.PolyData` or :class:`polymesh.CellData`, Optional
         A PolyData or a CellData instance. Dafault is None.
 
-    cd : `CellData`, Optional
+    cd : :class:`polymesh.CellData`, Optional
         A CellData instance, if the first argument is provided. Dafault is None.
         
-    coords : ndarray, Optional.
+    coords : :class:`numpy.ndarray`, Optional
         2d numpy array of floats, describing a pointcloud. Default is None.
 
-    topo : ndarray, Optional.
+    topo : :class:`numpy.ndarray`, Optional
         2d numpy array of integers, describing the topology of a polygonal mesh. 
         Default is None.
 
-    celltype : int, Optional.
+    celltype : int, Optional
         An integer spcifying a valid celltype.
         
     Note
@@ -43,7 +43,7 @@ class FemMesh(PolyData):
     Examples
     --------
     >>> from sigmaepsilon.solid import FemMesh
-    >>> from sigmaepsilon.mesh.grid import grid
+    >>> from polymesh.grid import grid
     >>> size = Lx, Ly, Lz = 100, 100, 100
     >>> shape = nx, ny, nz = 10, 10, 10
     >>> coords, topo = grid(size=size, shape=shape, eshape='H27')
@@ -54,7 +54,8 @@ class FemMesh(PolyData):
 
     See also
     --------
-    :class:`sigmaepsilon.mesh.PolyData`
+    :class:`polymesh.PolyData`
+    :class:`polymesh.CellData`
     
     """
 
