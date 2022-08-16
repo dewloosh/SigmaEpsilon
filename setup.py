@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import codecs
 import os.path
-from setuptools import find_namespace_packages, setup
+from setuptools import find_packages, setup
 
 
 def read(rel_path):
@@ -36,7 +36,7 @@ with open('requirements.txt') as f:
     required = f.read().splitlines()
 
 
-_init_path = "src/sigmaepsilon/solid/__init__.py"
+_init_path = "src/sigmaepsilon/__init__.py"
 _version = get_version(_init_path)
 _description = get_description(_init_path)
 _url = 'https://github.com/dewloosh/sigmaepsilon'
@@ -53,7 +53,7 @@ setup(
     long_description_content_type="text/markdown",
 	url = _url, 
     download_url = _download_url,
-	packages=find_namespace_packages(where='src', include=['sigmaepsilon.*']),
+	packages=find_packages(where='src'),
 	classifiers=[
         'Development Status :: 4 - Beta',     
         'License :: OSI Approved :: MIT License',   
