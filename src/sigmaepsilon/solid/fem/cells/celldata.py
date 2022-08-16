@@ -8,6 +8,13 @@ from polymesh.celldata import CellData as MeshCellData
 
 
 class CellData(MeshCellData):
+    
+    """
+    A class to handle data related to the cells of a polygonal mesh.
+
+    Technically this is a wrapper around an `awkward.Record` instance.
+
+    """
 
     _attr_map_ = {
         'loads': 'loads',
