@@ -6,7 +6,7 @@ from numpy import ndarray
 from numba import types as nbtypes
 from numba.typed import Dict as nbDict
 
-from sigmaepsilon.math.linalg.sparse.csr import csr_matrix
+from neumann.linalg.sparse.csr import csr_matrix
 from sigmaepsilon.solid.fem.utils import irows_icols_bulk_filtered
 
 __cache = True

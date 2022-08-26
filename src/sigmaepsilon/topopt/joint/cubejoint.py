@@ -23,7 +23,6 @@ from sigmaepsilon.solid.fem.cells import TET4, H8
 from ..fem.structure.structure import Structure
 
 
-
 nodes_of_edges = [
     [0, 1], [1, 2], [2, 3], [3, 0],
     [4, 5], [5, 6], [6, 7], [7, 4],
@@ -80,8 +79,8 @@ def generate_frames(size, points_per_edge):
 
     # face frames
     frames = {}
-    GlobalFrame = StandardFrame(dim=3)
-    frames['front'] = GlobalFrame.fork().move(cof('front'))
+    Frame = StandardFrame(dim=3)
+    frames['front'] = Frame.fork().move(cof('front'))
     rot90z = 'Body', [0, 0, np.pi/2], 'XYZ'
     frames['left'] = frames['front'].fork(
         *rot90z).move(cof('left') - cof('front'))
@@ -100,18 +99,18 @@ def generate_frames(size, points_per_edge):
 
 
 def joint_cube_voxelize(size, shape, *args, sections_dict=None,
-                        material=None, **kwargs):
+                        material=None, **kwargs) -> Structure:
     points_per_edge = shape + 1
     mesh_size = min(size) / (points_per_edge-1)
     E = material['E']
     nu = material['nu']
 
-    GlobalFrame = StandardFrame(dim=3)
+    Frame = StandardFrame(dim=3)
     coords, topo = grid(size=size, shape=(shape, shape, shape),
                         eshape='H8', centralize=True)
     fixity = np.zeros_like(coords).astype(bool)
     loads = np.zeros_like(coords).astype(float)
-    coords = PointCloud(coords, frame=GlobalFrame)
+    coords = PointCloud(coords, frame=Frame)
     _, frames = generate_frames(size, points_per_edge)
 
     for face in sections_dict:
@@ -139,7 +138,7 @@ def joint_cube_voxelize(size, shape, *args, sections_dict=None,
             f_data_s[:, 0] = stresses['sig_zz']
             f_data_s[:, 1] = stresses['sig_zx']
             f_data_s[:, 2] = stresses['sig_zy']
-            f_data_s = Vector(f_data_s, frame=f_frame).show(GlobalFrame)
+            f_data_s = Vector(f_data_s, frame=f_frame).show(Frame)
             f_coords_s, f_topo_s = T6_to_T3(f_coords_s, f_topo_s)
             f_data = approx_data_to_points(
                 f_coords_s, f_topo_s, f_data_s, f_coords)
@@ -169,18 +168,88 @@ def joint_cube_voxelize(size, shape, *args, sections_dict=None,
     return structure
 
 
-def joint_cube(size, shape, *args, sections_dict=None, material=None,
-               voxelize=False, varvolume=None, **kwargs):
+def joint_cube(size, shape, *args, sections_dict=None,
+               voxelize=False, varvolume=None, material=None,
+               mesh_ratio=1.0, **kwargs) -> Structure:
+    """
+    Returns a tetrahedral mesh of a cube, with sections optionally
+    mounted on the faces.
+
+    size : tuple
+        Edge lengths of a cube in x, y and z directions.
+
+    shape : int
+        Number of line segments along an edge of the cube.
+
+    sections_dict : dict
+        A dictionary containing all information required to produce 
+        meshes for the sections.
+
+    material : dict, Optional
+        A dictionary of material parameters for the cube. Only required
+        if the input suggests a FEM calculation. Default is False.
+
+    voxelize : bool, Optional
+        Returns a voxelized mesh if set to `True`. Default is False.
+
+    varvolume : float, Optional
+        Controls the max volume of a cell in the resulting mesh
+        of tetrahedra.
+
+    Notes
+    -----
+    Only isotropic material definitions are supported here.
+
+    Example
+    -------
+    >>> from sectionproperties.pre.library.steel_sections import circular_hollow_section as CHS
+    >>> from sectionproperties.pre.library.steel_sections import rectangular_hollow_section as RHS
+    >>> from sectionproperties.pre.library.steel_sections import i_section as ISection
+    >>> from sectionproperties.analysis.section import Section
+    >>> from sectionproperties.pre.pre import Material
+    >>> import numpy as np
+
+    A material must only be defined for a section if there are dynams 
+    (forces or moments) defined on it, which requires the calculation of stresses.
+
+    >>> E = 200e3
+    >>> nu = 0.3
+    >>> steel = Material(
+    >>>     name='Steel', elastic_modulus=E, poissons_ratio=nu, density=7.85e-6,
+    >>>     yield_strength=250, color='grey'
+    >>> )
+
+    >>> sections_dict = {
+    >>>     'left': {
+    >>>         'mesh': CHS(d=100, t=10, n=64),
+    >>>         'support': True},
+    >>>     'right': {
+    >>>         'mesh': RHS(d=100, b=100, t=10, r_out=0, n_r=0),
+    >>>         'support': True},
+    >>>     'front': {
+    >>>         'mesh': ISection(d=170, b=110, t_f=7.8, t_w=5.8, r=8.9, n_r=16, material=steel),
+    >>>         'dynams': {'N': 1e3, 'Vx': 0., 'Vy': 3e3,
+    >>>                    'T': 0.,  'Mx': 5e6, 'My': 0.}},
+    >>> }
+
+    >>> Lx, Ly, Lz = 150, 150, 150
+    >>> voxelize = False
+
+    >>> cube = joint_cube((Lx, Ly, Lz), 20, sections_dict=sections_dict,
+    >>>                   material={'E': E, 'nu': nu}, voxelize=voxelize,
+    >>>                   varvolume=60)
+
+    """
     if voxelize:
         return joint_cube_voxelize(size, shape, *args,
                                    sections_dict=sections_dict,
                                    material=material, **kwargs)
-    from polymesh.grid import grid
     Lx, Ly, Lz = size
+    area = Lx * Ly
     points_per_edge = shape + 1
+    # size of line segments along an edge of the cube
     mesh_size = min(size) / (points_per_edge-1)
-    E = material['E']
-    nu = material['nu']
+    nEdge = points_per_edge - 1  # number of line segments along an edge of the cube
 
     # base points
     points, frames = generate_frames(size, points_per_edge)
@@ -192,11 +261,11 @@ def joint_cube(size, shape, *args, sections_dict=None, material=None,
     nTotalPoints = len(points[0])
 
     # background grid
-    GlobalFrame = StandardFrame(dim=3)
+    Frame = StandardFrame(dim=3)
     N = points_per_edge + 2
     coords_grid, topo_grid = grid(size=(Lx*0.99, Ly*0.99), shape=(N, N),
                                   eshape='Q4', centralize=True)
-    Grid = PolyData(coords=coords_grid, topo=topo_grid, frame=GlobalFrame)
+    Grid = PolyData(coords=coords_grid, topo=topo_grid, frame=Frame)
     grid_centers = Grid.centers()[:, :2]
     fixity_grid = np.zeros((grid_centers.shape[0], 3)).astype(bool)
     sig_grid = np.zeros((grid_centers.shape[0], 3)).astype(float)
@@ -224,8 +293,7 @@ def joint_cube(size, shape, *args, sections_dict=None, material=None,
 
         # transform the coords (base coordinates) so far to face frame
         f_coords_base = PointCloud(
-            f_coords_base, frame=GlobalFrame).show(f_frame)
-        #f_coords_base = yz_to_xy(f_coords_base)[:, :2]
+            f_coords_base, frame=Frame).show(f_frame)
 
         # global indices and number of corner and edge points
         f_inds_base = np.concatenate(f_inds_base)
@@ -233,11 +301,18 @@ def joint_cube(size, shape, *args, sections_dict=None, material=None,
 
         # build face
         if face in sections_dict:
+            if not 'mesh' in sections_dict[face]:
+                continue
             # 1) create the mesh of the section
             # 2) rule out points of the base grid that the section covers
             # 3) add corner and edge nodes and do a triangulation
+            if 'mesh_size' in sections_dict[face]:
+                section_mesh_size = sections_dict[face]['mesh_size']
+            else:
+                section_mesh_size = mesh_size**2 * np.sqrt(3) / (4 * mesh_ratio)
+                #section_mesh_size = area / (2 * mesh_ratio * nEdge**2)
             f_section = sections_dict[face]['mesh']
-            f_section.create_mesh(mesh_sizes=[mesh_size])
+            f_section.create_mesh(mesh_sizes=[section_mesh_size])
             f_coords = centralize(np.array(f_section.mesh['vertices']))
 
             # boundary conditions
@@ -246,7 +321,7 @@ def joint_cube(size, shape, *args, sections_dict=None, material=None,
             if 'dynams' in sections_dict[face]:
                 dyn = sections_dict[face]['dynams']
                 _section = Section(f_section)
-                _section.calculate_meshetric_properties()
+                _section.calculate_geometric_properties()
                 _section.calculate_warping_properties()
                 stress_post = _section.calculate_stress(
                     N=dyn['N'], Vy=dyn['Vy'], Vx=dyn['Vx'],
@@ -256,14 +331,12 @@ def joint_cube(size, shape, *args, sections_dict=None, material=None,
                 sig_coords[:, 0] = stresses[0]['sig_zz']
                 sig_coords[:, 1] = stresses[0]['sig_zx']
                 sig_coords[:, 2] = stresses[0]['sig_zy']
-                sig_coords = Vector(
-                    sig_coords, frame=f_frame).show(GlobalFrame)
+                sig_coords = Vector(sig_coords, frame=f_frame).show(Frame)
             elif 'support' in sections_dict[face]:
                 fixity_coords[:, :] = True
             else:
                 raise NotImplementedError
 
-            n_section_nodes = f_coords.shape[0]
             f_topo = np.array(f_section.mesh['triangles'].tolist())[:, :3]
             f_inds = get_points_inside_triangles(
                 f_coords, f_topo, grid_centers)
@@ -292,7 +365,7 @@ def joint_cube(size, shape, *args, sections_dict=None, material=None,
         # transform to global and append new data to total collection
         f_coords_new = np.zeros((nNewPoints, 3))
         f_coords_new[:, 1:] = f_coords[nBasePoints:]
-        f_coords = PointCloud(f_coords_new, frame=f_frame).show(GlobalFrame)
+        f_coords = PointCloud(f_coords_new, frame=f_frame).show(Frame)
         points.append(f_coords)
         fixity.append(f_fixity[nBasePoints:])
         loads.append(f_sig[nBasePoints:])
@@ -305,18 +378,20 @@ def joint_cube(size, shape, *args, sections_dict=None, material=None,
     # build the final cube shell
     cubepoints = np.vstack(points)
     nCubePoints = len(cubepoints)
-    cube = PolyData(coords=cubepoints, frame=GlobalFrame)
+    cube = PolyData(coords=cubepoints, frame=Frame)
     for face in frames:
+        if not 'topo' in sections_dict[face]:
+            continue
         cube[face] = PolyData(topo=sections_dict[face]['topo'])
 
     # tetrahedralize
-    switches="pa{}".format(varvolume)
+    switches = "pa{}".format(varvolume)
     tet = tetgen.TetGen(cube.coords(), cube.topology())
-    tet.tetrahedralize(order=1, mindihedral=10, minratio=1.1, 
-                       quality=True, switches=switches)
-    grid = tet.grid
-    coords = np.array(grid.points).astype(float)
-    topo = grid.cells_dict[10].astype(int)
+    tet.tetrahedralize(order=1, mindihedral=10, minratio=1.1,
+                       quality=True, switches=switches, nobisect=True)
+    tetgrid = tet.grid
+    coords = np.array(tetgrid.points).astype(float)
+    topo = tetgrid.cells_dict[10].astype(int)
 
     # collect loads and supports
     loads_ = np.zeros((coords.shape[0], 3)).astype(float)
@@ -325,13 +400,15 @@ def joint_cube(size, shape, *args, sections_dict=None, material=None,
     fixity_[:nCubePoints] = np.vstack(fixity)
 
     # Hooke model
+    _E = material['E']
+    nu = material['nu']
     Hooke = np.array([
         [1, nu, nu, 0, 0, 0],
         [nu, 1, nu, 0, 0, 0],
         [nu, nu, 1, 0, 0, 0],
         [0., 0, 0, (1-nu)/2, 0, 0],
         [0., 0, 0, 0, (1-nu)/2, 0],
-        [0., 0, 0, 0, 0, (1-nu)/2]]) * (E / (1-nu**2))
+        [0., 0, 0, 0, 0, (1-nu)/2]]) * (_E / (1-nu**2))
 
     # return finite element model
     mesh = FemMesh(coords=coords, topo=topo, celltype=TET4,
@@ -360,14 +437,18 @@ if __name__ == '__main__':
     sections_dict = {
         'left': {
             'mesh': CHS(d=100, t=10, n=64),
-            'support': True},
+            'support': True
+        },
         'right': {
             'mesh': RHS(d=100, b=100, t=10, r_out=0, n_r=0),
-            'support': True},
+            'support': True
+        },
         'front': {
-            'mesh': ISection(d=170, b=110, t_f=7.8, t_w=5.8, r=8.9, n_r=16, material=steel),
+            'mesh': ISection(d=170, b=110, t_f=7.8, t_w=5.8,
+                             r=8.9, n_r=16, material=steel),
             'dynams': {'N': 1e3, 'Vx': 0., 'Vy': 3e3,
-                       'T': 0.,  'Mx': 5e6, 'My': 0.}},
+                       'T': 0.,  'Mx': 5e6, 'My': 0.}
+        },
     }
 
     sections_dict = {
@@ -375,7 +456,7 @@ if __name__ == '__main__':
             'mesh': CHS(d=100, t=10, n=64),
             'dynams': {'N': 0, 'Vx': 0., 'Vy': 0,
                        'T': 1e9,  'Mx': 0, 'My': 0.}
-            },
+        },
         'right': {
             'mesh': RHS(d=100, b=100, t=10, r_out=0, n_r=0),
             'support': True},
@@ -396,12 +477,13 @@ if __name__ == '__main__':
     data = cube.stresses_at_centers('HMH')
     centers = cube.centers()
     dofsol = cube.dofsol(flatten=False)
-    
+
     mask = np.where(centers[:, 0] > 0)[0]
 
     p = pv.Plotter(notebook=False)
     celltype = H8 if voxelize else TET4
-    cube2 = PolyData(coords=coords + dofsol, topo=topo[mask], celltype=celltype)
+    cube2 = PolyData(coords=coords + dofsol,
+                     topo=topo[mask], celltype=celltype)
     p.add_mesh(cube2.to_pv(), scalars=data[mask], show_edges=True)
     p.add_mesh(cube.mesh.to_pv(), style='wireframe', color='black')
     p.show()

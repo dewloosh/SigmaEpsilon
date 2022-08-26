@@ -49,13 +49,13 @@ def get_section_metadata(shape: str, material=None, **section: dict) -> Tuple[Ge
 
     Examples
     --------
-    >>> geom, mesh_size = get_section_metadata('CHS', D=1.0, t=0.1, n=64)
+    >>> geom, mesh_size = get_section_metadata('CHS', d=1.0, t=0.1, n=64)
 
     """
     material = DEFAULT_MATERIAL if material is None else material
     geom, mesh_size = None, None
     if shape == 'CHS':
-        geom = CHS(d=section['D'], t=section['t'], n=section.get('n', 64), 
+        geom = CHS(d=section['d'], t=section['t'], n=section.get('n', 64), 
                    material=material)
         mesh_size = section['t']
     elif shape == 'RHS':
@@ -118,7 +118,7 @@ def get_section(shape, *args, **kwargs) -> Section:
 
     Examples
     --------
-    >>> section = get_section('CHS', D=1.0, t=0.1, n=64)
+    >>> section = get_section('CHS', d=1.0, t=0.1, n=64)
 
     """
     geom, mesh_size = get_section_metadata(shape, **kwargs)
@@ -130,16 +130,34 @@ def get_section(shape, *args, **kwargs) -> Section:
 
 
 class BeamSection(Wrapper):
+    """
+    Wraps an instance of `sectionproperties.analysis.section.Section` and
+    adds a little here and there to make some of the functionality more
+    accessible.
+    
+    Examples
+    --------
+    >>> section = BeamSection(get_section('CHS', d=1.0, t=0.1, n=64))
+    
+    or simply provide the shape as the first argument and provide everything 
+    else as keyword arguments:
+    
+    >>> section = BeamSection('CHS', d=1.0, t=0.1, n=64)
+    
+    """
 
     def __init__(self, *args, wrap=None, shape=None, **kwargs):
         if len(args) > 0:
             try:
-                if shape is None:
-                    if isinstance(args[0], Section):
-                        wrap = args[0]
+                if isinstance(args[0], str):
+                    wrap = get_section(args[0], **kwargs)
                 else:
-                    wrap = get_section(shape, **kwargs)
-            except:
+                    if shape is None:
+                        if isinstance(args[0], Section):
+                            wrap = args[0]
+                    else:
+                        wrap = get_section(shape, **kwargs)
+            except Exception:
                 raise RuntimeError("Invalid input.")
         super().__init__(*args, wrap=wrap, **kwargs)
 
@@ -158,11 +176,11 @@ class BeamSection(Wrapper):
         """
         Returns the mesh of the section as a collection of T3 triangles.
         Keyword arguments are forwarded to the constructor of 
-        :class:`dewloosh.mesh.tri.trimesh.TriMesh`.
+        :class:`polymesh.tri.trimesh.TriMesh`.
         
         See Also
         --------
-        :class:`dewloosh.mesh.tri.trimesh.TriMesh`
+        :class:`polymesh.tri.trimesh.TriMesh`
         
         """
         points, triangles = self.coords(), self.topology() 
