@@ -40,6 +40,7 @@ jobs:
           name: Run tests
           # This assumes pytest is installed via the install-package step above
           command: python -m pytest
+          no_output_timeout: 30m
   
   test310:  # This is the name of the job, feel free to change it to better match what you're trying to do!
     # These next lines defines a docker executors: https://circleci.com/docs/2.0/executor-types/
@@ -72,6 +73,7 @@ jobs:
           name: Run tests
           # This assumes pytest is installed via the install-package step above
           command: python -m pytest
+          no_output_timeout: 30m
 
   tox-test:  # This is the name of the job, feel free to change it to better match what you're trying to do!
     # These next lines defines a docker executors: https://circleci.com/docs/2.0/executor-types/
