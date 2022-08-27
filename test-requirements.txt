@@ -2,13 +2,3 @@ pyvista
 tetgen
 networkx
 pytest
-
-vtk
-matplotlib
-pyvista
-tetgen
-pandas
-plotly
-
-dewloosh.plotly
-dewloosh.mpl
