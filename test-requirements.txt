@@ -9,3 +9,6 @@ pyvista
 tetgen
 pandas
 plotly
+
+dewloosh.plotly
+dewloosh.mpl
