@@ -7,4 +7,5 @@ numba
 sympy
 awkward
 neumann
+polymesh
 sectionproperties
