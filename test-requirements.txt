@@ -2,3 +2,5 @@ pyvista
 tetgen
 networkx
 pytest
+
+plotly

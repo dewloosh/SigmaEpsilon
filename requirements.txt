@@ -6,6 +6,7 @@ scipy
 numba
 sympy
 awkward
+sectionproperties
+
 neumann
 polymesh
-sectionproperties
