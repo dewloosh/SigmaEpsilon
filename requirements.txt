@@ -8,5 +8,5 @@ sympy
 awkward
 sectionproperties
 
-neumann
-polymesh
+neumann>=0.0.1b
+polymesh>=0.0.4b

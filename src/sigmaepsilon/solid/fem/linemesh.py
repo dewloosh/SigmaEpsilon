@@ -4,7 +4,9 @@ import numpy as np
 from sectionproperties.analysis.section import Section
 
 from polymesh.config import __hasplotly__, __hasmatplotlib__
-from dewloosh.plotly import plot_lines_3d
+
+if __hasplotly__:
+    from dewloosh.plotly import plot_lines_3d
 
 from ..model.bernoulli.section import BeamSection
 
