@@ -6,5 +6,5 @@ scipy
 numba
 sympy
 awkward
-
+neumann
 sectionproperties
