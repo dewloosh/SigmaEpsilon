@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+from typing import Iterable
 import numpy as np
+from numpy import ndarray
 from abc import abstractmethod
 
 from linkeddeepdict import LinkedDeepDict
@@ -15,11 +17,9 @@ class MetaSurface(LinkedDeepDict):
     
     __layerclass__ = None
     
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     @property
     def angle(self):
+        """Returns the angle of a layer or a laminate."""
         _angle = self.get('angle', None)
         if _angle is None:
             return None if self.is_root() else self.parent.angle
@@ -28,6 +28,7 @@ class MetaSurface(LinkedDeepDict):
 
     @angle.setter
     def angle(self, value):
+        """Sets the angle of a layer or a laminate."""
         if self.__layerclass__ is None:
             self['angle'] = value
         else:
@@ -38,6 +39,7 @@ class MetaSurface(LinkedDeepDict):
             
     @property
     def hooke(self):
+        """Returns the Hooke model of a layer or a laminate."""
         _hooke = self.get('hooke', None)
         if _hooke is None:
             return None if self.is_root() else self.parent.hooke
@@ -46,6 +48,7 @@ class MetaSurface(LinkedDeepDict):
 
     @hooke.setter
     def hooke(self, value):
+        """Sets the Hooke model of a layer or a laminate."""
         if self.__layerclass__ is None:
             self['hooke'] = value
         else:
@@ -56,10 +59,12 @@ class MetaSurface(LinkedDeepDict):
     
     @property
     def t(self):
+        """Returns the thickness of a layer."""
         return self.get('thickness', None)
     
     @t.setter
     def t(self, value):
+        """Sets the thickness of a layer."""
         if self.__layerclass__ is None:
             self['thickness'] = value
         else:
@@ -68,7 +73,7 @@ class MetaSurface(LinkedDeepDict):
 
 class Layer(MetaSurface):
     """
-    Helper class for early binding.
+    Helper base class for layers of a laminate.
     """
 
     __loc__ = [-1., 0., 1.]
@@ -97,7 +102,7 @@ class Layer(MetaSurface):
                 self.tmin = (-1) * self.t / 2
                 self.tmax = self.t / 2
                 
-    def loc_to_z(self, loc):
+    def loc_to_z(self, loc) -> float:
         """
         Returns height of a local point by linear interpolation.
         Local coordinate is expected between -1 and 1.
@@ -110,22 +115,37 @@ class Layer(MetaSurface):
     
     
 class Surface(MetaSurface):
+    """
+    Helper base class for laminates.
+    """
 
     __layerclass__ = Layer
 
     def Layer(self, *args, **kwargs):
+        """
+        Returns a Layer compatible with the model.
+        """
         return self.__layerclass__(*args, **kwargs)
     
     def Hooke(self):
         raise NotImplementedError
 
-    def layers(self):
+    def layers(self) -> Iterable:
+        """
+        Returns the layers of the laminate.
+        """
         return [layer for layer in self.containers(dtype=self.__layerclass__)]
 
     def iterlayers(self):
+        """
+        Returns the layers of the laminate as a generator.
+        """
         return self.containers(dtype=self.__layerclass__)
 
-    def stiffness_matrix(self):
+    def stiffness_matrix(self) -> np.ndarray:
+        """
+        Assembles and returns the stiffness matrix.
+        """
         self._set_layers()
         res = np.zeros(self.__layerclass__.__shape__)
         for layer in self.iterlayers():

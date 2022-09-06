@@ -364,7 +364,7 @@ def append_mindlin_theory(doc, *args, glossary:dict=None, signs:dict=None, **kwa
     
 if __name__ == '__main__':
     assert __hassympy__ and __haspylatex__
-    from dewloosh.solid.fourier.latex import  append_preamble
+    from sigmaepsilon.solid.fourier.latex import  append_preamble
 
     geometry_options = {
         "tmargin": "1.5cm",

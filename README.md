@@ -16,10 +16,6 @@ Head over to the Quick Examples page in the docs to explore our gallery of examp
 
 ### Overview
 
-* A `math` submodule including general-purpose solutions for problems in **Linear Algebra**, **Linear and Nonlinear Optimization** and **Graph Theory**.
-
-* A `mesh` submodule to handle compound polygonal meshes, with support for transformations, mesh analysis, simple mesh generation, plotting etc. It includes a domain specific version of the framework presented in `sighmaepsilon.math` to handle vector spaces, fine tuned for Euclidean geometry. 
-
 * A `solid` submodule to analyze and optimize solid structures of all kinds with the **Finite Element Method**. The implementations so far only cover linear behaviour, but with practically no limits on the complexity of the shape and topology of the domain under investigation.
 
 ## **Installation**

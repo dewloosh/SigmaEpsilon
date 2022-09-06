@@ -4,22 +4,7 @@
 			"path": "."
 		},
 		{
-			"path": "..\\pyaxisvm"
-		},
-		{
-			"path": "..\\..\\Google Drive\\dewloosh\\working"
-		},
-		{
-			"path": "..\\Bernoulli-Dash"
-		},
-		{
-			"path": "..\\LinkedDeepDict"
-		},
-		{
-			"path": "..\\latexdocs"
-		},
-		{
-			"path": "..\\dewloosh\\EngOpt"
+			"path": "../pyaxisvm"
 		}
 	],
 	"settings": {}

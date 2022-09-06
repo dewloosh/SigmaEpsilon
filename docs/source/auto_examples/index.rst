@@ -11,18 +11,35 @@ Examples Gallery
 
 .. raw:: html
 
-    <div class="sphx-glr-thumbcontainer" tooltip="Linear Elastostatics of a Console : 1d, 2d and 3d Solutions">
+    <div class="sphx-glr-thumbcontainer" tooltip="Linear Elastostatics of a Console in 1d">
 
 .. only:: html
 
   .. image:: /auto_examples/images/thumb/sphx_glr_plot_0_console_thumb.png
-    :alt: Linear Elastostatics of a Console : 1d, 2d and 3d Solutions
+    :alt: Linear Elastostatics of a Console in 1d
 
   :ref:`sphx_glr_auto_examples_plot_0_console.py`
 
 .. raw:: html
 
-      <div class="sphx-glr-thumbnail-title">Linear Elastostatics of a Console : 1d, 2d and 3d Solutions</div>
+      <div class="sphx-glr-thumbnail-title">Linear Elastostatics of a Console in 1d</div>
+    </div>
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Navier&#x27;s Solution to Simply-Supported Plates">
+
+.. only:: html
+
+  .. image:: /auto_examples/images/thumb/sphx_glr_plot_1_Navier_thumb.png
+    :alt: Navier's Solution to Simply-Supported Plates
+
+  :ref:`sphx_glr_auto_examples_plot_1_Navier.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Navier's Solution to Simply-Supported Plates</div>
     </div>
 
 
@@ -35,6 +52,7 @@ Examples Gallery
    :hidden:
 
    /auto_examples/plot_0_console
+   /auto_examples/plot_1_Navier
 
 
 .. only:: html

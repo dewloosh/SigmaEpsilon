@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+from typing import Union
 import numpy as np
+import sympy as sy
+from numpy import ndarray
 from numpy.linalg import inv
 
 from ..material.hooke.utils import group_mat_params, get_iso_params
@@ -8,20 +11,23 @@ from ..material.hooke.sym import smat_sym_ortho_3d
 from .metashell import Surface, Layer
 
 
-__all__ = ['Membrane']
+__all__ = ['Membrane', 'MembraneLayer']
 
 
 class MembraneLayer(Layer):
+    """
+    Helper object for the stress analysis of a layer of a membrane.
+    """
 
-    __loc__ = [-1., 1.]
-    __shape__ = (3, 3)
+    __loc__ = [-1., 1.]  # locations of approximation points
+    __shape__ = (3, 3)  # shape of the ABDS matrix
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # locations of discrete points along the thickness
         self.zi = [self.loc_to_z(loc) for loc in self.__loc__]
 
-    def material_stiffness_matrix(self):
+    def material_stiffness_matrix(self) -> ndarray:
         """
         Returns and stores the transformed material stiffness matrix.
         """
@@ -33,7 +39,7 @@ class MembraneLayer(Layer):
         self.C_126 = C_126
         return C_126
 
-    def rotation_matrix(self):
+    def rotation_matrix(self) -> ndarray:
         """
         Returns the transformation matrix.
         """
@@ -50,13 +56,17 @@ class MembraneLayer(Layer):
         T_126[2, 2] = np.cos(angle)**2 - np.sin(angle)**2
         return T_126
 
-    def stiffness_matrix(self):
+    def stiffness_matrix(self) -> ndarray:
         """
-        Returns the stiffness contribution to the layer.
+        Returns the stiffness contribution of the layer.
         """
         return self.material_stiffness_matrix() * (self.tmax - self.tmin)
 
     def approxfunc(self, data):
+        """
+        Returns a function that can be used for approximations thorugh
+        the thickness.
+        """
         z0, z1 = self.zi
         z = np.array([[1, z0], [1, z1]])
         a, b = np.linalg.inv(z) @ np.array(data)
@@ -64,17 +74,51 @@ class MembraneLayer(Layer):
 
 
 class Membrane(Surface):
+    """
+    Helper object for the stress analysis of a membrane.
+    
+    Example
+    -------
+    >>> from sigmaepsilon.solid.model import Membrane as Model
+    >>> model = {
+    >>>     '0' : {
+    >>>         'hooke' : Model.Hooke(E=2100000, nu=0.3),
+    >>>         'angle' : 0., 
+    >>>         'thickness' : 0.1
+    >>>         },
+    >>>     }
+    >>> C = Model.from_dict(model).stiffness_matrix()
+    
+    """
     
     __layerclass__ = MembraneLayer
     
     __imap__ = {0 : (0, 0), 1 : (1, 1), 2 : (2, 2),
                 5 : (1, 2), 4 : (0, 2), 3 : (0, 1)}
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         
     @classmethod    
-    def Hooke(cls, *args, symbolic=False, **kwargs):
+    def Hooke(cls, *args, symbolic=False, **kwargs) -> Union[sy.Matrix, np.ndarray]:
+        """
+        Returns a Hooke matrix appropriate for membranes.
+        
+        Parameters
+        ----------
+        symbolic : bool, Optional
+            If Truem a symbolic matrix is returned.
+        
+        Returns
+        -------
+        Union[sy.Matrix, np.ndarray]
+            The matrix in symbolic or numeric form.
+            
+        Examples
+        --------
+        >>> from sigmaepsilon.solid.model import Membrane as Model
+        >>> Model.Hooke(E=2100000, nu=0.3)
+        
+        >>> Model.Hooke(symbolic=True)
+            
+        """
         if symbolic:
             S = smat_sym_ortho_3d()
             S.row_del(2)
@@ -96,7 +140,16 @@ class Membrane(Surface):
             S = np.array(S, dtype=float)
             return np.linalg.inv(S)
             
-    def stiffness_matrix(self):
+    def stiffness_matrix(self) -> ndarray:
+        """
+        Returns the stiffness matrix of the membrane.
+                
+        Returns
+        -------
+        ndarray
+            The ABDS matrix of the membrane.
+            
+        """
         self.ABDS = super().stiffness_matrix()
         self.SDBA = np.linalg.inv(self.ABDS)
         return self.ABDS

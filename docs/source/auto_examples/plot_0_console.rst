@@ -18,8 +18,8 @@
 .. _sphx_glr_auto_examples_plot_0_console.py:
 
 
-Linear Elastostatics of a Console : 1d, 2d and 3d Solutions
-===========================================================
+Linear Elastostatics of a Console in 1d
+=======================================
 
 .. GENERATED FROM PYTHON SOURCE LINES 8-9
 
@@ -108,7 +108,7 @@ Bernoulli solution
 
 # 1d Solution - Approximate Numerical
 
-.. GENERATED FROM PYTHON SOURCE LINES 48-106
+.. GENERATED FROM PYTHON SOURCE LINES 48-107
 
 .. code-block:: python3
 
@@ -168,16 +168,23 @@ Bernoulli solution
     dofsol = structure.nodal_dof_solution()[:, :3]
     local_dof_solution = dofsol[-1, :3]
     sol_fem_1d_B2 = local_dof_solution[2]
+    sol_fem_1d_B2
 
 
 
 
 
 
+.. rst-class:: sphx-glr-script-out
+
+ .. code-block:: none
+
+
+    -0.19047719057616308
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 107-113
+.. GENERATED FROM PYTHON SOURCE LINES 108-112
 
 .. code-block:: python3
 
@@ -185,8 +192,6 @@ Bernoulli solution
     mesh.config['pyvista', 'plot', 'line_width'] = 4
     mesh.pvplot(notebook=True, jupyter_backend='static', window_size=(600, 400),
                 config_key=('pyvista', 'plot'), cmap='plasma')
-
-
 
 
 
@@ -200,428 +205,7 @@ Bernoulli solution
 
  .. code-block:: none
 
-    <PIL.Image.Image image mode=RGB size=600x400 at 0x1B6BDE0EFD0>
-
-
-
-
-.. GENERATED FROM PYTHON SOURCE LINES 114-115
-
-## 2d Solution
-
-.. GENERATED FROM PYTHON SOURCE LINES 117-118
-
-### Membrane
-
-.. GENERATED FROM PYTHON SOURCE LINES 120-184
-
-.. code-block:: python3
-
-    from neumann.array import repeat
-    from polymesh.grid import gridQ4
-    from sigmaepsilon.solid import FemMesh
-    from sigmaepsilon.solid.model import Membrane
-    from sigmaepsilon.solid.fem.cells import Q4M
-    import numpy as np
-
-    size = Lx, Lz = (L, h)
-    shape = nx, nz = (200, 20)
-
-    gridparams = {
-        'size': size,
-        'shape': shape,
-        'origo': (0, 0),
-        'start': 0
-    }
-
-    coords2d, topo = gridQ4(**gridparams)
-    coords = np.zeros((coords2d.shape[0], 3))
-    coords[:, [0, 2]] = coords2d[:, :]
-
-    # fix points at x==0
-    cond = coords[:, 0] <= 0.001
-    ebcinds = np.where(cond)[0]
-    fixity = np.zeros((coords.shape[0], 6), dtype=bool)
-    fixity[ebcinds, :] = True
-    fixity[:, 3:] = True
-    fixity[:, 1] = True
-
-    # loads
-    loads = np.zeros((coords.shape[0], 6))
-    cond = (coords[:, 0] > (Lx-(1e-12))) & (np.abs(coords[:, 2] - (Lz/2)) < 1e-12)
-    nbcinds = np.where(cond)[0]
-    loads[nbcinds, 2] = F
-
-    membrane = {
-        '0': {
-            'hooke': Membrane.Hooke(E=E, nu=nu),
-            'angle': 0.,
-            'thickness': w
-        },
-    }
-    A = Membrane.from_dict(membrane).stiffness_matrix()
-
-    GlobalFrame = StandardFrame(dim=3)
-
-    # pointdata
-    pd = PointData(coords=coords, frame=GlobalFrame,
-                   loads=loads, fixity=fixity)
-
-    # celldata
-    frame = GlobalFrame.orient_new('Body', [np.pi/2, 0, 0], 'XYZ')
-    frames = repeat(frame.show(), topo.shape[0])
-    cd = Q4M(topo=topo, frames=frames)
-
-    # set up mesh and structure
-    mesh = FemMesh(pd, cd, model=A, frame=GlobalFrame)
-    structure = Structure(mesh=mesh)
-    structure.linsolve()
-
-    dofsol = structure.nodal_dof_solution()
-    sol_fem_2d_M = dofsol[:, 2].min()
-
-
-
-
-
-
-
-
-
-.. GENERATED FROM PYTHON SOURCE LINES 185-190
-
-.. code-block:: python3
-
-    mesh.config['pyvista', 'plot', 'scalars'] = dofsol[:, 2]
-    mesh.pvplot(notebook=True, jupyter_backend='static', window_size=(600, 400),
-                config_key=('pyvista', 'plot'), cmap='plasma')
-
-
-
-
-
-.. image-sg:: /auto_examples/images/sphx_glr_plot_0_console_002.png
-   :alt: plot 0 console
-   :srcset: /auto_examples/images/sphx_glr_plot_0_console_002.png
-   :class: sphx-glr-single-img
-
-
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    <PIL.Image.Image image mode=RGB size=600x400 at 0x1B6DCD94C40>
-
-
-
-
-.. GENERATED FROM PYTHON SOURCE LINES 191-198
-
-.. code-block:: python3
-
-    import k3d
-    from k3d.colormaps import matplotlib_color_maps
-
-    mesh.config['k3d', 'plot', 'attribute'] = dofsol[:, 2].astype(np.float32)
-    mesh.config['k3d', 'plot', 'side'] = 'both'
-
-
-
-
-
-
-
-
-
-.. GENERATED FROM PYTHON SOURCE LINES 199-201
-
-.. code-block:: python3
-
-    mesh.to_k3d()
-
-
-
-
-
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    f:\github\sigmaepsilon\.venv\lib\site-packages\traittypes\traittypes.py:97: UserWarning: Given trait value dtype "float32" does not match required type "float32". A coerced copy has been created.
-      warnings.warn(
-
-    Plot(antialias=3, axes=['x', 'y', 'z'], axes_helper=1.0, axes_helper_colors=[16711680, 65280, 255], background_color=16777215, camera_animation=[], camera_fov=60.0, camera_mode='trackball', camera_pan_speed=0.3, camera_rotate_speed=1.0, camera_zoom_speed=1.2, fps=25.0, fps_meter=False, grid=[-1, -1, -1, 1, 1, 1], grid_color=15132390, height=512, label_color=4473924, lighting=1.5, manipulate_mode='translate', minimum_fps=20.0, mode='view', object_ids=[1885489153984, 1885489154512], screenshot_scale=2.0, snapshot_type='full')
-
-
-
-.. GENERATED FROM PYTHON SOURCE LINES 202-207
-
-.. code-block:: python3
-
-    scene = mesh.k3dplot(config_key=('k3d', 'plot'), color_map=matplotlib_color_maps.Rainbow,
-                 show_edges=True)
-
-
-
-
-
-
-
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    f:\github\sigmaepsilon\.venv\lib\site-packages\traittypes\traittypes.py:97: UserWarning: Given trait value dtype "float32" does not match required type "float32". A coerced copy has been created.
-      warnings.warn(
-
-
-
-
-.. GENERATED FROM PYTHON SOURCE LINES 208-210
-
-.. code-block:: python3
-
-    scene.display()
-
-
-
-
-
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    Plot(antialias=3, axes=['x', 'y', 'z'], axes_helper=1.0, axes_helper_colors=[16711680, 65280, 255], background_color=16777215, camera_animation=[], camera_fov=60.0, camera_mode='trackball', camera_pan_speed=0.3, camera_rotate_speed=1.0, camera_zoom_speed=1.2, fps=25.0, fps_meter=False, grid=[-1, -1, -1, 1, 1, 1], grid_color=15132390, height=512, label_color=4473924, lighting=1.5, manipulate_mode='translate', minimum_fps=20.0, mode='view', object_ids=[1885488303600, 1885488303984, 1885488303408], screenshot_scale=2.0, snapshot_type='full')
-    Output()
-
-
-
-
-.. GENERATED FROM PYTHON SOURCE LINES 211-212
-
-### Plate
-
-.. GENERATED FROM PYTHON SOURCE LINES 214-278
-
-.. code-block:: python3
-
-    from neumann.array import repeat
-    from polymesh.grid import gridQ9 as grid
-    from sigmaepsilon.solid.model import MindlinPlate as Model
-    from sigmaepsilon.solid.fem.cells import Q9P as Cell
-    from sigmaepsilon.solid import FemMesh
-    import numpy as np
-
-    size = Lx, Ly = (L, w)
-    shape = nx, ny = (200, 20)
-
-    gridparams = {
-        'size': size,
-        'shape': shape,
-        'origo': (0, 0),
-        'start': 0
-    }
-
-    coords2d, topo = grid(**gridparams)
-    coords = np.zeros((coords2d.shape[0], 3))
-    coords[:, :2] = coords2d[:, :]
-
-    # fix points at x==0
-    cond = coords[:, 0] <= 0.001
-    ebcinds = np.where(cond)[0]
-    fixity = np.zeros((coords.shape[0], 6), dtype=bool)
-    fixity[ebcinds, :] = True
-    fixity[:, :2] = True
-    fixity[:, -1] = True
-
-    # loads
-    loads = np.zeros((coords.shape[0], 6))
-    cond = (coords[:, 0] > (Lx-(1e-12))) & (np.abs(coords[:, 1] - (Ly/2)) < 1e-12)
-    nbcinds = np.where(cond)[0]
-    loads[nbcinds, 2] = F
-
-    model = {
-        '0': {
-            'hooke': Model.Hooke(E=E, nu=nu),
-            'angle': 0.,
-            'thickness': h
-        },
-    }
-    C = Model.from_dict(model).stiffness_matrix()
-
-    GlobalFrame = StandardFrame(dim=3)
-
-    # pointdata
-    pd = PointData(coords=coords, frame=GlobalFrame,
-                   loads=loads, fixity=fixity)
-
-    # celldata
-    frames = repeat(np.eye(3), topo.shape[0])
-    cd = Cell(topo=topo, frames=frames)
-
-    # set up mesh and structure
-    mesh = FemMesh(pd, cd, model=C, frame=GlobalFrame)
-    structure = Structure(mesh=mesh)
-
-    structure.linsolve()
-
-    dofsol = structure.nodal_dof_solution()
-    sol_fem_2d_P = dofsol[:, 2].min()
-
-
-
-
-
-
-
-
-
-.. GENERATED FROM PYTHON SOURCE LINES 279-280
-
-# 3d Solution
-
-.. GENERATED FROM PYTHON SOURCE LINES 282-344
-
-.. code-block:: python3
-
-    from sigmaepsilon.solid import Structure, PointData, FemMesh
-    from polymesh.space import StandardFrame
-    from sigmaepsilon.solid.fem.cells import H8 as Cell
-    from polymesh.grid import gridH8 as grid
-    from neumann.array import repeat
-    import numpy as np
-
-    size = Lx, Ly, Lz = (L, w, h)
-    shape = nx, ny, nz = (100, 10, 10)
-
-    gridparams = {
-        'size': size,
-        'shape': shape,
-        'origo': (0, 0, 0),
-        'start': 0
-    }
-
-    coords, topo = grid(**gridparams)
-
-    A = np.array([
-        [1, nu, nu, 0, 0, 0],
-        [nu, 1, nu, 0, 0, 0],
-        [nu, nu, 1, 0, 0, 0],
-        [0., 0, 0, (1-nu)/2, 0, 0],
-        [0., 0, 0, 0, (1-nu)/2, 0],
-        [0., 0, 0, 0, 0, (1-nu)/2]]) * (E / (1-nu**2))
-
-    # fix points at x==0
-    cond = coords[:, 0] <= 0.001
-    ebcinds = np.where(cond)[0]
-    fixity = np.zeros((coords.shape[0], 6), dtype=bool)
-    fixity[ebcinds, :] = True
-    fixity[:, 3:] = True
-
-    # unit vertical load at (Lx, Ly)
-    cond = (coords[:, 0] > (Lx-(1e-12))) & \
-        (np.abs(coords[:, 1] - (Ly/2)) < 1e-12) & \
-        (np.abs(coords[:, 2] - (Lz/2)) < 1e-12)
-    nbcinds = np.where(cond)[0]
-    loads = np.zeros((coords.shape[0], 6))
-    loads[nbcinds, 2] = F
-
-    GlobalFrame = StandardFrame(dim=3)
-
-    # pointdata
-    pd = PointData(coords=coords, frame=GlobalFrame,
-                   loads=loads, fixity=fixity)
-
-    # celldata
-    frames = repeat(GlobalFrame.show(), topo.shape[0])
-    cd = Cell(topo=topo, frames=frames)
-
-    # set up mesh and structure
-    mesh = FemMesh(pd, cd, model=A, frame=GlobalFrame)
-    structure = Structure(mesh=mesh)
-
-    structure.linsolve()
-    dofsol = structure.nodal_dof_solution()
-    structure.mesh.pointdata['x'] = coords + dofsol[:, :3]
-    sol_fem_3d = dofsol[:, 2].min()
-
-
-
-
-
-
-
-
-
-.. GENERATED FROM PYTHON SOURCE LINES 345-348
-
-.. code-block:: python3
-
-    sol_fem_3d, sol_fem_2d_P, sol_fem_2d_M, sol_fem_1d_B2, sol_exact
-
-
-
-
-
-
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-
-    (-0.20393830800010987, -182.83838483236008, -0.1914342040790926, -0.19047719057503856, -0.19047619047619047)
-
-
-
-.. GENERATED FROM PYTHON SOURCE LINES 349-354
-
-.. code-block:: python3
-
-    mesh.config['pyvista', 'plot', 'scalars'] = dofsol[:, 2]
-    mesh.pvplot(notebook=True, jupyter_backend='static', window_size=(600, 400),
-                config_key=('pyvista', 'plot'), cmap='plasma')
-
-
-
-
-
-.. image-sg:: /auto_examples/images/sphx_glr_plot_0_console_003.png
-   :alt: plot 0 console
-   :srcset: /auto_examples/images/sphx_glr_plot_0_console_003.png
-   :class: sphx-glr-single-img
-
-
-.. rst-class:: sphx-glr-script-out
-
- .. code-block:: none
-
-    <PIL.Image.Image image mode=RGB size=600x400 at 0x1B6FFE408B0>
-
-
-
-
-.. GENERATED FROM PYTHON SOURCE LINES 355-365
-
-.. code-block:: python3
-
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-    ax = fig.add_axes([0, 0, 1, 1])
-    labels = ['H8', 'Q4M', 'B2', 'BA']
-    values = [sol_fem_3d, sol_fem_2d_M, sol_fem_1d_B2, sol_exact]
-    ax.bar(labels, values)
-    plt.show()
-
-
-
-
-
-
-.. image-sg:: /auto_examples/images/sphx_glr_plot_0_console_004.png
-   :alt: plot 0 console
-   :srcset: /auto_examples/images/sphx_glr_plot_0_console_004.png, /auto_examples/images/sphx_glr_plot_0_console_004_2_0x.png 2.0x
-   :class: sphx-glr-single-img
-
+    <PIL.Image.Image image mode=RGB size=600x400 at 0x2758772B640>
 
 
 
@@ -629,9 +213,9 @@ Bernoulli solution
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 1 minutes  34.155 seconds)
+   **Total running time of the script:** ( 0 minutes  31.031 seconds)
 
-**Estimated memory usage:**  2608 MB
+**Estimated memory usage:**  238 MB
 
 
 .. _sphx_glr_download_auto_examples_plot_0_console.py:

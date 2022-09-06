@@ -23,6 +23,14 @@ Data Classes
 .. autoclass:: sigmaepsilon.solid.fem.cells.celldata.CellData
     :members:
 
+----------------------
+Finite Element Library
+----------------------
+
+.. autoclass:: sigmaepsilon.solid.fem.cells.elem.FiniteElement
+    :members:
+
+
 ------------------------
 Functions and Procedures
 ------------------------

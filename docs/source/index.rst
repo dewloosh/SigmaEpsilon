@@ -2,21 +2,27 @@
 **SigmaEpsilon** - Computational Mechanics in Python
 ====================================================
   
-Contents
---------
+.. include:: user_guide.md
+    :parser: myst_parser.sphinx_
 
 .. toctree::
     :maxdepth: 2
    
-    user_guide
     tutorials
 
-API
----
+.. toctree::
+    :maxdepth: 2
+    :glob:
+    :hidden:
+
+    auto_examples/index.rst
+
 
 .. toctree::
-    :maxdepth: 3
-   
+    :maxdepth: 2
+    :glob:
+    :hidden:
+
     api
    
 Indices and tables

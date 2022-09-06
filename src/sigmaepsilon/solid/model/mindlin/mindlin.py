@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+from typing import Tuple
 import numpy as np
+from numpy import ndarray
 from numpy.linalg import inv
 
 from ...material.hooke.utils import group_mat_params, get_iso_params
@@ -12,6 +14,9 @@ __all__ = ['MindlinShell']
 
 
 class MindlinShellLayer(Layer):
+    """
+    Helper object for the stress analysis of a layer of a shell.
+    """
 
     __loc__ = [-1., 0., 1.]
 
@@ -31,7 +36,7 @@ class MindlinShellLayer(Layer):
         self.sfx = None
         self.sfy = None
 
-    def material_stiffness_matrices(self):
+    def material_stiffness_matrices(self) -> Tuple[ndarray, ndarray]:
         """
         Returns and stores transformed material stiffness matrices.
         """
@@ -49,7 +54,7 @@ class MindlinShellLayer(Layer):
         self.C_45 = C_45
         return C_126, C_45
 
-    def rotation_matrices(self):
+    def rotation_matrices(self) -> Tuple[ndarray, ndarray]:
         """
         Produces transformation matrices T_126 and T_45.
         """
@@ -74,7 +79,7 @@ class MindlinShellLayer(Layer):
         #
         return T_126, T_45
 
-    def stiffness_matrix(self):
+    def stiffness_matrix(self) -> ndarray:
         """
         Returns the uncorrected stiffness contribution to the layer.
         """
@@ -119,6 +124,9 @@ class MindlinShellLayer(Layer):
 
 
 class MindlinPlateLayer(MindlinShellLayer):
+    """
+    Helper object for the stress analysis of a layer of a plate.
+    """
 
     def stiffness_matrix(self):
         """
@@ -136,6 +144,21 @@ class MindlinPlateLayer(MindlinShellLayer):
 
 
 class MindlinShell(Surface):
+    """
+    Helper object for the stress analysis of a shell.
+    
+    Example
+    -------
+    >>> from sigmaepsilon.solid.model import MindlinShell as Model
+    >>> model = {
+    >>>     '0' : {
+    >>>         'hooke' : Model.Hooke(E=2100000, nu=0.3),
+    >>>         'angle' : 0., 
+    >>>         'thickness' : 0.1
+    >>>         },
+    >>>     }
+    >>> C = Model.from_dict(model).stiffness_matrix()
+    """
     
     __layerclass__ = MindlinShellLayer
 
@@ -144,6 +167,27 @@ class MindlinShell(Surface):
         
     @classmethod    
     def Hooke(cls, *args, symbolic=False, **kwargs):
+        """
+        Returns a Hooke matrix appropriate for shells.
+        
+        Parameters
+        ----------
+        symbolic : bool, Optional
+            If Truem a symbolic matrix is returned.
+        
+        Returns
+        -------
+        Union[sy.Matrix, np.ndarray]
+            The matrix in symbolic or numeric form.
+            
+        Examples
+        --------
+        >>> from sigmaepsilon.solid.model import MindlinShell as Model
+        >>> Model.Hooke(E=2100000, nu=0.3)
+        
+        >>> Model.Hooke(symbolic=True)
+        
+        """
         if symbolic:
             S = smat_sym_ortho_3d()
             S.row_del(2)
@@ -162,6 +206,15 @@ class MindlinShell(Surface):
             return np.linalg.inv(S)
 
     def stiffness_matrix(self):
+        """
+        Returns the stiffness matrix of the shell.
+                
+        Returns
+        -------
+        ndarray
+            The ABDS matrix of the shell.
+            
+        """
         ABDS = super().stiffness_matrix()
         layers = self.layers()
         A11 = ABDS[0, 0]
@@ -241,8 +294,32 @@ class MindlinShell(Surface):
 
 
 class MindlinPlate(MindlinShell):
+    """
+    Helper object for the stress analysis of a membrane.
+    
+    Example
+    -------
+    >>> from sigmaepsilon.solid.model import MindlinPlate as Model
+    >>> model = {
+    >>>     '0' : {
+    >>>         'hooke' : Model.Hooke(E=2100000, nu=0.3),
+    >>>         'angle' : 0., 
+    >>>         'thickness' : 0.1
+    >>>         },
+    >>>     }
+    >>> C = Model.from_dict(model).stiffness_matrix()
+    """
     
     def stiffness_matrix(self):
+        """
+        Returns the stiffness matrix of the plate.
+                
+        Returns
+        -------
+        ndarray
+            The ABDS matrix of the plate.
+            
+        """
         ABDS_ = super().stiffness_matrix()
         ABDS = np.zeros([5, 5])
         ABDS[:3, :3] = ABDS_[3:6, 3:6]

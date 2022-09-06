@@ -1,0 +1,39 @@
+
+
+Examples using ``sigmaepsilon.solid.fourier.RectangularPlate.solve``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+.. start-sphx-glr-thumbnails
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbnails">
+
+
+.. raw:: html
+
+    <div class="sphx-glr-thumbcontainer" tooltip="Navier&#x27;s Solution to Simply-Supported Plates">
+
+.. only:: html
+
+  .. image:: /auto_examples/images/thumb/sphx_glr_plot_1_Navier_thumb.png
+    :alt: Navier's Solution to Simply-Supported Plates
+
+  :ref:`sphx_glr_auto_examples_plot_1_Navier.py`
+
+.. raw:: html
+
+      <div class="sphx-glr-thumbnail-title">Navier's Solution to Simply-Supported Plates</div>
+    </div>
+
+
+.. only:: not html
+
+ * :ref:`sphx_glr_auto_examples_plot_1_Navier.py`
+
+.. raw:: html
+
+    </div>
+

@@ -63,7 +63,7 @@ def iso_mindlin_shell_bulk(C: ndarray, t: ndarray, k=5/6):
 @njit(nogil=True, parallel=True, cache=__cache)
 def rotation_matrices_126(angles: np.ndarray):
     """
-    Returns transformation matrices T_126 and T_45 for each angle.
+    Returns transformation matrmatrixices T_126 for each angle.
     Angles are expected in radians.
     """
     nL = len(angles)
@@ -85,7 +85,7 @@ def rotation_matrices_126(angles: np.ndarray):
 @njit(nogil=True, parallel=True, cache=__cache)
 def rotation_matrices_45(angles: np.ndarray):
     """
-    Returns transformation matrices T_126 and T_45 for each angle.
+    Returns transformation matrix T_45 for each angle.
     Angles are expected in radians.
     """
     nL = len(angles)
@@ -102,7 +102,7 @@ def rotation_matrices_45(angles: np.ndarray):
 @njit(nogil=True, parallel=True, cache=__cache)
 def material_stiffness_matrices_126(C_126: np.ndarray, angles: np.ndarray):
     """
-    Returns the components of the material stiffness matrices C_126 and C_45
+    Returns the components of the material stiffness matrix C_126
     in the global system.
     """
     nL = len(C_126)
@@ -118,7 +118,7 @@ def material_stiffness_matrices_126(C_126: np.ndarray, angles: np.ndarray):
 @njit(nogil=True, parallel=True, cache=__cache)
 def material_stiffness_matrices_45(C_45: np.ndarray, angles: np.ndarray):
     """
-    Returns the components of the material stiffness matrices C_126 and C_45
+    Returns the components of the material stiffness matrix C_45
     in the global system.
     """
     nL = len(C_45)
