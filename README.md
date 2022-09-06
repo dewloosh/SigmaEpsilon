@@ -4,7 +4,7 @@
 [![CircleCI](https://circleci.com/gh/dewloosh/SigmaEpsilon.svg?style=shield)](https://circleci.com/gh/dewloosh/SigmaEpsilon) 
 [![Documentation Status](https://readthedocs.org/projects/sigmaepsilon/badge/?version=latest)](https://sigmaepsilon.readthedocs.io/en/latest/?badge=latest) 
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PyPI](https://badge.fury.io/py/SigmaEpsilon.svg)](https://pypi.org/project/SigmaEpsilon) 
+[![PyPI](https://badge.fury.io/py/sigmaepsilon.svg)](https://pypi.org/project/sigmaepsilon) 
 
 
 > **Warning**
