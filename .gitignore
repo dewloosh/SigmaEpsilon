@@ -129,6 +129,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# docs
+docs/source/gen_modules/
+
 # topopt
 .src/sigmaepsilon/topopt/
 .dash/

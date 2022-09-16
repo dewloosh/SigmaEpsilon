@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../pyaxisvm"
+		},
+		{
+			"path": "../dewloosh/PolyMesh"
 		}
 	],
 	"settings": {}

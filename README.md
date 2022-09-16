@@ -1,4 +1,4 @@
-# **SigmaEpsilon** - High-Performance Computational Mechanics in Python
+# **SigmaEpsilon** - High-Performance Computational Solid Mechanics in Python
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/dewloosh/SigmaEpsilon/main?labpath=notebooksnotebooks%2Flpp.ipynb?urlpath=lab)
 [![CircleCI](https://circleci.com/gh/dewloosh/SigmaEpsilon.svg?style=shield)](https://circleci.com/gh/dewloosh/SigmaEpsilon) 

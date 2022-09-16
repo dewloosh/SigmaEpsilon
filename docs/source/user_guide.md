@@ -11,7 +11,7 @@ Once the enviroment is created, activate it via typing
 >>> .\venv_name\Scripts\activate
 ```
 
-`sigmaepsilon` can be installed (either in a virtual enviroment or globally) from PyPI using `pip` on Python >= 3.6:
+SigmaEpsilon can be installed (either in a virtual enviroment or globally) from PyPI using `pip` on Python >= 3.6:
 
 ```console
 >>> pip install sigmaepsilon
