@@ -1,0 +1,20 @@
+{
+    "materials": {
+        "steel": "hooke"
+    },
+    "mesh": {
+        "coordinates": "coords",
+        "layout": {
+            "stand": {
+                "topology": "topo",
+                "class": "TET4",
+                "material": "steel"
+            }
+        }
+    },
+    "pointdata": {
+        "loads": "nbc",
+        "fixity": "ebc",
+        "dofsol": "dofsol"
+    }
+}

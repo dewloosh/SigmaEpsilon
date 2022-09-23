@@ -18,6 +18,11 @@ class PointData(MeshPointData):
     fields : `dict`, Optional
         Every value of this dictionary is added to the dataset. Default is `None`.
         
+    **kwargs : dict, Optional
+        For every key and value pair where the value is a numpy array
+        with a matching shape (has entries for all points), the key
+        is considered as a field and the value is added to the database.
+        
     Examples
     --------
     
@@ -113,33 +118,40 @@ class PointData(MeshPointData):
 
     @property
     def fixity(self) -> ndarray:
+        """Returns fixity information as a 2d numpy array."""
         return self._wrapped[self.__class__._attr_map_['fixity']].to_numpy()
 
     @fixity.setter
     def fixity(self, value: ndarray):
+        """Sets essential boundary conditions."""
         assert isinstance(value, ndarray)
         self._wrapped[self.__class__._attr_map_['fixity']] = value
 
     @property
     def loads(self) -> ndarray:
+        """Returns the nodal load vector."""
         return self._wrapped[self.__class__._attr_map_['loads']].to_numpy()
 
     @loads.setter
     def loads(self, value: ndarray):
+        """Sets the nodal load vector."""
         assert isinstance(value, ndarray)
         self._wrapped[self.__class__._attr_map_['loads']] = value
         
     @property
     def mass(self) -> ndarray:
+        """Retruns nodal masses."""
         return self._wrapped[self.__class__._attr_map_['mass']].to_numpy()
 
     @mass.setter
     def mass(self, value: ndarray):
+        """Sets nodal masses."""
         assert isinstance(value, ndarray)
         self._wrapped[self.__class__._attr_map_['mass']] = value
         
     @property
     def dofsol(self) -> ndarray:
+        """Returns the displacement vector."""
         return self._wrapped[self.__class__._attr_map_['dofsol']].to_numpy()
 
     @dofsol.setter
@@ -149,6 +161,7 @@ class PointData(MeshPointData):
         
     @property
     def reactions(self) -> ndarray:
+        """Returns the vector of reaction forces."""
         return self._wrapped[self.__class__._attr_map_['reactions']].to_numpy()
 
     @reactions.setter

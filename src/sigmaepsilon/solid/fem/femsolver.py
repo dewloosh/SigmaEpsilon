@@ -42,7 +42,14 @@ complex and nonsymmetric
 
 """
 
-class FemSolver:
+class Solver:
+    """ 
+    Base Class for Solvers. This is only a placeholder at the moment 
+    for future work to be done.
+    """
+
+
+class Newton(Solver):
 
     def __init__(self, K, Kp, f, gnum, imap=None, regular=True, M=None, **config):
         self.K = K
@@ -66,11 +73,11 @@ class FemSolver:
         self.summary = []
         self._summary = LinkedDeepDict()
 
-    def encode(self) -> 'FemSolver':
+    def encode(self) -> 'Newton':
         if self.imap is None and not self.regular:
             Kp, gnum, f, imap = box_fem_data_bulk(self.Kp, self.gnum, self.f)
             self.imap = imap
-            return FemSolver(self.K, Kp, f, gnum, regular=True)
+            return Newton(self.K, Kp, f, gnum, regular=True)
         else:
             return self
 
@@ -152,7 +159,7 @@ class FemSolver:
                                      maxiter=5000, normalize=True, as_dense=False, 
                                      **kwargs):
         """
-        Returns the circular frequencies (\omega).
+        Returns the natural circular frequencies.
         """
         K = self.Ke + self.Kp
         if as_dense:
@@ -170,7 +177,7 @@ class FemSolver:
 
     def natural_cyclic_frequencies(self, *args, return_vectors=False, **kwargs):
         """
-        Returns total oscillations done by the body in unit time (f).
+        Returns total oscillations done by the body in unit time.
         """
         kwargs['return_vectors'] = True
         vals, vecs = self.natural_circular_frequencies(*args, **kwargs)
@@ -181,7 +188,7 @@ class FemSolver:
 
     def natural_periods(self, *args, return_vectors=False, **kwargs):
         """
-        Returns the times required to make a full cycle of vibration (T).
+        Returns the times required to make a full cycle of vibration.
         """
         kwargs['return_vectors'] = True
         vals, vecs = self.natural_cyclic_frequencies(*args, **kwargs)
@@ -233,6 +240,7 @@ class FemSolver:
         -------
         numpy array
             An array of effective mass values.
+            
         """
         if action is None:
             raise TypeError("No action is provided!")
@@ -243,7 +251,7 @@ class FemSolver:
         """
         Returns modal participation factors of several modes of vibration.
         
-        The parameters are forwarded to `FemSolver.effective_modal_masses`.
+        The parameters are forwarded to `Newton.effective_modal_masses`.
         
         Notes
         -----
@@ -255,7 +263,11 @@ class FemSolver:
             An array of values between 0 and 1.
         """
         m = self.effective_modal_masses(*args, **kwargs)
-        return m / np.sum(m)
+        if len(m.shape) == 2:
+            N = m.shape[-1]
+            return np.stack([m[:, i] / np.sum(m[:, i]) for i in range(N)], axis=1)
+        else:
+            return m / np.sum(m)
     
     def estimate_first_mode_of_vibration(self, *args, method='GA', **kwargs):
         pass
@@ -272,7 +284,7 @@ class FemSolver:
         
         Parameters
         ----------
-        action : Vector, Optional.
+        action : Vector, Optional
             An array specifying the direction of excitation. If not specified, the
             direction of action is estimated. Default is None.
                                 

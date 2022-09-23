@@ -3,6 +3,7 @@ from functools import partial
 from typing import Union
 from numpy import ndarray
 from scipy.sparse import spmatrix
+import numpy as np
 
 
 ArrayLike = Union[ndarray, spmatrix]
@@ -41,21 +42,21 @@ def effective_modal_masses(M: ArrayLike, action: ndarray, modes: ndarray):
     
     Parameters
     ----------
-    M : 2d array
+    M : numpy.ndarray
         Mass matrix as a NumPy or SciPy 2d float array.
         
-    action : Iterable
+    action : numpy.ndarray
         1d iterable, with a length matching the dof layout of the structure. 
     
-    modes : numpy array
+    modes : numpy.ndarray
         A matrix, whose columns are eigenmodes of interest.
     
     Returns
     -------
-    numpy array  
+    numpy.ndarray  
         1d float array of effective modal masses
         
     """
     foo = partial(effective_modal_mass, M, action)
     v = map(lambda i: modes[:, i], range(modes.shape[-1]))
-    return list(map(foo, v))
+    return np.array(list(map(foo, v)))

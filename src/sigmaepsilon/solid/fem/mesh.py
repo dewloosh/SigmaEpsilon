@@ -257,7 +257,7 @@ class FemMesh(PolyData):
         pd = self.root().pointdata
         dbkey = self.__class__._point_class_._attr_map_['mass']
         if dbkey in pd.fields:
-            d = pd.mass()
+            d = pd.mass
             if distribute:
                 v = self.volumes()
                 edata = list(

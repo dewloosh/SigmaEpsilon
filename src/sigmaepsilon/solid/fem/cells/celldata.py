@@ -7,13 +7,22 @@ from neumann.array import atleastnd, isboolarray, is1dfloatarray
 from polymesh.celldata import CellData as MeshCellData
 
 
-class CellData(MeshCellData):
-    
+class CellData(MeshCellData): 
     """
     A class to handle data related to the cells of a polygonal mesh.
 
     Technically this is a wrapper around an `awkward.Record` instance.
-
+    
+    Parameters
+    ----------
+    fields : `dict`, Optional
+        Every value of this dictionary is added to the dataset. Default is `None`.
+        
+    **kwargs : dict, Optional
+        For every key and value pair where the value is a numpy array
+        with a matching shape (has entries for all points), the key
+        is considered as a field and the value is added to the database.
+        
     """
 
     _attr_map_ = {
@@ -106,6 +115,7 @@ class CellData(MeshCellData):
         
     @property
     def nodes(self) -> ndarray:
+        """Returns the topology of the cells."""
         return self._wrapped[self.__class__._attr_map_['nodes']].to_numpy()
 
     @nodes.setter
@@ -115,6 +125,7 @@ class CellData(MeshCellData):
         
     @property
     def loads(self) -> ndarray:
+        """Returns body loads."""
         return self._wrapped[self.__class__._attr_map_['loads']].to_numpy()
 
     @loads.setter
@@ -124,6 +135,7 @@ class CellData(MeshCellData):
                 
     @property
     def density(self) -> ndarray:
+        """Returns densities."""
         return self._wrapped[self.__class__._attr_map_['density']].to_numpy()
 
     @density.setter
@@ -133,6 +145,7 @@ class CellData(MeshCellData):
         
     @property
     def activity(self) -> ndarray:
+        """Returns activity of the cells."""
         key = self.__class__._attr_map_['activity']
         if key in self._wrapped.fields:
             return self._wrapped[key].to_numpy()
@@ -141,11 +154,13 @@ class CellData(MeshCellData):
 
     @activity.setter
     def activity(self, value: ndarray):
+        """Sets the activity of the cells."""
         assert isinstance(value, ndarray)
         self._wrapped[self.__class__._attr_map_['activity']] = value
     
     @property
     def connectivity(self) -> ndarray:
+        """Returns the connectivity of the cells."""
         key = self.__class__._attr_map_['connectivity']
         if key in self._wrapped.fields:
             return self._wrapped[key].to_numpy()
@@ -154,5 +169,6 @@ class CellData(MeshCellData):
 
     @connectivity.setter
     def connectivity(self, value: ndarray):
+        """Sets the connectivity of the cells."""
         assert isinstance(value, ndarray)
         self._wrapped[self.__class__._attr_map_['connectivity']] = value

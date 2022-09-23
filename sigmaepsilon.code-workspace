@@ -4,10 +4,19 @@
 			"path": "."
 		},
 		{
+			"path": "../../Google Drive/dewloosh/working"
+		},
+		{
 			"path": "../pyaxisvm"
 		},
 		{
 			"path": "../dewloosh/PolyMesh"
+		},
+		{
+			"path": "../dewloosh/dewloosh-core"
+		},
+		{
+			"path": "../dewloosh/latexdocs"
 		}
 	],
 	"settings": {}
