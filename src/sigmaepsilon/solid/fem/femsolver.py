@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+from numpy import ndarray
+from scipy.sparse import spmatrix
 from scipy.sparse import coo_matrix as npcoo, csc_matrix as npcsc
 import time
+from typing import Union
 
 from linkeddeepdict import LinkedDeepDict
 
+from neumann.array import atleast2d
 from .utils import irows_icols_bulk
-from .linsolve import box_fem_data_bulk, solve_standard_form, unbox_lhs
-from .eigsolve import eig_sparse, eig_dense, calc_eig_res
-from .dyn import effective_modal_masses
+from .linsolve import (box_fem_data_bulk, solve_standard_form, 
+                       unbox_lhs)
+from .dyn import (effective_modal_masses, Rayleigh_quotient, 
+                  natural_circular_frequencies)
 
 """
 PARDISO MATRIX TYPES
@@ -49,9 +54,40 @@ class Solver:
     """
 
 
-class Newton(Solver):
+class FemSolver(Solver):
+    """
+    A class to perform solutions for linear elastostatics
+    and dynamics.
 
-    def __init__(self, K, Kp, f, gnum, imap=None, regular=True, M=None, **config):
+    Parameters
+    ----------
+    K : Union[:class:`scipy.sparse.spmatrix`, :class:`numpy.ndarray`]
+        The stiffness matrix.
+    
+    Kp : :class:`scipy.sparse.spmatrix`
+        The penalty stiffness matrix for the Courant-type penalization
+        of the essential boundary conditions.
+    
+    f : :class:`numpy.ndarray`
+        The load vector as an 1d or 2d numpy array.
+        
+    gnum : :class:`numpy.ndarray`
+        Global dof numbering as a numpy array.
+    
+    imap : Union[dict, :class:`numpy.ndarray`], Optional
+        Index mapper. Default is None.
+        
+    regular : bool, Optional
+        If Truem it is assumed that the structure is regular. Default is True.
+        
+    M : Union[:class:`scipy.sparse.spmatrix`, :class:`numpy.ndarray`], Optional
+        The mass matrix. Default is None.
+        
+    """
+
+    def __init__(self, K : Union[spmatrix, ndarray], Kp : spmatrix, f : ndarray, 
+                 gnum: ndarray, imap : Union[dict, ndarray]=None, regular:bool=True, 
+                 M:Union[spmatrix, ndarray]=None, **config):
         self.K = K
         self.M = M
         self.Kp = Kp
@@ -72,14 +108,69 @@ class Newton(Solver):
         self.READY = False
         self.summary = []
         self._summary = LinkedDeepDict()
+    
+    def elastic_stiffness_matrix(self, sparse=True, penalize=True) -> Union[ndarray, spmatrix]:
+        """
+        Returns the stiffness matrix.
+        
+        Parameters
+        ----------
+        sparse : bool, Optional
+            Set this true to get the result as a sparse 2d matrix, otherwise
+            a 3d dense matrix is retured with matrices for all the individual elements.
+            Default is True.
+            
+        penalize: bool, Optional
+            If this is True, what is returendd is the sum of the elastic stiffness matrix
+            plus the Courant-type penalty stiffness matrix of the essential boundary conditions.
+            Default is True.
+        
+        Returns
+        -------
+        Union[:class:`numpy.ndarray`, :class:`scipy.linalg.spmatrix`]
+            The stiffness matrix.
+            
+        """
+        if not sparse:
+            assert not penalize, "The penalty matrix is only available in sparse format."
+            return self.K
+        else:
+            if penalize:
+                return self.Ke + self.Kp
+            else:
+                return self.Ke
+            
+    def consistent_mass_matrix(self) -> spmatrix:
+        """
+        Returns the consistent mass matrix of the solver.
+        
+        Note
+        ----
+        The 'consistent' attribute means that when formulating
+        the element matrices, we use the same shape functions that we
+        use to formulate the stiffness matrix.
+        
+        Returns
+        -------
+        :class:`scipy.linalg.spmatrix
+            The mass matrix.
+            
+        """
+        return self.M
 
-    def encode(self) -> 'Newton':
+    def encode(self) -> 'FemSolver':
         if self.imap is None and not self.regular:
             Kp, gnum, f, imap = box_fem_data_bulk(self.Kp, self.gnum, self.f)
             self.imap = imap
-            return Newton(self.K, Kp, f, gnum, regular=True)
+            return FemSolver(self.K, Kp, f, gnum, regular=True)
         else:
             return self
+        
+    def decode(self):
+        assert not self.regular
+        N = self.gnum.max() + 1
+        self.u = unbox_lhs(self.core.u, self.imap, N=N)
+        self.r = unbox_lhs(self.core.r, self.imap, N=N)
 
     def preproc(self, force=False):
         _t0 = time.time()
@@ -136,6 +227,23 @@ class Newton(Solver):
         self._summary['postproc', 'time'] = _dt
 
     def linsolve(self, *args, solver=None, summary=False, **kwargs):
+        """
+        Performs a linear elastostatic analysis and returns the unknown
+        coefficients as a numpy array.
+        
+        Parameters
+        ----------
+        solver : str, Optional.
+        
+        Returns
+        -------
+        :class:`numpy.ndarray`
+            The vector of nodal displacements as a numpy array.
+        
+        dict, Optional
+            A summary about the solution, only if 'summary' is True.
+            
+        """
         self._summary = LinkedDeepDict()
 
         self.preproc()
@@ -148,97 +256,53 @@ class Newton(Solver):
             return self.u, self.summary
         else:
             return self.u
-
-    def decode(self):
-        assert not self.regular
-        N = self.gnum.max() + 1
-        self.u = unbox_lhs(self.core.u, self.imap, N=N)
-        self.r = unbox_lhs(self.core.r, self.imap, N=N)
-
-    def natural_circular_frequencies(self, *args, k=10, return_vectors=False,
-                                     maxiter=5000, normalize=True, as_dense=False, 
-                                     **kwargs):
-        """
-        Returns the natural circular frequencies.
-        """
-        K = self.Ke + self.Kp
-        if as_dense:
-            vals, vecs = eig_dense(K, *args, M=self.M, nmode='M',
-                                   normalize=normalize,
-                                   return_residuals=False, **kwargs)
-        else:
-            vals, vecs = eig_sparse(K, *args, k=k, M=self.M, nmode='M',
-                                    normalize=normalize, maxiter=maxiter,
-                                    return_residuals=False, **kwargs)
-        cfreqs = np.sqrt(vals)
-        if return_vectors:
-            return cfreqs, vecs
-        return cfreqs
-
-    def natural_cyclic_frequencies(self, *args, return_vectors=False, **kwargs):
-        """
-        Returns total oscillations done by the body in unit time.
-        """
-        kwargs['return_vectors'] = True
-        vals, vecs = self.natural_circular_frequencies(*args, **kwargs)
-        vals = vals / (2 * np.pi)
-        if return_vectors:
-            return vals, vecs
-        return vals
-
-    def natural_periods(self, *args, return_vectors=False, **kwargs):
-        """
-        Returns the times required to make a full cycle of vibration.
-        """
-        kwargs['return_vectors'] = True
-        vals, vecs = self.natural_cyclic_frequencies(*args, **kwargs)
-        vals = 1 / vals
-        if return_vectors:
-            return vals, vecs
-        return vals
-
-    def modes_of_vibration(self, *args, around=None, normalize=True, 
-                           return_residuals=False, **kwargs):
-        """
-        Returns eigenvalues and eigenvectors as a tuple of two numpy arrays.        
         
-        Notes
-        -----
-        Evalauated values are available as `obj.vmodes`.
-        
+    def natural_circular_frequencies(self, *args, return_vectors=False, **kwargs):
         """
-        if around is not None:
-            sigma = (np.pi * 2 * around)**2
-            kwargs['sigma'] = sigma
-        self.vmodes = self.natural_cyclic_frequencies(
-            *args, normalize=normalize, return_vectors=True, **kwargs)
-        if return_residuals:
-            vals, vecs = self.vmodes
-            K = self.Ke + self.Kp
-            r = calc_eig_res(K, self.M, vals, vecs)
-            return self.vmodes, r
-        return self.vmodes
-    
-    def effective_modal_masses(self, *args, action=None, modes=None, **kwargs):
-        """
-        Returns effective modal masses of several modes of vibration.
+        Returns natural circular frequencies. The call forwards all parameters
+        to :func:`sigmaepslion.solid.fem.dyn.natural_circular_frequencies`, 
+        see the docs there for the details. 
         
         Parameters
         ----------
-        action : Iterable
-            1d iterable, with a length matching the dof layout of the structure.
+        return_vectors : bool, Optional
+            To return eigenvectors or not. Default is False.
+                
+        See also
+        --------
+        :func:`sigmaepslion.solid.fem.dyn.natural_circular_frequencies`
         
-        modes : numpy array, Optional
-            A matrix, whose columns are eigenmodes of interest.
-            Default is None.
-            
-        Notes
-        -----
-        The sum of all effective masses equals the total mass of the structure.
-            
         Returns
         -------
-        numpy array
+        :class:`numpy.ndarray`
+            The natural circular frequencies.
+
+        :class:`numpy.ndarray`
+            The eigenvectors, only if 'return_vectors' is True.
+            
+        """
+        K = self.Ke + self.Kp
+        M = self.M
+        self.vmodes = natural_circular_frequencies(K, M, *args, return_vectors=True, **kwargs)
+        if return_vectors:
+            return self.vmodes
+        else:
+            return self.vmodes[0] 
+
+    def effective_modal_masses(self, *args, action=None, modes=None, **kwargs):
+        """
+        Returns effective modal masses of several modes of vibration. 
+        The call forwards all parameters to 
+        :func:`sigmaepslion.solid.fem.dyn.effective_modal_masses`, see the 
+        docs there for the details.
+        
+        See also
+        --------
+        :func:`sigmaepslion.solid.fem.dyn.effective_modal_masses`
+        
+        Returns
+        -------
+        :class:`numpy.ndarray`
             An array of effective mass values.
             
         """
@@ -247,53 +311,37 @@ class Newton(Solver):
         vecs = self.vmodes[1] if modes is None else modes
         return effective_modal_masses(self.M, action, vecs)
     
-    def modal_participation_factors(self, *args, **kwargs):
+    def Rayleigh_quotient(self, *args, u=None, f=None, **kwargs) -> ndarray:
         """
-        Returns modal participation factors of several modes of vibration.
+        Returns Rayleigh's quotient. The call forwards all parameters
+        to :func:`sigmaepslion.solid.fem.dyn.Rayleigh_quotient`, see the 
+        docs there for the details. If there are no actions specified, 
+        the function feeds it with the results from a linear elastic solution.
         
-        The parameters are forwarded to `Newton.effective_modal_masses`.
-        
-        Notes
-        -----
-        The sum of all modal participation factors equals 1.
+        See also
+        --------
+        :func:`sigmaepslion.solid.fem.dyn.Rayleigh_quotient`
         
         Returns
         -------
-        numpy array
-            An array of values between 0 and 1.
+        float or :class:`numpy.ndarray`
+            One or more floats.
+            
         """
-        m = self.effective_modal_masses(*args, **kwargs)
-        if len(m.shape) == 2:
-            N = m.shape[-1]
-            return np.stack([m[:, i] / np.sum(m[:, i]) for i in range(N)], axis=1)
-        else:
-            return m / np.sum(m)
-    
-    def estimate_first_mode_of_vibration(self, *args, method='GA', **kwargs):
-        pass
-    
-    def target_participation_factor(self, *args, action=None, **kwargs):
-        """
-        Returns the participation factor for the case when the structure
-        hangs like a console under its own weight. 
-        
-        The idea of the modal response spectrum analysis suggests, that for 
-        tall structures this shape should be close enough to the first mode of 
-        vibration, thus provides means to estimate the largest modal participation 
-        factor for practical scenarios.
-        
-        Parameters
-        ----------
-        action : Vector, Optional
-            An array specifying the direction of excitation. If not specified, the
-            direction of action is estimated. Default is None.
-                                
-        Returns
-        -------
-        float
-            The target modal participation factor.
-        """
-        pass
-    
-    def equivalent_nodal_forces(self, *args, action=None, **kwargs):
-        pass
+        M = self.M
+        if isinstance(f, ndarray) and u is None:
+            K = self.Ke + self.Kp
+            K.eliminate_zeros()
+            K.sum_duplicates()
+            u = atleast2d(solve_standard_form(K, f), back=True)
+        elif isinstance(u, ndarray) and f is None:
+            K = self.Ke + self.Kp
+            K.eliminate_zeros()
+            K.sum_duplicates()
+            f = K @ u
+        elif f is None and u is None:
+            assert self.u is not None, "A linear solution must be calculated prior to this."
+            u = self.u
+            return self.Rayleigh_quotient(u=u)    
+        return Rayleigh_quotient(M, u, f=f)
+                

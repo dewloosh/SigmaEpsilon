@@ -123,7 +123,7 @@ class BernoulliBase(BernoulliBeam):
         return values  # (nE, nP, 6, nRHS)
 
     @squeeze(True)
-    def mass_matrix(self, *args, lumping=None, alpha: float = 1/50,
+    def consistent_mass_matrix(self, *args, lumping=None, alpha: float = 1/50,
                     frmt='full', **kwargs):
         """
         lumping : 'direct', None or False
@@ -131,7 +131,7 @@ class BernoulliBase(BernoulliBeam):
         """
         dbkey = self.__class__._attr_map_['M']
         if is_none_or_false(lumping):
-            return super().mass_matrix(*args, squeeze=False, **kwargs)
+            return super().consistent_mass_matrix(*args, squeeze=False, **kwargs)
         if lumping == 'direct':
             dens = self.db.density
             try:

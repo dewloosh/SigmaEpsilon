@@ -18,8 +18,7 @@ from .cells.bernoulli3 import Bernoulli3
 class LineMesh(FemMesh):
     """
     A data class dedicated to 1d cells. It handles sections and other line 
-    related information, presets for plotting, etc.
-    
+    related information, plotting, etc.    
     """
     
     _cell_classes_ = {
@@ -62,6 +61,15 @@ class LineMesh(FemMesh):
             
     @property
     def section(self) -> BeamSection:
+        """
+        Returns the section of the cells or None if there is no associated data.
+
+        Returns
+        -------
+        :class:`BeamSection`
+            The section instance associated with the beams of the block.
+            
+        """
         if self._section is not None:
             return self._section
         else:
@@ -71,6 +79,28 @@ class LineMesh(FemMesh):
                 return self.parent.section
                                   
     def plot(self, *args, scalars=None, backend='plotly', scalar_labels=None, **kwargs):
+        """
+        Plots the line elements using one of the supported backends.
+        
+        Parameters
+        ----------
+        scalars : :class:`numpy.ndarray`, Optional
+            Data to plot. Default is None.
+            
+        backend : str, Optional
+            The backend to use for plotting. Available options are 'plotly' and 'vtk'.
+            Default is 'plotly'.
+            
+        scalar_labels : Iterable, Optional
+            Labels of the scalars in 'scalars'. Only if Plotly is selected as the backend.
+            Defaeult is None.
+        
+        Returns
+        -------
+        Any
+            A PyVista object or a Plotly figure.
+         
+        """
         if backend == 'vtk':
             return self.pvplot(*args, scalars=scalars, scalar_labels=scalar_labels, 
                                **kwargs)
@@ -86,7 +116,10 @@ class LineMesh(FemMesh):
             msg = "No implementation for backend '{}'".format(backend)
             raise NotImplementedError(msg)
         
-    def plot_dof_solution(self, *args, scalars=None, backend='plotly', case=0, **kwargs):
+    def plot_dof_solution(self, *args, backend='plotly', case=0, **kwargs):
+        """
+        Plots degrees of freedom solution.
+        """
         if backend == 'vtk':
             return self.pvplot(*args, **kwargs)
         elif backend == 'plotly':

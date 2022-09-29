@@ -6,16 +6,37 @@ from scipy.sparse.linalg import eigsh
 from scipy.linalg import eigh
 
 
-def calc_eig_res(A, M, eigvals, eigvecs):
+def calc_eig_res(A, M, eigvals, eigvecs) -> list:
     """
     Returns the residuals of the generalized eigenvalue problem
+    
+    .. math::
+        :nowrap:
 
-    ``A * x[i] = w[i] * M * x[i]``
+        \\begin{equation}
+            \\mathbf{A} \\mathbf{x} = \\mathbf{v} \\mathbf{M} \\mathbf{x},
+        \\end{equation}
     
     according to
     
-    ``res[i] = || (A - eigvals[i] * M) @ eigvecs[i] || / || A @ eigvecs[i] ||``
+    .. math::
+        :nowrap:
+
+        \\begin{equation}
+            r_i = \\frac{|| (\\mathbf{A} - \\lambda_i \\mathbf{M}) ||}{|| \\mathbf{A} \\lambda_i ||},
+        \\end{equation}
+        
+    Parameters
+    ----------
+    A : :class:`scipy.linalg.sparse.spmatrix`
+            
+    M : :class:`scipy.linalg.sparse.spmatrix`
     
+    Returns
+    -------
+    list
+        The residual for all eigenvectors.
+        
     """
     def rfunc(i): return norm((A - eigvals[i] * M) @ eigvecs[:, i]) / \
             norm(A @ eigvecs[:, i])
@@ -25,6 +46,21 @@ def calc_eig_res(A, M, eigvals, eigvecs):
 def normalize_eigenvectors(vecs, A):
     """
     Returns the eigenvectors normalized to the matrix `A`.
+    
+    Parameters
+    ----------
+    vecs : :class:`numpy.ndarray`
+        The eigenvectors as a 2d array, where each column is
+        an eigenvector.
+            
+    A : :class:`scipy.linalg.sparse.spmatrix` or :class:`numpy.ndarray`
+        A 2d array.
+    
+    Returns
+    -------
+    :class:`numpy.ndarray`
+        The normalized eigenvectors.
+        
     """
     N = vecs.shape[-1]
     def qprod(i): return vecs[:, i].T @ A @ vecs[:, i]
@@ -35,24 +71,44 @@ def normalize_eigenvectors(vecs, A):
 def eig_dense(A, *args, M=None, normalize=False, nmode='A',
               return_residuals=False, **kwargs):
     """
-    Returns all eigenvectors end eigenvalues for a dense Hermitian matrix. 
+    Returns all eigenvectors end eigenvalues for a dense square 
+    matrix, for the standard eigenvalue problem
+    
+    .. math::
+        :nowrap:
 
-    The values are calculated by calling scipy.linalg.eigs.
+        \\begin{equation}
+            \\mathbf{A} \\mathbf{x} = \\lambda \\mathbf{x},
+        \\end{equation}
+        
+    or if :math:`\\mathbf{M}` is specified, the general eigenvalue problem
+
+    .. math::
+        :nowrap:
+
+        \\begin{equation}
+            \\mathbf{A} \\mathbf{x} = \\lambda \\mathbf{M} \\mathbf{x},
+        \\end{equation}
+    
+    The values are calculated by calling :func:`scipy.linalg.eigs`.
     Extra keyword arguments are forwarded.
 
     Parameters
     ----------
-    nmode : str, Optional
-        'M' or 'G' for dynamic or stability analysis.
+    A : :class:`numpy.ndarray` or :class:`scipy.linalg.sparse.spmatrix`
+            
+    M : :class:`numpy.ndarray` or :class:`scipy.linalg.sparse.spmatrix`, Optional
+    
+    nmode : str, ['A' | 'M'], Optional
+        Contrtols the normalization of the eigenvectors. Default is 'A'.
 
-    normalize : bool, optional
+    normalize : bool, Optional
         Controls normalization of the eigenvectors. See the notes below. 
         Default is False.
-
-    Notes
-    -----
-    If `nmode` is 'M' and `normalize` is True, the eigenvectors are 
-    normalized to M.
+    
+    See also
+    --------
+    :func:`scipy.linalg.eigs`
 
     """
     A_ = A.todense() if isspmatrix_np(A) else A
@@ -77,26 +133,47 @@ def eig_dense(A, *args, M=None, normalize=False, nmode='A',
 def eig_sparse(A, *args, k=10, M=None, normalize=False, which='SM',
                maxiter=None, nmode='A', return_residuals=False, **kwargs):
     """
-    Returns eigenvectors end eigenvalues for a sparse Hermitian matrix. 
+    Returns all eigenvectors end eigenvalues for a sparse square matrix,
+    for the standard eigenvalue problem
+    
+    .. math::
+        :nowrap:
 
-    The values are calculated by calling scipy.sparse.linalg.eigsh, 
+        \\begin{equation}
+            \\mathbf{A} \\mathbf{x} = \\lambda \\mathbf{x},
+        \\end{equation}
+        
+    or if :math:`\\mathbf{M}` is specified, the general eigenvalue problem
+
+    .. math::
+        :nowrap:
+
+        \\begin{equation}
+            \\mathbf{A} \\mathbf{x} = \\lambda \\mathbf{M} \\mathbf{x},
+        \\end{equation}
+
+    The values are calculated by calling :func:`scipy.sparse.linalg.eigsh`, 
     which uses Arnoldi itrations. See references [1, 2] for more details. 
     Extra keyword arguments are forwarded.
 
     Parameters
     ----------
+    A : :class:`scipy.linalg.sparse.spmatrix`
+            
+    M : :class:`scipy.linalg.sparse.spmatrix`, Optional
+    
     k : int or str, Optional
         Number of eigendata to calculate. If `k` is a string, it must be 'all'. 
         Default is 10.
 
-    nmode : str, Optional
-        'M' or 'G' for dynamic or stability analysis.
+    nmode : str, ['A' | 'M'], Optional
+        Contrtols the normalization of the eigenvectors. Default is 'A'.
 
-    normalize : bool, optional
+    normalize : bool, Optional
         Controls normalization of the eigenvectors. See the notes below. 
         Default is False.
 
-    which : str, ['LM' | 'SM' | 'LR' | 'SR' | 'LI' | 'SI'], optional
+    which : str, ['LM' | 'SM' | 'LR' | 'SR' | 'LI' | 'SI'], Optional
         Which `k` eigenvectors and eigenvalues to find:
             'LM' : largest magnitude
             'SM' : smallest magnitude
@@ -105,11 +182,10 @@ def eig_sparse(A, *args, k=10, M=None, normalize=False, which='SM',
             'LI' : largest imaginary part
             'SI' : smallest imaginary part
         Default is 'SM'.
-
-    Notes
-    -----
-    If `nmode` is 'M' and `normalize` is True, the eigenvectors are 
-    normalized to M.
+    
+    See also
+    --------
+    :func:`scipy.sparse.linalg.eigsh`
 
     References
     ----------

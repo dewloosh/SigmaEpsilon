@@ -4,42 +4,9 @@ Finite Element Method
 
 This page includes all the classes and routines related to the finite element method.
 
-----------
-Data Model
-----------
 
-This is where I tell about the data model...
-
-------------
-Data Classes
-------------
-
-.. autoclass:: sigmaepsilon.solid.fem.mesh.FemMesh
-    :members: 
-
-.. autoclass:: sigmaepsilon.solid.fem.pointdata.PointData
-    :members:
-
-.. autoclass:: sigmaepsilon.solid.fem.cells.celldata.CellData
-    :members:
-
-----------------------
-Finite Element Library
-----------------------
-
-.. autoclass:: sigmaepsilon.solid.fem.cells.elem.FiniteElement
-    :members:
-
-
-------------------------
-Functions and Procedures
-------------------------
-
-.. automodule:: sigmaepsilon.solid.fem.utils
-    :members:
-
-Preprocessing
--------------
-
-.. automodule:: sigmaepsilon.solid.fem.preproc
-    :members:
+.. toctree::
+    api_fem_data
+    api_fem_lib
+    api_fem_solve
+    api_fem_utils

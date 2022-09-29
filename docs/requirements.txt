@@ -1,3 +1,4 @@
+pandoc
 myst_parser
 nbsphinx
 sphinx-gallery

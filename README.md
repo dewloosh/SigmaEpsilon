@@ -6,7 +6,6 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI](https://badge.fury.io/py/sigmaepsilon.svg)](https://pypi.org/project/sigmaepsilon) 
 
-
 > **Warning**
 > This package is under active development and in an **alpha stage**. Come back later, or star the repo to make sure you don’t miss the first stable release!
 
@@ -51,10 +50,12 @@ To run all tests, open up a console in the root directory of the project and typ
 
 ## **Dependencies**
 
+We use Numba's JIT compiler to speed up heavy computations, and it relies on the C++ redistributable package. It is likely already installed on your system, but if it is not, you can download it from Microsoft's website under "Other Tools, Frameworks, and Redistributables".
+
 must have 
   * `Numba`, `NumPy`, `SciPy`, `SymPy`, `awkward`
 
-stringly suggested
+strongly suggested
   * `PyVista`, `Plotly`, `matplotlib`, `sectionproperties`
 
 optional 
@@ -62,4 +63,14 @@ optional
 
 ## **License**
 
-This package is licensed under the MIT license.
+SigmaEpsilon is Copyright(C) 2022: Bence Balogh
+
+All rights reserved.
+
+This program is dual-licensed as follows:
+
+(1) You may use SigmaEpsilon as free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License, or (at your option) any later version.
+
+In this case the program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License (http://www.gnu.org/licenses/gpl.txt) for more details.
+
+(2) You may use SigmaEpsilon as part of a commercial software. In this case a proper agreement must be reached with the Authors based on a proper licensing contract.

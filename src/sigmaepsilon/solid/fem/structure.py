@@ -1,21 +1,33 @@
 # -*- coding: utf-8 -*-
+from typing import Union, Tuple
+
 import numpy as np
-from typing import Tuple
+from scipy.sparse import coo_matrix
 
 from linkeddeepdict import LinkedDeepDict
+
 from dewloosh.core.wrapping import Wrapper
+
 from neumann import squeeze
 from neumann.array import repeat
 
 from .mesh import FemMesh
-
-from .femsolver import Newton, Solver
+from .femsolver import FemSolver
 
 
 __all__ = ['Structure']
 
 
 class Structure(Wrapper):
+    """
+    A higher level class to manage solid structures.
+
+    Parameters
+    ----------
+    mesh : :class:`FemMesh`
+        A finite element mesh.
+
+    """
 
     def __init__(self, *args, mesh: FemMesh = None, constraints=None, **kwargs):
         if not isinstance(mesh, FemMesh):
@@ -27,36 +39,51 @@ class Structure(Wrapper):
         self.solver = 'scipy'
         self.Solver = None
         self._constraints = constraints
-        
+
     @property
-    def mesh(self):
+    def mesh(self) -> FemMesh:
         """
-        Returns the underlying mesh.
+        Returns the underlying mesh object.
         """
         return self._wrapped
 
     @mesh.setter
     def mesh(self, value: FemMesh):
+        """
+        Sets the underlying mesh object.
+        """
         self._wrapped = value
-    
+
     @property
-    def Solver(self) -> Newton:
-        return self._solver
-    
-    @Solver.setter
-    def Solver(self, value : Solver):
-        self._solver = value
+    def Solver(self) -> FemSolver:
+        """
+        Returns the solver object, which is initialized in the preprocessing stage.
+
+        See also
+        --------
+        :func:`preprocess`
         
+        Returns
+        -------
+        :class:`.femsolver.FemSolver`
+        
+        """
+        return self._solver
+
+    @Solver.setter
+    def Solver(self, value: Solver):
+        self._solver = value
+
     def initialize(self, *args, **kwargs) -> 'Structure':
         """
         Initializes the structure. This includes data initialization 
         for the cells and happens during the preprocessor. Returns the object 
         for continuation.
-        
+
         See also
         --------
         :func:`preprocess`
-        
+
         """
         self.summary = LinkedDeepDict()
         blocks = self.mesh.cellblocks(inclusive=True)
@@ -75,24 +102,40 @@ class Structure(Wrapper):
                 frames = repeat(block.frame.show(), nE)
                 block.celldata._wrapped['frames'] = frames
         return self
-    
+
     def preprocess(self, *args, **kwargs) -> 'Structure':
         """
         Initializes the database and converts the discription into standard form.
         Returns the object for continuation.
-        
+
         See also
         --------
         :func:`initialize`
         :func:`to_standard_form`
-        
+
         """
         self.initialize(*args, **kwargs)
-        #self.mesh.nodal_distribution_factors(store=True, key='ndf')  # sets mesh.celldata.ndf
+        # self.mesh.nodal_distribution_factors(store=True, key='ndf')  # sets mesh.celldata.ndf
         self.Solver = self.to_standard_form(*args, **kwargs)
         return self
+    
+    def process(self, *args, summary=False, **kwargs) -> 'Structure':
+        """
+        Performs a linear elastostatic solution and returns the structure
+        and returns the object for continuation.
 
-    def to_standard_form(self, *args, ensure_comp=False, solver=Newton, **kwargs) -> Solver:
+        Parameters
+        ----------
+        summary : bool, Optional
+            Appends related data to the summary. Default is False.
+
+        """
+        self.Solver.linsolve(*args, summary=True, **kwargs)
+        if summary:
+            self.summary['linsolve'] = self.Solver.summary[-1]
+        return self
+
+    def to_standard_form(self, *args, ensure_comp=False, solver=FemSolver, **kwargs) -> Solver:
         """
         Returns a solver of the problem in standard form. Creation of the solver happens
         during the preprocessing stage.
@@ -100,185 +143,120 @@ class Structure(Wrapper):
         mesh = self._wrapped
         f = mesh.load_vector()
         Kp_coo = mesh.penalty_matrix_coo(ensure_comp=ensure_comp, **kwargs)
-        K_bulk = mesh.stiffness_matrix(*args, sparse=False, **kwargs)
+        K_bulk = mesh.elastic_stiffness_matrix(*args, sparse=False, **kwargs)
         gnum = mesh.element_dof_numbering()
-        solvertype = solver if solver is not None else Newton
+        solvertype = solver if solver is not None else FemSolver
         return solvertype(K_bulk, Kp_coo, f, gnum, regular=False)
 
     def linsolve(self, *args, summary=False, **kwargs) -> 'Structure':
         """
         Performs a linear elastostatic calculation with pre- and 
-        post-processing
-        
+        post-processing.
+
         Parameters
         ----------
         summary : bool, Optional
-            Controls basic logging.
-            
-        Returns
-        -------
-        Structure
-        
+            Appends to the overall summary if True. This is available
+            as `obj.summary`. Default is False.
+
         """
         self.preprocess(*args, summary=summary, **kwargs)
         self.process(*args, summary=summary, **kwargs)
         return self.postprocess(*args, summary=summary, **kwargs)
 
-    def modes_of_vibration(self, *args, normalize=True, around=None, 
-                           distribute_nodal_masses=False, as_dense=False, 
-                           **kwargs) -> Tuple[np.ndarray, np.ndarray]:
-        """        
-        Calculates natural modes of vibration and the corresponding eigenvalue
-        for each mode.
+    def natural_circular_frequencies(self, *args, **kwargs) -> Tuple:
+        """
+        Returns natural circular frequencies. The call forwards all parameters
+        to :func:`sigmaepslion.solid.fem.dyn.natural_circular_frequencies`, 
+        see the docs there for the details. 
         
         Parameters
         ----------
-        normalize : bool, Optional
-            If True, the returned eigenvectors are normlized to the mass matrix.
-            Default is True.
-            
-        as_dense : bool, Optional
-            Controls whether the mass matrix is handles as a dense or a sparse matrix.
-            Default is False. 
-        
-        distribute_nodal_masses : bool, Optional
-            If True, nodal masses are distributed over the neighbouring elements
-            and handled similary to self-weight. Default is False. 
-            Only when `mode` is 'M'. Default is False.
-            
-        mode : str, Optional
-            Mode of normalization, if 'normalize' is `True`. Default is 'M', which
-            means normalization to the mass matrix.
-        
-        around : float, Optional
-            A target (possibly an approximation) value around which eigenvalues
-            are searched. Default is None. 
-        
-        Returns
-        -------
-        np.ndarray
-            Eigenvalues (natural circular frequencies).
-        
-        np.ndarray
-            Eigenvectors (natural modes of vibrations).
-            
-        """
-        M = self.mesh.mass_matrix(distribute=distribute_nodal_masses)
-        self.Solver.M = M
-        if around is not None:
-            assert not as_dense
-            sigma = (np.pi * 2 * around)**2
-            kwargs['sigma'] = sigma
-        return self.Solver.modes_of_vibration(*args, normalize=normalize, 
-                                              as_dense=as_dense, **kwargs)
-        
-    def effective_modal_masses(self, *args, action=None, **kwargs) -> np.ndarray:
-        """
-        Returns effective modal masses of several modes of vibration.
-        
-        Parameters
-        ----------
-        action : Iterable
-            1d iterable, with a length matching the dof layout of the structure.
-            
-        Notes
-        -----
-        1) The sum of all effective masses equals the total mass of the structure.
-        2) This requires natural modes of vibration to be calculated.
-             
-        Returns
-        -------
-        numpy array
-            An array of effective mass values.
-            
+        return_vectors : bool, Optional
+            To return eigenvectors or not. Default is False.
+                
         See also
         --------
-        :func:`modes_of_vibration`
+        :func:`sigmaepslion.solid.fem.dyn.natural_circular_frequencies`
         
-        """
-        return self.Solver.effective_modal_masses(*args, action=action, **kwargs)
-    
-    def modal_participation_factors(self, *args, action=None, **kwargs) -> np.ndarray:
-        """
-        Returns modal participation factors for several actions.
-        
-        Parameters
-        ----------
-        action : Iterable
-            1d iterable, with a length matching the dof layout of the structure.
-            
-        Notes
-        -----
-        1) This requires natural modes of vibration to be calculated.
-             
         Returns
         -------
-        numpy array
-            An array of effective mass values.
-            
-        See also
-        --------
-        :func:`modes_of_vibration`
-        
-        """
-        return self.Solver.modal_participation_factors(*args, action=action, **kwargs)
-    
-    def process(self, *args, summary=False, **kwargs):
-        """
-        Performs a linear elastostatic solution and returns the structure.
-        
-        Parameters
-        ----------
-        summary : bool, Optional
-            Appends related data to the summary. Default is False.
+        :class:`numpy.ndarray`
+            The natural circular frequencies.
+
+        :class:`numpy.ndarray`
+            The eigenvectors, only if 'return_vectors' is True.
             
         """
-        self.Solver.linsolve(*args, summary=True, **kwargs)
-        if summary:
-            self.summary['linsolve'] = self.Solver.summary[-1]
-        return self
-        
-    def stiffness_matrix(self, *args, **kwargs) -> np.ndarray:
-        """
-        Returns the stiffness matrix of the structure.
-        """
-        return self.mesh.stiffness_matrix(*args, **kwargs)
+        if self.Solver.M is not None:
+            self.consistent_mass_matrix()
+        return self.Solver.natural_circular_frequencies(*args, **kwargs)
     
-    def penalty_stiffness_matrix(self, *args, **kwargs):
+    def elastic_stiffness_matrix(self, *args, **kwargs) -> Union[np.ndarray, coo_matrix]:
+        """
+        Returns the elastic stiffness matrix of the structure in dense or sparse format.
+        
+        Returns
+        -------
+        :class:`numpy.ndarray` or :class:`scipy.sparse.coo_matrix`
+        
+        """
+        return self.mesh.elastic_stiffness_matrix(*args, **kwargs)
+
+    def penalty_stiffness_matrix(self, *args, **kwargs) -> coo_matrix:
         """
         Returns the penalty stiffness matrix of the structure.
+        
+        Returns
+        -------
+        :class:`scipy.sparse.coo_matrix`
+        
         """
         return self.mesh.penalty_matrix_coo(*args, **kwargs)
-    
-    def mass_matrix(self, *args, **kwargs):
+
+    def consistent_mass_matrix(self, *args, **kwargs) -> Union[np.ndarray, coo_matrix]:
         """
-        Returns the mass matrix of the structure.
+        Returns the consistent mass matrix of the structure.
+        
+        Notes
+        -----
+        If there are nodal masses defined, only sparse output is 
+        available at the moment.
+        
+        Returns
+        -------
+        :class:`numpy.ndarray` or :class:`scipy.sparse.coo_matrix`
+        
         """
-        return self.mesh.mass_matrix(*args, **kwargs)
+        M = self.mesh.consistent_mass_matrix(*args, **kwargs)
+        if self.Solver is not None:
+            if self.Solver.M is None:
+                self.Solver.M = M
+        return M
 
     @squeeze(True)
-    def nodal_dof_solution(self, *args, flatten=False, squeeze=True, **kwargs):
+    def nodal_dof_solution(self, *args, flatten=False, squeeze=True, **kwargs) -> np.ndarray:
         """
         Returns the vector of nodal displacements.
         """
         return self.mesh.nodal_dof_solution(*args, flatten=flatten, squeeze=False, **kwargs)
 
     @squeeze(True)
-    def reaction_forces(self, *args, flatten=False, squeeze=True, **kwargs):
+    def reaction_forces(self, *args, flatten=False, squeeze=True, **kwargs) -> np.ndarray:
         """
         Returns the vector of reaction forces.
         """
         return self.mesh.reaction_forces(*args, flatten=flatten, squeeze=False, **kwargs)
 
     @squeeze(True)
-    def nodal_forces(self, *args, flatten=False, squeeze=True, **kwargs):
+    def nodal_forces(self, *args, flatten=False, squeeze=True, **kwargs) -> np.ndarray:
         """
         Returns the vector of nodal forces.
         """
         return self.mesh.nodal_forces(*args, flatten=flatten, squeeze=False, **kwargs)
 
     @squeeze(True)
-    def internal_forces(self, *args, flatten=False, squeeze=True, **kwargs):
+    def internal_forces(self, *args, flatten=False, squeeze=True, **kwargs) -> np.ndarray:
         """
         Returns the internal forces for one or more elements.
         """
@@ -287,7 +265,7 @@ class Structure(Wrapper):
     def postprocess(self, *args, summary=True, cleanup=False, **kwargs) -> 'Structure':
         """
         Does basic postprocessing. This is triggered automatically during 
-        solution. Returns the object for continuation.
+        linear solution. Returns the object for continuation.
         """
         mesh = self._wrapped
         nDOFN = mesh.NDOFN
@@ -321,11 +299,12 @@ class Structure(Wrapper):
 
         # clean up
         _ = self.cleanup() if cleanup else None
-           
+
         return self
 
-    def cleanup(self):
+    def cleanup(self) -> 'Structure':
         """
-        Destroys the solver.
+        Destroys the solver and returns the object for continuation.
         """
         self.Solver = None
+        return self

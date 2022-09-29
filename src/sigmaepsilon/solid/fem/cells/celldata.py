@@ -9,12 +9,40 @@ from polymesh.celldata import CellData as MeshCellData
 
 class CellData(MeshCellData): 
     """
-    A class to handle data related to the cells of a polygonal mesh.
-
-    Technically this is a wrapper around an `awkward.Record` instance.
+    A subclass of :class:`polymesh.celldata.CellData`to handle data related to the cells 
+    of a polygonal mesh. This class does not need to be used directly, but rather serves 
+    as a base class for finite element classes.
     
     Parameters
     ----------
+    activity : :class:`numpy.ndarray`, Optional
+        1d boolean array describing the activity of the elements.
+        
+    density : :class:`numpy.ndarray`, Optional
+        1d float array describing the density as mass per unit volume if areas
+        are provided, mass per unit length othervise.
+        Default is None.
+        
+    loads : :class:`numpy.ndarray`, Optional
+        2d float array of body loads for each cell and load component.
+        Default is None.
+        
+    strain_loads : :class:`numpy.ndarray`, Optional
+        2d float array of body strain loads for each cell and strain component.
+        Default is None.
+        
+    t or thickness : :class:`numpy.ndarray`, Optional
+        1d float array of thicknesses. Only for 2d cells.
+        Default is None.
+        
+    connectivity : :class:`numpy.ndarray`, Optional
+        3d boolean array of element connectivity.
+        Default is None.
+        
+    areas : :class:`numpy.ndarray`, Optional
+        1d float array of cross sectional areas. Only for 1d cells.
+        Default is None.
+        
     fields : `dict`, Optional
         Every value of this dictionary is added to the dataset. Default is `None`.
         
@@ -22,6 +50,29 @@ class CellData(MeshCellData):
         For every key and value pair where the value is a numpy array
         with a matching shape (has entries for all points), the key
         is considered as a field and the value is added to the database.
+        
+    See also
+    --------
+    :class:`polymesh.celldata.CellData`
+    :class:`sigmaepsilon.solid.fem.pointdata.PointData`
+        
+    Example
+    -------
+    All cell types are subclasses of :class:`CellData`
+    
+    >>> from sigmaepsilon.solid.fem.cells import B2 as Beam
+    >>> import numpy as np
+    >>> random_topo = np.zeros((10, 2), dtype=int)  # random erroneous topology
+    >>> random_data = np.random.rand(10, 3)
+    >>> celldata = Beam(topo=random_topo, random_field = random_data)
+    
+    Then, the attached data is available as either
+    
+    >>> celldata['random_data']
+    
+    or 
+    
+    >>> celldata.random_data
         
     """
 

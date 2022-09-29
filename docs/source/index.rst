@@ -7,16 +7,10 @@
 
 .. toctree::
     :maxdepth: 2
-   
-    tutorials
-
-.. toctree::
-    :maxdepth: 2
     :glob:
     :hidden:
 
     auto_examples/index.rst
-
 
 .. toctree::
     :maxdepth: 2

@@ -2,7 +2,8 @@
 import numpy as np
 from numpy import ndarray
 import numpy as np
-from scipy.sparse import coo_matrix as coo, spmatrix, isspmatrix as isspmatrix_np
+from scipy.sparse import coo_matrix as coo, spmatrix, \
+    isspmatrix as isspmatrix_np
 from scipy.sparse.linalg import spsolve, spsolve_triangular, splu
 from typing import Union
 from time import time
@@ -11,7 +12,8 @@ from time import time
 from linkeddeepdict import LinkedDeepDict
 from neumann.array import matrixform
 
-from .imap import index_mappers, box_spmatrix, box_rhs, unbox_lhs, box_dof_numbering
+from .imap import index_mappers, box_spmatrix, box_rhs, unbox_lhs, \
+    box_dof_numbering
 from .preproc import fem_coeff_matrix_coo
 
 from ..config import __haspardiso__
@@ -27,6 +29,53 @@ arraylike = Union[ndarray, spmatrix]
 def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack=True, summary=False,
                         permc_spec='COLAMD', solver=None, mtype=11, assume_regular=False,
                         **kwargs):
+    """
+    Solves the discrete equilibrium equations :math:`\mathbf{K} \mathbf{u} = \mathbf{f}`
+    for :math:`\mathbf{u}`.
+    
+    Parameters
+    ----------
+    K : :class:`scipy.sparse.spmatrix`
+        The stiffness matrix in coo format.
+        
+    f : :class:`numpy.ndarray`
+        The vector of nodal loads.
+        
+    use_umfpack : bool, Optional
+        Only if solver is 'scipy'. See the documentation :func:`scipy.sparse.linalg.spsolve` 
+        for further meaning. Default is True.
+        
+    permc_spec : str, Optional
+        Only if solver is 'scipy'. See the documentation :func:`scipy.sparse.linalg.spsolve` 
+        for further meaning.
+        
+    solver : str, Optional
+        The solver to use. Currently supported options are 'scipy' and 'pardiso'. If nothing is
+        specified, we prefer 'pardiso' if it is around, otherwise the solver falls back to SciPy.
+    
+    mtype : int, Optional
+        Matrix type indicator for the pypardiso solver. The Default value is 11, which denassumes
+        a real and nonsymmetric coefficient matrix.
+    
+    assume_regular : bool, Optional
+        If True, it is assumed that the input is according to the standard form, otherwise
+        some preprocessing on the inputs is performed.
+    
+    Returns
+    -------
+    :class:`numpy.ndarray`
+        The solution as a numpy array. The returned array has the same shape as `f`.
+        
+    dict, Optional
+        A summary including the most important characteristics of the solution process.
+        Only if 'summary' is True.
+        
+    See also
+    --------
+    :func:`scipy.sparse.linalg.spsolve`
+    :func:`scipy.sparse.linalg.splu`
+        
+    """
     solver = 'pardiso' if __haspardiso__ else 'scipy' if solver is None else solver
     if solver == 'pardiso' and not __haspardiso__:
         raise ImportError(

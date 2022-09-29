@@ -9,12 +9,23 @@ from polymesh.pointdata import PointData as MeshPointData
 
 class PointData(MeshPointData):
     """
-    A class to handle data related to the pointcloud of a finite element mesh.
-
-    Technicall this is a wrapper around an :class:`awkward.Record` instance.
+    A subclass of :class:`polymesh.pointdata.PointData` to handle data related 
+    to the pointcloud of a finite element mesh.
 
     Parameters
     ----------
+    fixity : :class:`numpy.ndarray`, Optional
+        A 2d boolean or float array describing essential boundary conditions.
+        Default is None.
+        
+    loads : :class:`numpy.ndarray`, Optional
+        A 2d or 3d float array of nodal loads.
+        Default is None.
+        
+    mass : :class:`numpy.ndarray`, Optional
+        2d array of nodal masses for each degree of freedom of a node.
+        Default is None.
+        
     fields : `dict`, Optional
         Every value of this dictionary is added to the dataset. Default is `None`.
         
@@ -62,6 +73,7 @@ class PointData(MeshPointData):
 
     See also
     --------
+    :class:`sigmaepsilon.solid.fem.cells.celldata.CellData`
     :class:`polymesh.PolyData`
     :class:`polymesh.CellData`
     :class:`awkward.Record`
