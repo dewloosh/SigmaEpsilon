@@ -132,6 +132,8 @@ dmypy.json
 # docs
 docs/source/gen_modules/
 
+notebooks/*.pdf
+
 # topopt
-.src/sigmaepsilon/topopt/
+#.src/sigmaepsilon/topopt/
 .dash/
