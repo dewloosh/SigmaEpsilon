@@ -7,7 +7,7 @@ pythreejs
 pandas
 plotly
 tetgen
-
+pyarrow
 
 pyqt5
 pyvistaqt

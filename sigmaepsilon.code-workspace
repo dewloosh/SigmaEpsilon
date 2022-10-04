@@ -4,8 +4,14 @@
 			"path": "."
 		},
 		{
-			"path": "F:/My Drive/dewloosh/working"
-		}
+			"path": "../dewloosh/PolyMesh"
+		},
+		{
+			"path": "../dewloosh/Neumann"
+		},
+		{
+			"path": "../../Google Drive/dewloosh/working"
+		},
 	],
 	"settings": {}
 }

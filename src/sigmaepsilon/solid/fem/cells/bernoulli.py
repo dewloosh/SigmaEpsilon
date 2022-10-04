@@ -14,6 +14,7 @@ from .utils.bernoulli import (
     lumped_mass_matrices_direct as dlump
 )
 
+from .meta import MetaFiniteElement
 from ..model.beam import BernoulliBeam, calculate_shear_forces
 
 
@@ -23,7 +24,50 @@ __all__ = ['BernoulliBase']
 ArrayOrFloat = Union[ndarray, float]
 
 
+class MetaBernoulli(MetaFiniteElement):
+    """
+    Python metaclass for safe inheritance. Throws a TypeError
+    if a method tries to shadow a definition in any of the base
+    classes.
+    """
+
+    def __init__(self, name, bases, namespace, *args, **kwargs):
+        super().__init__(name, bases, namespace, *args, **kwargs)
+
+    def __new__(metaclass, name, bases, namespace, *args, **kwargs):     
+        cls = super().__new__(metaclass, name, bases, namespace, *args, **kwargs)
+        
+        if hasattr(cls, 'shpfnc'):
+            if cls.shpfnc is None and isinstance(cls.NNODE, int):
+                # generate functions
+                N = cls.NNODE
+    
+    @classmethod
+    def generate_functions(cls, N):
+        pass    
+        
+
+class ABCBernoulli(metaclass=MetaBernoulli):
+    """Helper class."""
+    __slots__ = ()
+    dofs = ()
+    dofmap = ()  
+
+
 class BernoulliBase(BernoulliBeam):
+    """
+    Skeleton class for 1d finite elements, whose bending behaviour
+    is governed by the Bernoulli theory. The implementations covered
+    by this class are independent of the number of nodes of the cells.
+    Specification of an actual finite element consists of specifying class
+    level attributes only.
+    
+    See also
+    --------
+    :class:`sigmaepsilon.solid.fem.cells.bernoulli2.Bernoulli2`
+    :class:`sigmaepsilon.solid.fem.cells.bernoulli3.Bernoulli3`
+    
+    """
 
     qrule: str = None
     quadrature: dict = None

@@ -206,6 +206,4 @@ class ABCFiniteElement(metaclass=MetaFiniteElement):
     """
     __slots__ = ()
     dofs = ()
-    dofmap = ()
-    
-    
+    dofmap = ()  
