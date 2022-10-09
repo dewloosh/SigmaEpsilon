@@ -5,6 +5,7 @@ from sectionproperties.pre.pre import DEFAULT_MATERIAL, Material
 from sectionproperties.pre.geometry import Geometry
 from sectionproperties.pre.library.steel_sections import circular_hollow_section as CHS
 from sectionproperties.pre.library.steel_sections import rectangular_hollow_section as RHS
+from sectionproperties.pre.library.primitive_sections import rectangular_section as RS
 from sectionproperties.pre.library.steel_sections import i_section
 from sectionproperties.pre.library.steel_sections import tapered_flange_i_section as TFI
 from sectionproperties.pre.library.steel_sections import channel_section as PFC
@@ -127,6 +128,11 @@ def get_section(shape, *args, mesh_params: dict = None, material: Material = Non
     if shape == 'CHS':
         geom = CHS(d=section_params['d'], t=section_params['t'],
                    n=section_params.get('n', 64), material=material)
+        ms = section_params['t']
+    elif shape == 'RS':
+        keys = ['d', 'b']
+        params = getallfromkwargs(keys, **section_params)
+        geom = RS(material=material, **params)
         ms = section_params['t']
     elif shape == 'RHS':
         keys = ['d', 'b', 't', 'n_out', 'n_r']

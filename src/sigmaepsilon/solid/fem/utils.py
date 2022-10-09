@@ -581,21 +581,25 @@ def constrain_local_stiffness_bulk(K: ndarray, factors: ndarray):
     """
     Returns the condensed stiffness matrices representing constraints
     on the internal forces of the elements (eg. hinges).
-    
-    Currently this solution is only able to handle two states, being total free 
+        
+    Currently this solution is only able to handle two states, being totally free 
     and being fully constrained. The factors are expected to be numbers between
     0 and 1, where dofs with a factor > 0.5 are assumed to be the constrained ones.
+    
+    Note
+    ----
+    numba-jitted in nopython mode
     
     Parameters
     ----------
     K : numpy.ndarray
-        3d float array, the stiffness matrix for several elements of the same kind.
+        3d float array, the stiffness matrices of several elements of the same kind.
         
     factors: numpy.ndarray
         2d float array of connectivity facotors for each dof of every element.
                     
-    Notes
-    -----
+    Note
+    ----
     This solution applies the idea of static condensation.
     
     Returns
@@ -604,7 +608,7 @@ def constrain_local_stiffness_bulk(K: ndarray, factors: ndarray):
         The constrained stiffness matrices with the same shape as `K`.
         
     """
-    nE, nV, _ = K.shape
+    nE, _, _ = K.shape
     res = np.zeros_like(K)
     for iE in prange(nE):
         b = np.where(factors[iE] > 0.5)[0]

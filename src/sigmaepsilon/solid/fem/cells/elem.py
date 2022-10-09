@@ -412,7 +412,7 @@ class FiniteElement(FemCellData, FemMixin):
 
         Returns
         -------
-        numpy.ndarray or dict
+        :class:`numpy.ndarray` or :class:`dict`
             (nE, nP * nSTRE, nRHS) if flatten else (nE, nP, nSTRE, nRHS), 
             where nE is the number of cells, nP the number of evaluation points, 
             nSTRE is the number of strain components and nRHS is the number of 
@@ -603,23 +603,26 @@ class FiniteElement(FemCellData, FemMixin):
         K = self._elastic_stiffness_matrix_(*args, transform=False, **kwargs)
 
         # handle connectivity
-        conn = self.connectivity
-        if conn is not None:
-            # only for line meshes
-            if len(conn.shape) == 3 and conn.shape[1] == 2:  # nE, 2, nDOF
-                nE, _, nDOF = conn.shape
-                factors = np.ones((nE, K.shape[-1]))
-                factors[:, :nDOF] = conn[:, 0, :]
-                factors[:, -nDOF:] = conn[:, -1, :]
-                nEVAB2 = 2 * nDOF - 0.5
-                cond = np.sum(factors, axis=1) < nEVAB2
-                i = np.where(cond)[0]
-                K[i] = constrain_local_stiffness_bulk(K[i], factors[i])
-                assert_min_stiffness_bulk(K)
-            else:
-                raise NotImplementedError(
-                    "Unknown shape of <{}> for 'connectivity'.".format(conn.shape))
-
+        try:
+            conn = self.connectivity
+            if isinstance(conn, ndarray):
+                # only for line meshes
+                if len(conn.shape) == 3 and conn.shape[1] == 2:  # nE, 2, nDOF
+                    nE, _, nDOF = conn.shape
+                    factors = np.ones((nE, K.shape[-1]))
+                    factors[:, :nDOF] = conn[:, 0, :]
+                    factors[:, -nDOF:] = conn[:, -1, :]
+                    nEVAB2 = 2 * nDOF - 0.5
+                    cond = np.sum(factors, axis=1) < nEVAB2
+                    i = np.where(cond)[0]
+                    K[i] = constrain_local_stiffness_bulk(K[i], factors[i])
+                    assert_min_stiffness_bulk(K)
+                else:
+                    raise NotImplementedError(
+                        "Unknown shape of <{}> for 'connectivity'.".format(conn.shape))
+        except Exception:
+            pass
+        
         # store
         dbkey = self._dbkey_stiffness_matrix_
         self.db[dbkey] = K

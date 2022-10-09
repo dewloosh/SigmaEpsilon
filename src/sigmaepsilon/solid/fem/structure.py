@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Union, Tuple
+from typing import Union, Tuple, Callable
 
 import numpy as np
 from scipy.sparse import coo_matrix
@@ -16,6 +16,23 @@ from .femsolver import FemSolver
 
 
 __all__ = ['Structure']
+
+
+def flatten_pd(default=True):
+    def decorator(fnc: Callable):
+        def inner(*args, **kwargs):
+            if kwargs.get('flatten', default):
+                x = fnc(*args, **kwargs)
+                if len(x.shape) == 2:
+                    return x.flatten()
+                else:
+                    nN, nDOFN, nRHS = x.shape
+                    return x.reshape((nN * nDOFN, nRHS))
+            else:
+                return fnc(*args, **kwargs)
+        inner.__doc__ = fnc.__doc__
+        return inner
+    return decorator
 
 
 class Structure(Wrapper):
@@ -62,11 +79,11 @@ class Structure(Wrapper):
         See also
         --------
         :func:`preprocess`
-        
+
         Returns
         -------
         :class:`.femsolver.FemSolver`
-        
+
         """
         return self._solver
 
@@ -118,7 +135,7 @@ class Structure(Wrapper):
         # self.mesh.nodal_distribution_factors(store=True, key='ndf')  # sets mesh.celldata.ndf
         self.Solver = self.to_standard_form(*args, **kwargs)
         return self
-    
+
     def process(self, *args, summary=False, **kwargs) -> 'Structure':
         """
         Performs a linear elastostatic solution and returns the structure
@@ -148,7 +165,7 @@ class Structure(Wrapper):
         solvertype = solver if solver is not None else FemSolver
         return solvertype(K_bulk, Kp_coo, f, gnum, regular=False)
 
-    def linsolve(self, *args, summary=False, **kwargs) -> 'Structure':
+    def linsolve(self, *args, summary=False, postproc=True, **kwargs) -> 'Structure':
         """
         Performs a linear elastostatic calculation with pre- and 
         post-processing.
@@ -159,26 +176,32 @@ class Structure(Wrapper):
             Appends to the overall summary if True. This is available
             as `obj.summary`. Default is False.
 
+        postproc : bool, Optional
+            To do postprocessing or not. Default is True.
+
         """
         self.preprocess(*args, summary=summary, **kwargs)
         self.process(*args, summary=summary, **kwargs)
-        return self.postprocess(*args, summary=summary, **kwargs)
+        if postproc:
+            return self.postprocess(*args, summary=summary, **kwargs)
+        else:
+            return self
 
     def natural_circular_frequencies(self, *args, **kwargs) -> Tuple:
         """
         Returns natural circular frequencies. The call forwards all parameters
         to :func:`sigmaepslion.solid.fem.dyn.natural_circular_frequencies`, 
         see the docs there for the details. 
-        
+
         Parameters
         ----------
         return_vectors : bool, Optional
             To return eigenvectors or not. Default is False.
-                
+
         See also
         --------
         :func:`sigmaepslion.solid.fem.dyn.natural_circular_frequencies`
-        
+
         Returns
         -------
         :class:`numpy.ndarray`
@@ -186,47 +209,47 @@ class Structure(Wrapper):
 
         :class:`numpy.ndarray`
             The eigenvectors, only if 'return_vectors' is True.
-            
+
         """
         if self.Solver.M is not None:
             self.consistent_mass_matrix()
         return self.Solver.natural_circular_frequencies(*args, **kwargs)
-    
+
     def elastic_stiffness_matrix(self, *args, **kwargs) -> Union[np.ndarray, coo_matrix]:
         """
         Returns the elastic stiffness matrix of the structure in dense or sparse format.
-        
+
         Returns
         -------
         :class:`numpy.ndarray` or :class:`scipy.sparse.coo_matrix`
-        
+
         """
         return self.mesh.elastic_stiffness_matrix(*args, **kwargs)
 
     def penalty_stiffness_matrix(self, *args, **kwargs) -> coo_matrix:
         """
         Returns the penalty stiffness matrix of the structure.
-        
+
         Returns
         -------
         :class:`scipy.sparse.coo_matrix`
-        
+
         """
         return self.mesh.penalty_matrix_coo(*args, **kwargs)
 
     def consistent_mass_matrix(self, *args, **kwargs) -> Union[np.ndarray, coo_matrix]:
         """
         Returns the consistent mass matrix of the structure.
-        
+
         Notes
         -----
         If there are nodal masses defined, only sparse output is 
         available at the moment.
-        
+
         Returns
         -------
         :class:`numpy.ndarray` or :class:`scipy.sparse.coo_matrix`
-        
+
         """
         M = self.mesh.consistent_mass_matrix(*args, **kwargs)
         if self.Solver is not None:
@@ -234,38 +257,29 @@ class Structure(Wrapper):
                 self.Solver.M = M
         return M
 
+    @flatten_pd(False)
     @squeeze(True)
-    def nodal_dof_solution(self, *args, flatten=False, squeeze=True, **kwargs) -> np.ndarray:
+    def nodal_dof_solution(self, *args, flatten: bool = False, squeeze: bool = True,
+                           store: str = None, **kwargs) -> np.ndarray:
         """
-        Returns the vector of nodal displacements.
-        """
-        return self.mesh.nodal_dof_solution(*args, flatten=flatten, squeeze=False, **kwargs)
+        Returns the vector of nodal displacements and optionally stores the result
+        with a specified key.
 
-    @squeeze(True)
-    def reaction_forces(self, *args, flatten=False, squeeze=True, **kwargs) -> np.ndarray:
-        """
-        Returns the vector of reaction forces.
-        """
-        return self.mesh.reaction_forces(*args, flatten=flatten, squeeze=False, **kwargs)
+        Parameters
+        ----------
+        flatten : bool, Optional
+            If True, the result is a 1d array, otherwise 2d. Default is False.
 
-    @squeeze(True)
-    def nodal_forces(self, *args, flatten=False, squeeze=True, **kwargs) -> np.ndarray:
-        """
-        Returns the vector of nodal forces.
-        """
-        return self.mesh.nodal_forces(*args, flatten=flatten, squeeze=False, **kwargs)
+        squeeze : bool, Optional
+            Calls :func:`numpy.squeeze` on the result. This might be relevant for 
+            single element operations, or if there is only one load case, etc. Then,
+            it depends on the enviroment if a standard shape is desirable to maintain or not.
+            Default is True.
 
-    @squeeze(True)
-    def internal_forces(self, *args, flatten=False, squeeze=True, **kwargs) -> np.ndarray:
-        """
-        Returns the internal forces for one or more elements.
-        """
-        return self.mesh.internal_forces(*args, flatten=flatten, squeeze=False, **kwargs)
+        store : str, Optional
+            If a string is provided, the resulting data can be later accessed as an attribute
+            of the pointdata of the mesh object. Default is None.
 
-    def postprocess(self, *args, summary=True, cleanup=False, **kwargs) -> 'Structure':
-        """
-        Does basic postprocessing. This is triggered automatically during 
-        linear solution. Returns the object for continuation.
         """
         mesh = self._wrapped
         nDOFN = mesh.NDOFN
@@ -275,26 +289,147 @@ class Structure(Wrapper):
         u = self.Solver.u
         nRHS = 1 if len(u.shape) == 1 else u.shape[-1]
         if nRHS == 1:
-            mesh.pointdata['dofsol'] = np.reshape(u, (nN, nDOFN))
+            res = np.reshape(u, (nN, nDOFN))
         else:
-            mesh.pointdata['dofsol'] = np.reshape(u, (nN, nDOFN, nRHS))
+            res = np.reshape(u, (nN, nDOFN, nRHS))
 
-        # store nodal loads
-        f = self.Solver.f
-        nRHS = 1 if len(f.shape) == 1 else f.shape[-1]
-        if nRHS == 1:
-            mesh.pointdata['forces'] = np.reshape(f, (nN, nDOFN))
-        else:
-            mesh.pointdata['forces'] = np.reshape(f, (nN, nDOFN, nRHS))
+        if isinstance(store, str):
+            mesh.pointdata[store] = res
+
+        return res
+
+    @flatten_pd(False)
+    @squeeze(True)
+    def reaction_forces(self, *args, flatten: bool = False, squeeze: bool = True,
+                        store: str = None, **kwargs) -> np.ndarray:
+        """
+        Returns the vector of reaction forces.
+
+        Parameters
+        ----------
+        flatten : bool, Optional
+            If True, the result is a 1d array, otherwise 2d. Default is False.
+
+        squeeze : bool, Optional
+            Calls :func:`numpy.squeeze` on the result. This might be relevant for 
+            single element operations, or if there is only one load case, etc. Then,
+            it depends on the enviroment if a standard shape is desirable to maintain or not.
+            Default is True.
+
+        store : str, Optional
+            If a string is provided, the resulting data can be later accessed as an attribute
+            of the pointdata of the mesh object. Default is None.
+
+        """
+        mesh = self._wrapped
+        nDOFN = mesh.NDOFN
+        nN = mesh.number_of_points()
 
         # store dof solution
         r = self.Solver.r
         nRHS = 1 if len(r.shape) == 1 else r.shape[-1]
         if nRHS == 1:
-            mesh.pointdata['reactions'] = np.reshape(r, (nN, nDOFN))
+            res = np.reshape(r, (nN, nDOFN))
         else:
-            mesh.pointdata['reactions'] = np.reshape(r, (nN, nDOFN, nRHS))
+            res = np.reshape(r, (nN, nDOFN, nRHS))
 
+        if isinstance(store, str):
+            mesh.pointdata[store] = res
+
+        return res
+
+    @flatten_pd(False)
+    @squeeze(True)
+    def nodal_forces(self, *args, flatten: bool = False, squeeze: bool = True,
+                     store: str = None, **kwargs) -> np.ndarray:
+        """
+        Returns the vector of nodal forces.
+
+        Parameters
+        ----------
+        flatten : bool, Optional
+            If True, the result is a 1d array, otherwise 2d. Default is False.
+
+        squeeze : bool, Optional
+            Calls :func:`numpy.squeeze` on the result. This might be relevant for 
+            single element operations, or if there is only one load case, etc. Then,
+            it depends on the enviroment if a standard shape is desirable to maintain or not.
+            Default is True.
+
+        store : str, Optional
+            If a string is provided, the resulting data can be later accessed as an attribute
+            of the pointdata of the mesh object. Default is None.
+
+        """
+
+        mesh = self._wrapped
+        nDOFN = mesh.NDOFN
+        nN = mesh.number_of_points()
+
+        # store nodal loads
+        f = self.Solver.f
+        nRHS = 1 if len(f.shape) == 1 else f.shape[-1]
+        if nRHS == 1:
+            res = np.reshape(f, (nN, nDOFN))
+        else:
+            res = np.reshape(f, (nN, nDOFN, nRHS))
+
+        if isinstance(store, str):
+            mesh.pointdata[store] = res
+
+        return res
+
+    @squeeze(True)
+    def internal_forces(self, *args, flatten=False, squeeze=True, **kwargs) -> np.ndarray:
+        """
+        Returns the internal forces for one or more elements.
+        """
+        return self.mesh.internal_forces(*args, flatten=flatten, squeeze=False, **kwargs)
+
+    def postprocess(self, *args, cleanup=False, **kwargs) -> 'Structure':
+        """
+        Runs general postprocessing of the solution data. Returns the object for continuation.
+
+        The calculations produce the following point-related data, stored in the pointdata
+        object of the root object of the finite element mesh:
+
+            - nodal dof solution, available with key 'dofsol'
+
+            - vector of nodal forces, available with key 'forces'
+
+            - vector of reaction forces, available with key 'reactions'
+
+        For information on the generated cell-related data see :func:`sigmaepsilon.solid.fem.mesh.FemMesh.postprocess`.
+
+        Parameters
+        ----------
+        *args : tuple, Optional
+            Optional positional arguments to the postprocessing engine of the mesh.
+            Only if postproc is True.
+
+        **kwargs : dict, Optional
+            Optional keyword arguments to the postprocessing engine of the mesh.
+            Only if postproc is True.
+
+        cleanup : bool, Optional
+            If True, data related to the calculation is freed up and the model
+            needs to be reinitialized to run calculations again. Default is False.
+
+        See also
+        --------
+        :class:`sigmaepsilon.solid.fem.mesh.FemMesh`
+
+        Note
+        ----
+        This can be triggered automatically during linear solution when calling :func:`linsolve`
+        with `postproc=True`.
+
+        Returns
+        -------
+        :class:`Structure`
+
+        """
+        mesh = self._wrapped
         mesh.postprocess(*args, **kwargs)
 
         # clean up
@@ -305,6 +440,11 @@ class Structure(Wrapper):
     def cleanup(self) -> 'Structure':
         """
         Destroys the solver and returns the object for continuation.
+
+        Returns
+        -------
+        :class:`Structure`
+
         """
         self.Solver = None
         return self

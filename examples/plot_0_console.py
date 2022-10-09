@@ -51,8 +51,6 @@ from polymesh.space import StandardFrame, PointCloud, frames_of_lines
 from sigmaepsilon.solid.fem.cells import B2 as Beam
 
 import numpy as np
-from numpy import pi as PI
-
 
 # model stiffness matrix
 G = E / (2 * (1 + nu))
@@ -98,7 +96,8 @@ structure.linsolve()
 
 # postproc
 # 1) displace the mesh
-dofsol = structure.nodal_dof_solution()[:, :3]
+structure.nodal_dof_solution(store='dofsol')
+dofsol = structure.mesh.pd['dofsol'].to_numpy()[:, :3]
 local_dof_solution = dofsol[-1, :3]
 sol_fem_1d_B2 = local_dof_solution[2]
 sol_fem_1d_B2

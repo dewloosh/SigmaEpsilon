@@ -410,36 +410,6 @@ class FemMesh(PolyData):
             def foo(b): return b.celldata.internal_forces(*args, **kwargs)
             return np.vstack(list(map(foo, blocks)))
 
-    @squeeze(True)
-    def reaction_forces(self, *args, flatten=False, squeeze=True, **kwargs) -> np.ndarray:
-        """
-        Returns the reaction forces.
-        """
-        x = self.root().pointdata.reactions
-        if flatten:
-            if len(x.shape) == 2:
-                return x.flatten()
-            else:
-                nN, nDOFN, nRHS = x.shape
-                return x.reshape((nN * nDOFN, nRHS))
-        else:
-            return x
-
-    @squeeze(True)
-    def nodal_forces(self, *args, flatten=False, **kwargs) -> np.ndarray:
-        """
-        Returns the nodal forces.
-        """
-        x = self.root().pointdata.forces
-        if flatten:
-            if len(x.shape) == 2:
-                return x.flatten()
-            else:
-                nN, nDOFN, nRHS = x.shape
-                return x.reshape((nN * nDOFN, nRHS))
-        else:
-            return x
-
     def stresses_at_cells_nodes(self, *args, **kwargs) -> np.ndarray:
         blocks = self.cellblocks(inclusive=True)
         def foo(b): return b.celldata.stresses_at_nodes(*args, **kwargs)
@@ -471,4 +441,7 @@ class FemMesh(PolyData):
                 raise RuntimeError("Invalid model type {}".format(type(m)))
 
     def postprocess(self, *args, **kwargs):
+        """
+        General postprocessing.
+        """
         pass
