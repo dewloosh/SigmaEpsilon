@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from .elem import FiniteElement
 from .meta import ABCFiniteElement
 from .celldata import CellData
