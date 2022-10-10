@@ -10,6 +10,7 @@
     :glob:
     :hidden:
 
+    notebooks
     auto_examples/index.rst
 
 .. toctree::

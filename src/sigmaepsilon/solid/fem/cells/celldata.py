@@ -10,7 +10,7 @@ from polymesh.celldata import CellData as MeshCellData
 class CellData(MeshCellData): 
     """
     A subclass of :class:`polymesh.celldata.CellData`to handle data related to the cells 
-    of a polygonal mesh. This class does not need to be used directly, but rather serves 
+    of a finite element mesh. This class does not need to be used directly, but rather serves 
     as a base class for finite element classes.
     
     Parameters
@@ -20,8 +20,8 @@ class CellData(MeshCellData):
         
     density : :class:`numpy.ndarray`, Optional
         1d float array describing the density as mass per unit volume if areas
-        are provided, mass per unit length othervise.
-        Default is None.
+        (or thickness) are provided, mass per unit length (or area) othervise. 
+        See the Notes. Default is None.
         
     loads : :class:`numpy.ndarray`, Optional
         2d float array of body loads for each cell and load component.
@@ -35,6 +35,10 @@ class CellData(MeshCellData):
         1d float array of thicknesses. Only for 2d cells.
         Default is None.
         
+    fixity : :class:`numpy.ndarray`, Optional
+        3d boolean array of element connectivity, same as 'connectivity'.
+        Default is None.
+    
     connectivity : :class:`numpy.ndarray`, Optional
         3d boolean array of element connectivity.
         Default is None.
@@ -51,6 +55,13 @@ class CellData(MeshCellData):
         with a matching shape (has entries for all points), the key
         is considered as a field and the value is added to the database.
         
+    Notes
+    -----
+    For 1d and 2d cells, it is the user's responsibility to ensure that the input data makes sense.
+    For example, 'areas' can be omitted, but then 'density' must be 'mass per unit length'.
+    The same way, 'thickness' can be omitted for 2d cells if 'density' is 'mass per unit area'.
+    Otherwise 'density' is expected as 'mass per unit volume'.
+    
     See also
     --------
     :class:`polymesh.celldata.CellData`

@@ -11,4 +11,4 @@ sectionproperties
 linkeddeepdict
 dewloosh.core
 neumann>=0.0.1
-polymesh>=0.0.4
+polymesh>=0.0.5b

@@ -30,3 +30,6 @@ Mesh Classes
 .. autoclass:: sigmaepsilon.solid.fem.linemesh.LineMesh
     :members: 
 
+.. autoclass:: sigmaepsilon.solid.fem.linemesh.BernoulliFrame
+    :members: 
+

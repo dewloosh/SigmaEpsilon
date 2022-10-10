@@ -17,4 +17,3 @@ tetgen
 matplotlib
 plotly
 ipython
-sigmaepsilon
