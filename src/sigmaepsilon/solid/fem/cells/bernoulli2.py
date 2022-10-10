@@ -3,7 +3,7 @@ from neumann.numint import GaussPoints as Gauss
 from polymesh.cells import L2 as Line
 
 from .bernoulli import BernoulliBase as Bernoulli
-from .gen.b2 import shape_function_values_bulk as shpB2, \
+from ._gen.b2 import shape_function_values_bulk as shpB2, \
     shape_function_derivatives_bulk as dshpB2
 from .elem import FiniteElement
 from .meta import ABCFiniteElement as ABC
