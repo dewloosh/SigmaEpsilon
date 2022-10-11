@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Union
+from typing import Union, Tuple
 from numpy import ndarray
 from scipy.sparse import spmatrix
 import numpy as np
@@ -21,25 +21,25 @@ def effective_modal_mass(M: ArrayLike, action: ndarray, mode: ndarray):
 
     Parameters
     ----------
-    M : 2d array
-        Mass matrix as a NumPy or SciPy 2d float array.
+    M : numpy.ndarray
+        2d mass matrix as a NumPy or SciPy 2d float array.
 
     action : Iterable
         1d iterable, with a length matching the dof layout of the structure. 
 
-    mode : numpy array
+    mode : numpy.ndarray
         1d array representing a modal shape.
 
     Returns
     -------
     float  
         The effective modal mass.
-        
+
     """
     return (mode.T @ M @ action)**2
 
 
-def effective_modal_masses(M: ArrayLike, action: ndarray, modes: ndarray):
+def effective_modal_masses(M: ArrayLike, action: ndarray, modes: ndarray) -> ndarray:
     """
     Returns the effective modal mass for several modes.
 
@@ -47,22 +47,22 @@ def effective_modal_masses(M: ArrayLike, action: ndarray, modes: ndarray):
 
     Parameters
     ----------
-    M : :class:`numpy.ndarray`
+    M : numpy.ndarray
         Mass matrix as a NumPy or SciPy 2d float array.
 
-    action : :class:`numpy.ndarray`
+    action : numpy.ndarray
         1d iterable, with a length matching the dof layout of the structure. 
 
-    modes : :class:`numpy.ndarray`
+    modes : numpy.ndarray
         A matrix, whose columns are eigenmodes of interest.
-        
+
     Notes
     -----
     The sum of all effective masses equals the total mass of the structure.
 
     Returns
     -------
-    :class:`numpy.ndarray`  
+    numpy.ndarray  
         1d float array of effective modal masses
 
     """
@@ -73,7 +73,7 @@ def effective_modal_masses(M: ArrayLike, action: ndarray, modes: ndarray):
     return np.array(res)
 
 
-def Rayleigh_quotient(M: spmatrix, *args, K: spmatrix=None, u: ndarray=None,
+def Rayleigh_quotient(M: spmatrix, *args, K: spmatrix = None, u: ndarray = None,
                       f: ndarray = None, **kwargs) -> ndarray:
     """
     Returns Rayleigh's quotient
@@ -89,16 +89,16 @@ def Rayleigh_quotient(M: spmatrix, *args, K: spmatrix=None, u: ndarray=None,
 
     Parameters
     ----------
-    M : :class:`scipy.linalg.sparse.spmatrix`
+    M : scipy.linalg.sparse.spmatrix
         The mass matrix.
 
-    u : :class:`numpy.ndarray`, Optional
+    u : numpy.ndarray, Optional
         The vector of nodal displacements (1d or 2d).
 
-    K : :class:`scipy.linalg.sparse.spmatrix`, Optional
+    K : scipy.linalg.sparse.spmatrix, Optional
         The stiffness matrix. It can be omitted, if 'f' is provided.
 
-    f : :class:`numpy.ndarray`, Optional
+    f : numpy.ndarray, Optional
         The vector of nodal forces (1d or 2d). It can be omitted, if 'K' is provided.
 
     Notes
@@ -111,7 +111,7 @@ def Rayleigh_quotient(M: spmatrix, *args, K: spmatrix=None, u: ndarray=None,
 
     Returns
     -------
-    :class:`numpy.ndarray`
+    numpy.ndarray
         An 1d array of floats.
 
     """
@@ -127,9 +127,9 @@ def Rayleigh_quotient(M: spmatrix, *args, K: spmatrix=None, u: ndarray=None,
     return np.array(res)
 
 
-def natural_circular_frequencies(K, M, *args, k: int = 10, return_vectors=False,
-                                 maxiter=5000, normalize=True, as_dense=False,
-                                 around=None, nmode='M', which='LM', **kwargs):
+def natural_circular_frequencies(K: spmatrix, M: spmatrix, *args, k: int = 10, return_vectors: bool = False,
+                                 maxiter: int = 5000, normalize: bool = True, as_dense: bool = False,
+                                 around: float = None, nmode: str = 'M', which: str = 'LM', **kwargs) -> Tuple[ndarray]:
     """
     Returns the natural circular frequencies :math:`\omega_{0i}` and optionally the 
     corresponding eigenvectors as (not trivial) solutions to the eigenproblem
@@ -143,12 +143,12 @@ def natural_circular_frequencies(K, M, *args, k: int = 10, return_vectors=False,
 
     Parameters
     ----------
-    K : :class:`scipy.linalg.sparse.spmatrix`
+    K : scipy.linalg.sparse.spmatrix
         The stiffness matrix in sparse format. 
-        
-    M : :class:`scipy.linalg.sparse.spmatrix`
+
+    M : scipy.linalg.sparse.spmatrix
         The mass matrix in sparse format.
-        
+
     k : int, Optional
         The number of solutions to return. Only if 'as_dense' is False. 
         Default is 10.
@@ -168,59 +168,59 @@ def natural_circular_frequencies(K, M, *args, k: int = 10, return_vectors=False,
         If True, the stiffness and mass matrices are handled as dense arrays.
         In this case, if 'return_vectors' is True, all eigenvalues and vectors are
         returned, regardless of other parameters.
-        
+
     around : float, Optional
         A target (possibly an approximation) value around which eigenvalues
         are searched. Default is None.
-        
+
     which : str, ['LM' | 'SM' | 'LA' | 'SA' | 'BE' | 'LR' | 'SR' | 'LI' | 'SI'], Optional
         Which `k` eigenvectors and eigenvalues to find:
-        
+
             'LM' : largest magnitude
-            
+
             'SM' : smallest magnitude
-            
+
             'LA' : Largest (algebraic) eigenvalues.
 
             'SA' : Smallest (algebraic) eigenvalues.
 
             'BE' : Half (k/2) from each end of the spectrum.
-            
+
             'LR' : largest real part
-            
+
             'SR' : smallest real part
-            
+
             'LI' : largest imaginary part
-            
+
             'SI' : smallest imaginary part
-            
+
         Only if 'as_dense' is False. Default is 'LM'.
-        
+
     **kwargs : dict, Optional
         Keyword arguments are forwarded to the appropriate routine of SciPy.
-            
+
     Note
     ----
     Calculation is done using the relavant routines of Scipy,
     see its documentation for more control over the parameters.
-        
-    Returns
-    -------
-    :class:`numpy.ndarray`
-        The natural circular frequencies.
 
-    :class:`numpy.ndarray`
-        The eigenvectors, only if 'return_vectors' is True.
-        
     See also
     --------
     :func:`scipy.linalg.eigs`
     :func:`scipy.sparse.linalg.eigsh`
 
+    Returns
+    -------
+    numpy.ndarray
+        The natural circular frequencies.
+
+    numpy.ndarray
+        The eigenvectors, only if 'return_vectors' is True.
+    
     """
     if around is not None:
         kwargs['sigma'] = around**2
-        
+
     if as_dense:
         vals, vecs = eig_dense(K, *args, M=M, nmode=nmode,
                                normalize=normalize,
@@ -228,7 +228,7 @@ def natural_circular_frequencies(K, M, *args, k: int = 10, return_vectors=False,
     else:
         vals, vecs = eig_sparse(K, *args, k=k, M=M, which=which,
                                 normalize=normalize, maxiter=maxiter,
-                                return_residuals=False, nmode=nmode, 
+                                return_residuals=False, nmode=nmode,
                                 **kwargs)
     cfreqs = np.sqrt(vals)
     if return_vectors:
@@ -248,9 +248,9 @@ def estimate_smallest_natural_circular_frequency(*args, **kwargs) -> ndarray:
 
     Returns
     -------
-    :class:`numpy.ndarray`
+    numpy.ndarray
         An 1d array of floats.
-        
+
     See also
     --------
     :func:`Rayleigh_quotient`

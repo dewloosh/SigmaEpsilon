@@ -108,7 +108,7 @@ Bernoulli solution
 
 # 1d Solution - Approximate Numerical
 
-.. GENERATED FROM PYTHON SOURCE LINES 48-107
+.. GENERATED FROM PYTHON SOURCE LINES 48-106
 
 .. code-block:: python3
 
@@ -118,8 +118,6 @@ Bernoulli solution
     from sigmaepsilon.solid.fem.cells import B2 as Beam
 
     import numpy as np
-    from numpy import pi as PI
-
 
     # model stiffness matrix
     G = E / (2 * (1 + nu))
@@ -165,7 +163,8 @@ Bernoulli solution
 
     # postproc
     # 1) displace the mesh
-    dofsol = structure.nodal_dof_solution()[:, :3]
+    structure.nodal_dof_solution(store='dofsol')
+    dofsol = structure.mesh.pd['dofsol'].to_numpy()[:, :3]
     local_dof_solution = dofsol[-1, :3]
     sol_fem_1d_B2 = local_dof_solution[2]
     sol_fem_1d_B2
@@ -180,11 +179,11 @@ Bernoulli solution
  .. code-block:: none
 
 
-    -0.19047719057616308
+    -0.19047719057503856
 
 
 
-.. GENERATED FROM PYTHON SOURCE LINES 108-112
+.. GENERATED FROM PYTHON SOURCE LINES 107-111
 
 .. code-block:: python3
 
@@ -205,7 +204,7 @@ Bernoulli solution
 
  .. code-block:: none
 
-    <PIL.Image.Image image mode=RGB size=600x400 at 0x2758772B640>
+    <PIL.Image.Image image mode=RGB size=600x400 at 0x1579C98E6A0>
 
 
 
@@ -213,9 +212,9 @@ Bernoulli solution
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** ( 0 minutes  31.031 seconds)
+   **Total running time of the script:** ( 1 minutes  6.926 seconds)
 
-**Estimated memory usage:**  238 MB
+**Estimated memory usage:**  331 MB
 
 
 .. _sphx_glr_download_auto_examples_plot_0_console.py:

@@ -78,7 +78,7 @@ class FemSolver(Solver):
         Index mapper. Default is None.
         
     regular : bool, Optional
-        If Truem it is assumed that the structure is regular. Default is True.
+        If True it is assumed that the structure is regular. Default is True.
         
     M : Union[:class:`scipy.sparse.spmatrix`, :class:`numpy.ndarray`], Optional
         The mass matrix. Default is None.
@@ -152,7 +152,7 @@ class FemSolver(Solver):
         
         Returns
         -------
-        :class:`scipy.linalg.spmatrix
+        :class:`scipy.linalg.spmatrix`
             The mass matrix.
             
         """
