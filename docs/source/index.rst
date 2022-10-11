@@ -8,15 +8,13 @@
 .. toctree::
     :maxdepth: 2
     :glob:
-    :hidden:
 
     notebooks
     auto_examples/index.rst
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 3
     :glob:
-    :hidden:
 
     api
    
