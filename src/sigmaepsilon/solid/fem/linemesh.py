@@ -1,20 +1,19 @@
 # -*- coding: utf-8 -*-
-from copy import deepcopy
 from typing import Any, Iterable, Tuple
 
 import numpy as np
-from randomdict import RandomDict
-
 from sectionproperties.analysis.section import Section
+
 from polymesh.config import __hasplotly__, __hasmatplotlib__
-from polymesh.space import StandardFrame, frames_of_lines
+from polymesh.space import StandardFrame
 if __hasplotly__:
     from dewloosh.plotly import plot_lines_3d
 
+from ..model.bernoulli.section import BeamSection
 from .pointdata import PointData
-from ..model.bernoulli.section import BeamSection, get_section
 from .mesh import FemMesh
 from .cells import B2, B3
+from .io import _get_bernoulli_metadata_
 
 
 class LineMesh(FemMesh):
@@ -71,7 +70,7 @@ class LineMesh(FemMesh):
 
         Returns
         -------
-        :class:`BeamSection`
+        BeamSection
             The section instance associated with the beams of the block.
             
         """
@@ -89,7 +88,7 @@ class LineMesh(FemMesh):
         
         Parameters
         ----------
-        scalars : :class:`numpy.ndarray`, Optional
+        scalars : numpy.ndarray, Optional
             Data to plot. Default is None.
             
         backend : str, Optional
@@ -128,7 +127,7 @@ class LineMesh(FemMesh):
         
         Parameters
         ----------
-        scalars : :class:`numpy.ndarray`, Optional
+        scalars : numpy.ndarray, Optional
             Data to plot. Default is None.
             
         case : int, Optional
@@ -312,7 +311,7 @@ class BernoulliFrame(LineMesh):
             }
         
         """
-        d_out, data = _get_metadata_(d_in)
+        d_out, data = _get_bernoulli_metadata_(d_in)
         
         # space
         GlobalFrame = StandardFrame(dim=3)
@@ -337,185 +336,3 @@ class BernoulliFrame(LineMesh):
         
         # return decorated input dictionary and the mesh object
         return d_out, mesh
-    
-    
-def _get_metadata_(data):
-    
-    dofs =('UX', 'UY', 'UZ', 'ROTX', 'ROTY', 'ROTZ')
-    dofmap = {key : i for i, key in enumerate(dofs)}
-
-    d = deepcopy(data)
-
-    # ------------------------------ SECTIONS -------------------------------
-    # get sections and add some data to the records
-    index_sec = 0
-    for sectionkey, section in d['sections'].items():
-        s = get_section(section['type'], **section)
-        if s is not None:
-            bs = BeamSection(wrap=s)
-            bs.calculate_section_properties()
-            props = bs.get_section_properties()
-            props['obj'] = bs  # store section object
-            props['id'] = index_sec  # add an index
-            props['cells'] = []  # we fill this up later
-            d['sections'][sectionkey].update(**props)
-        else:
-            raise NotImplementedError("Section type not supported.")
-        index_sec += 1
-
-    # ------------------------------ MATERIALS -------------------------------
-    # get materials and add some data to the records
-    index_mat = 0
-    for materialkey in d['materials'].keys():
-        d['materials'][materialkey]['id'] = index_mat  # add index
-        d['materials'][materialkey]['cells'] = []  # we fill this up later
-        index_mat += 1
-        
-    # collect nodal data and create indices
-    nN = len(d['nodes'])
-    coords = np.zeros((nN, 3), dtype=float)
-    mass = np.zeros((nN,), dtype=float)
-    index_node = 0
-    for nodekey, node in d['nodes'].items():
-        if isinstance(node, list):
-            coords[index_node] = node
-            d['nodes'] = {
-                "x": node,
-                "id" : index_node,
-                "mass" : 0.0
-            }
-        elif isinstance(node, dict):
-            d['nodes']['id'] = index_node            
-            coords[index_node] = node['x']
-            if 'mass' in node:
-                mass[index_node] = node['mass']
-        index_node += 1
-
-    # ------------------------------ CELLS -------------------------------
-    cells = RandomDict(**d['cells'])
-    nE = len(cells)
-    nNE = len(cells.random_value()['nodes'])
-    topo = np.zeros((nE, nNE), dtype=int)  # topology
-    conn = np.zeros((nE, nNE, 6), dtype=int)  # connectivity
-    Hooke = np.zeros((nE, 4, 4), dtype=float)  # material model
-    index_cell = 0
-    for cellkey, cell in cells.items():
-        # material
-        if isinstance(cell['material'], dict):
-            m = cell['material']
-            m['id'] = index_mat
-            index_mat += 1
-        elif isinstance(cell['material'], str):
-            m = d['materials'][cell['material']]
-        # section
-        if isinstance(cell['section'], dict):
-            s = cell['section']
-            section = get_section(s['type'], **s)
-            if section is not None:
-                bs = BeamSection(wrap=section)
-                bs.calculate_section_properties()
-                props = bs.get_section_properties()
-                props['obj'] = bs  # store section object
-                props['id'] = index_sec  # add an index
-                props['cells'] = []  # we fill this up later
-                cell['section'].update(**props)
-                cell['section']['id'] = index_sec
-                index_sec += 1
-            else:
-                raise NotImplementedError("Section type not supported.")
-        elif isinstance(cell['section'], str):
-            s = d['sections'][cell['section']]
-            d['sections'][cell['section']]['cells'].append(index_cell)
-            d['materials'][cell['material']]['cells'].append(index_cell)
-        # register indices
-        d['cells'][cellkey]['id'] = index_cell
-        d['cells'][cellkey]['material_id'] = m['id']
-        d['cells'][cellkey]['section_id'] = s['id']
-        # build Hook's model
-        E, nu = m['E'], m['nu']
-        A, Ix, Iy, Iz = s['A'], s['Ix'], s['Iy'], s['Iz']
-        G = E / (2 * (1 + nu))
-        Hooke[index_cell] = np.array([
-            [E*A, 0, 0, 0],
-            [0, G*Ix, 0, 0],
-            [0, 0, E*Iy, 0],
-            [0, 0, 0, E*Iz]
-        ])
-        topo[index_cell] = cell['nodes']
-        # connectivity
-        if 'connectivity' in d['cells'][cellkey]:
-            conn[index_cell] = d['cells'][cellkey]['connectivity']
-        index_cell += 1
-    
-    # ------------------------------ FRAMES -------------------------------
-    # create coordinate frames
-    frames_auto = frames_of_lines(coords, topo)
-    frames = np.zeros_like(frames_auto)
-    index = 0
-    for cellkey, cell in d['cells'].items():
-        if 'frame' in cell:
-            if isinstance(cell['frame'], str):
-                if cell['frame'] == 'auto':
-                    frame = frames_auto[index]
-            elif isinstance(cell['frame'], dict):
-                frame = np.array(
-                    [
-                        cell['frame']['i'],
-                        cell['frame']['j'],
-                        cell['frame']['k']
-                    ]
-                )
-            elif isinstance(cell['frame'], list):
-                frame = np.array(cell['frame'])
-            else:
-                raise NotImplementedError
-            frames[index] = frame
-        else:
-            frames[index] = frames_auto[index]
-        index += 1
-
-    # set finite element type
-    if nNE == 2:
-        celltype = B2
-    elif nNE == 3:
-        celltype = B3
-    else:
-        raise NotImplementedError
-
-    # ------------------------------ LOADS -------------------------------
-    # natural boundary conditions (external load constrants)
-    # and strain loads
-    nC = len(d['loads'])
-    nodal_loads = np.zeros((nN, 6, nC), dtype=float)
-    body_loads = np.zeros((nE, nNE, 6, nC), dtype=float)
-    strain_loads = np.zeros((nE, 4, nC), dtype=float)
-    strinds = list(map(lambda i: str(i), range(6)))
-    index = 0
-    for loadkey, load in d['loads'].items():
-        d['loads'][loadkey]['id'] = index
-        if "nodal" in load:
-            for nodekey, nodal_load in load["nodal"].items():
-                nodekey = int(nodekey)
-                nodal_loads[nodekey, :, index] = nodal_load
-        if "body" in load:
-            for cellkey, body_load in load["body"].items():
-                cellkey = int(cellkey)
-                for iNE in range(nNE):
-                    body_loads[cellkey, iNE, :, index] = \
-                        body_load[strinds[iNE]]
-        if "heat" in load:
-            for cellkey, heat_load in load["heat"].items():
-                mkey = data['cells'][cellkey]['material']
-                coeff = data['materials'][mkey]['thermal-coefficient']
-                strain_loads[int(cellkey), 0, index] = heat_load * coeff
-        index += 1
-
-    #----------------------------- SUPPORTS -------------------------------
-    # essential boundary conditions (displacement constraints)
-    fixity = np.zeros((nN, 6)).astype(bool)
-    for nodekey, fixvals in d['fixity'].items():
-        fixity[int(nodekey)] = fixvals
-
-    return d, dict(coords=coords, topo=topo, loads=nodal_loads, fixity=fixity,
-                   celltype=celltype, model=Hooke, body_loads=body_loads,
-                   strain_loads=strain_loads, frames=frames, mass=mass)
