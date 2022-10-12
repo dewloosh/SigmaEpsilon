@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Union
+from typing import Union, List
 
 from scipy.sparse import coo_matrix
 import numpy as np
@@ -110,9 +110,11 @@ class FemMesh(PolyData):
             assert nA < 0
         self._model = model
 
-    def cells_coords(self, *args, points=None, cells=None, **kwargs):
+    def cells_coords(self, *args, points=None, cells=None, **kwargs) \
+            -> Union[np.ndarray, List[np.ndarray]]:
         """
-        Returns the coordinates of the cells.
+        Returns the coordinates of the cells as a 3d numpy array if the 
+        subblocks form a regular mesh, or a list of such arrays.
         """
         if points is None and cells is None:
             return super().cells_coords(*args, **kwargs)
@@ -187,7 +189,7 @@ class FemMesh(PolyData):
 
     def masses(self, *args, **kwargs) -> np.ndarray:
         """
-        Returns cell masses.
+        Returns cell masses of the cells as a 1d numpy array.
         """
         blocks = self.cellblocks(*args, inclusive=True, **kwargs)
         vmap = map(lambda b: b.celldata.masses(), blocks)
@@ -195,7 +197,7 @@ class FemMesh(PolyData):
 
     def mass(self, *args, **kwargs) -> float:
         """
-        Returns the total mass.
+        Returns the total mass as a float.
         """
         return np.sum(self.masses(*args, **kwargs))
 
@@ -411,17 +413,26 @@ class FemMesh(PolyData):
             return np.vstack(list(map(foo, blocks)))
 
     def stresses_at_cells_nodes(self, *args, **kwargs) -> np.ndarray:
+        """
+        Returns stresses at all nodes of all cells.
+        """
         blocks = self.cellblocks(inclusive=True)
         def foo(b): return b.celldata.stresses_at_nodes(*args, **kwargs)
         return np.vstack(list(map(foo, blocks)))
 
     def stresses_at_centers(self, *args, **kwargs) -> np.ndarray:
+        """
+        Returns stresses at the centers of all cells.
+        """
         blocks = self.cellblocks(inclusive=True)
         def foo(b): return b.celldata.stresses_at_centers(*args, **kwargs)
         return np.squeeze(np.vstack(list(map(foo, blocks))))
 
     @property
     def model(self):
+        """
+        Returns the attached model object if there is any.
+        """
         if self._model is not None:
             return self._model
         else:
@@ -431,6 +442,14 @@ class FemMesh(PolyData):
                 return self.parent.model
 
     def material_stiffness_matrix(self):
+        """
+        Returns the model of the mesh if there is any.
+        This is not important if all the celldata in the mesh
+        are filled up with appropriate model stiffness matrices.
+        Otherwise, the model stiffness matrix is calcualated on the 
+        mesh level during the initialization stage and is spread 
+        among the subblocks.
+        """
         m = self.model
         if isinstance(m, np.ndarray):
             return m
@@ -442,6 +461,7 @@ class FemMesh(PolyData):
 
     def postprocess(self, *args, **kwargs):
         """
-        General postprocessing.
+        General postprocessing. This may be reimplemented in subclasses,
+        currently nothing happens here.
         """
         pass

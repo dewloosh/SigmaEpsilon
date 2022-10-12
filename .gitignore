@@ -133,6 +133,9 @@ dmypy.json
 docs/source/gen_modules/
 
 notebooks/*.pdf
+notebooks/*.parquet
+notebooks/*.json
+notebooks/*.npz
 
 # topopt
 #.src/sigmaepsilon/topopt/

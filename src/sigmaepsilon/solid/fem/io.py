@@ -15,9 +15,9 @@ from .cells import B2, B3
 __all__ = ['_get_bernoulli_metadata_']
 
 
-def _dofdict2list(d:dict, dofs : list, default=0.0) -> list:
-    missing_keys = filter(lambda k : k not in d, dofs)
-    d.update({k : default for k in missing_keys})
+def _dofdict2list(d: dict, dofs: list, default=0.0) -> list:
+    missing_keys = filter(lambda k: k not in d, dofs)
+    d.update({k: default for k in missing_keys})
     return [d[k] for k in dofs]
 
 
@@ -27,26 +27,26 @@ def _get_nodal_dof_vector(*args, **kwargs):
     if isinstance(args[0], dict):
         return _dofdict2list(*args, **kwargs)
     raise NotImplementedError
-    
-    
+
+
 def _get_bernoulli_metadata_(data, *args, dofs=None, return_imap=False):
-    
+
     if dofs is None:
         dofs = ('UX', 'UY', 'UZ', 'ROTX', 'ROTY', 'ROTZ')
-    
+
     get_V6 = partial(_get_nodal_dof_vector, dofs=dofs)
-    
-    d = deepcopy(data)
-    
+
+    d = LinkedDeepDict(deepcopy(data))
+
     imap = LinkedDeepDict()
     # This is going to be filled up with inverse maps of indices
-    # and keys. This allows for arbitrary keys in the input. 
+    # and keys. This allows for arbitrary keys in the input.
     # You might need this to translate between input data and the output.
-    
+
     # ---------------------------------------------------------------
     # --------------------------- POINTS ----------------------------
     # ---------------------------------------------------------------
-    
+
     # allocate arrays for point-like data
     pkey = 'points' if 'points' in d else 'nodes'
     assert pkey in d
@@ -60,95 +60,95 @@ def _get_bernoulli_metadata_(data, *args, dofs=None, return_imap=False):
     # collect data and create inverse mapping
     i_p = 0
     id_to_key = {}
-    for key, p in d[pkey].items():
+    for key, p in data[pkey].items():
         id_to_key[i_p] = key
         if isinstance(p, list):
             # only coordinates
             coords[i_p] = p
             d[pkey] = {
                 "x": p,
-                "id" : i_p,
+                "id": i_p,
             }
         elif isinstance(p, dict):
             # several data
-            d[pkey]['id'] = i_p            
+            d[pkey]['id'] = i_p
             coords[i_p] = p['x']
             if 'mass' in p:
                 mass[i_p] = p['mass']
             if 'load' in p:
                 for case, value in p['load'].items():
                     loads[case, 'conc', i_p] = get_V6(value, default=0.0)
-            if 'fixity' in p:                
+            if 'fixity' in p:
                 fixity[i_p] = get_V6(p['fixity'], default=False)
         i_p += 1
     imap['points'] = deepcopy(id_to_key)
     id_to_key = {}
-        
+
     # ---------------------------------------------------------------
     # --------------- FRAMES, MATERIALS AND SECTIONS ----------------
     # ---------------------------------------------------------------
-    
+
     # get materials and add some data to the records
-    if 'frames' in d:
+    if 'frames' in data:
         i_f = 0
         id_to_key = {}
-        for framekey in d['frames'].keys():
+        for framekey in data['frames'].keys():
             id_to_key[i_f] = framekey
             i_f += 1
         imap['frames'] = deepcopy(id_to_key)
         id_to_key = {}
-    
+
     # get materials and add some data to the records
-    if 'materials' in d:
+    if 'materials' in data:
         i_m = 0
         id_to_key = {}
-        for materialkey in d['materials'].keys():
+        for materialkey in data['materials'].keys():
             id_to_key[i_m] = materialkey
             d['materials'][materialkey]['cells'] = []  # we fill this up later
             i_m += 1
         imap['materials'] = deepcopy(id_to_key)
         id_to_key = {}
-    
+
     # get sections and add some data to the records
-    if 'sections' in d:
+    if 'sections' in data:
         i_s = 0
         id_to_key = {}
-        for sectionkey, section in d['sections'].items():
-            s = get_section(section['type'], **section)
-            if s is not None:
-                bs = BeamSection(wrap=s)
-                bs.calculate_section_properties()
-                props = bs.get_section_properties()
-                props['obj'] = bs  # store section object
-                props['id'] = i_s  # add an index
-                props['cells'] = []  # we fill this up later
-                d['sections'][sectionkey].update(**props)
+        for sectionkey, section in data['sections'].items():
+            if 'type' in section:
+                s = get_section(section['type'], **section)
+                if s is not None:
+                    bs = BeamSection(wrap=s)
+                    bs.calculate_section_properties()
+                    props = bs.get_section_properties()
+                    props['obj'] = bs  # store section object
+                else:
+                    raise NotImplementedError("Section type not supported.")
             else:
-                raise NotImplementedError("Section type not supported.")
+                # raw input, at least keys A, Ix, Iy, Iz must be present
+                props = {'obj': None}
+                props.update(section)
+            if 'material' in section:
+                props.pdate(data['materials'][section['material']])
+            props['id'] = i_s  # add an index
+            props['cells'] = []  # we fill this up later
+            d['sections'][sectionkey].update(**props)
             id_to_key[i_s] = sectionkey
             i_s += 1
         imap['sections'] = deepcopy(id_to_key)
         id_to_key = {}
-    
+
     # ---------------------------------------------------------------
     # ---------------------------- CELLS ----------------------------
     # ---------------------------------------------------------------
-    
+
     # FIXME This assumes a reguar input at the moment
-    
-    cells = RandomDict(**d['cells'])
+
+    cells = RandomDict(**data['cells'])
     nE = len(cells)
     random_cell = cells.random_value()
     tkey = 'nodes' if 'nodes' in random_cell else 'topology'
     nNE = len(random_cell[tkey])
-    
-    if nNE == 2:
-        celltype = B2
-    elif nNE == 3:
-        celltype = B3
-    else:
-        raise NotImplementedError
-    
+
     topo = np.zeros((nE, nNE), dtype=int)  # topology
     conn = np.zeros((nE, nNE, 6), dtype=int)  # connectivity
     Hooke = np.zeros((nE, 4, 4), dtype=float)  # material model
@@ -160,7 +160,7 @@ def _get_bernoulli_metadata_(data, *args, dofs=None, return_imap=False):
         # topology
         topo[i_c] = cell[tkey]
         # connectivity
-        if 'connectivity' in d['cells'][cellkey]:
+        if 'connectivity' in data['cells'][cellkey]:
             conn[i_c] = d['cells'][cellkey]['connectivity']
         # material
         if 'material' in cell:
@@ -168,14 +168,14 @@ def _get_bernoulli_metadata_(data, *args, dofs=None, return_imap=False):
         else:
             # material is defined for the section
             assert 'section' in cell, "A section must be defined"
-            assert 'material' in cell['section'], "A material must be defined for the section." 
-            mid = d['sections'][cell['section']]['material']
-            m = d['materials'][mid]
+            assert 'material' in cell['section'], "A material must be defined for the section."
+            mid = data['sections'][cell['section']]['material']
+            m = data['materials'][mid]
         try:
-            m = d['materials'][mid]
+            m = data['materials'][mid]
         except KeyError:
-            if 'materials' in d:
-                raise KeyError("Material id {} npt found.".format(mid))
+            if 'materials' in data:
+                raise KeyError("Material Id {} npt found.".format(mid))
             else:
                 raise KeyError("Materials are not defined.")
         # section
@@ -193,44 +193,10 @@ def _get_bernoulli_metadata_(data, *args, dofs=None, return_imap=False):
             [0, 0, E*Iy, 0],
             [0, 0, 0, E*Iz]
         ])
-        
+
         # coordinate frame
         if 'frame' in cell:
-            frames[i_c] = d['frames'][cell['frame']]
-        
-        # body loads
-        if 'load' in cell:
-            # nDOF values per element
-            for case, value in cell['load'].items():
-                loads[case, 'body', i_c] = get_V6(value, default=0.0)
-        
-        # temperature load
-        if 'heat' in cell:
-            # 1 value per element
-            for case, value in cell['heat'].items():
-                loads[case, 'heat', i_c] = value
-            
-        # register indices
-        d['cells'][cellkey]['id'] = i_c
-        d['cells'][cellkey]['material_id'] = m['id']
-        d['cells'][cellkey]['section_id'] = s['id']
-        i_c += 1
-    imap['cells'] = deepcopy(id_to_key)
-    id_to_key = {}
-    # create coordinate frames
-    # topology must be known for this implementation
-    # FIXME This could be integrated into the block above, by
-    # creating a single evaluation version of 'frames_of_lines'
-    # -> 'frame_of_line'
-    frames_auto = frames_of_lines(coords, topo)
-    frames = np.zeros_like(frames_auto)
-    i_c = 0
-    for cellkey, cell in d['cells'].items():
-        if 'frame' in cell:
-            if isinstance(cell['frame'], str):
-                if cell['frame'] == 'auto':
-                    frame = frames_auto[i_c]
-            elif isinstance(cell['frame'], dict):
+            if isinstance(cell['frame'], dict):
                 frame = np.array(
                     [
                         cell['frame']['i'],
@@ -241,9 +207,37 @@ def _get_bernoulli_metadata_(data, *args, dofs=None, return_imap=False):
             elif isinstance(cell['frame'], list):
                 frame = np.array(cell['frame'])
             else:
-                raise NotImplementedError
+                frame = data['frames'][cell['frame']]
             frames[i_c] = frame
-        else:
+
+        # body loads
+        if 'load' in cell:
+            # nDOF values per element
+            for case, value in cell['load'].items():
+                loads[case, 'body', i_c] = get_V6(value, default=0.0)
+
+        # temperature load
+        if 'heat' in cell:
+            # 1 value per element
+            for case, value in cell['heat'].items():
+                loads[case, 'heat', i_c] = value
+
+        # register indices
+        """d['cells'][cellkey]['id'] = i_c
+        d['cells'][cellkey]['material_id'] = m['id']
+        d['cells'][cellkey]['section_id'] = s['id']"""
+        i_c += 1
+    imap['cells'] = deepcopy(id_to_key)
+    id_to_key = {}
+    # create coordinate frames
+    # topology must be known for this implementation
+    # FIXME This could be integrated into the block above, by
+    # creating a single evaluation version of 'frames_of_lines'
+    # -> 'frame_of_line'
+    frames_auto = frames_of_lines(coords, topo)
+    i_c = 0
+    for cellkey, cell in cells.items():
+        if not 'frame' in cell:
             frames[i_c] = frames_auto[i_c]
         i_c += 1
 
@@ -252,15 +246,15 @@ def _get_bernoulli_metadata_(data, *args, dofs=None, return_imap=False):
     # ---------------------------------------------------------------
     # assembly of the load vectors
     nLC = len(loads)
-    
+
     # vector of nodal loads
-    nodal_loads = np.zeros((nP, 6, nLC))  
-    
+    nodal_loads = np.zeros((nP, 6, nLC))
+
     # body load vector - for every dof for every node for element
-    body_loads = np.zeros((nE, nNE, 6, nLC), dtype=float)  # vector of 
-    
+    body_loads = np.zeros((nE, nNE, 6, nLC), dtype=float)  # vector of
+
     # strain load vector - for every strain component for every element
-    strain_loads = np.zeros((nE, 4, nLC), dtype=float)    
+    strain_loads = np.zeros((nE, 4, nLC), dtype=float)
     i_lc = 0
     cid_to_ckey = imap['cells']
     for loadkey, lc in loads.items():
@@ -280,6 +274,7 @@ def _get_bernoulli_metadata_(data, *args, dofs=None, return_imap=False):
         d['loads'][loadkey]['id'] = i_lc
         i_lc += 1
 
+    d['imap'] = imap
     return d, dict(coords=coords, topo=topo, loads=nodal_loads, fixity=fixity,
-                   celltype=celltype, model=Hooke, body_loads=body_loads,
-                   strain_loads=strain_loads, frames=frames, mass=mass)
+                   model=Hooke, body_loads=body_loads, strain_loads=strain_loads,
+                   frames=frames, mass=mass)

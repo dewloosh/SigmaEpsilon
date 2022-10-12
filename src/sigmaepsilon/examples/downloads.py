@@ -4,7 +4,7 @@ from typing import Union
 
 
 
-def download_bernoulli_console_json_20B2():  # pragma: no cover
+def download_bernoulli_console_json_linstat():  # pragma: no cover
     """
     Downloads the description of a simple bernoulli console as a json file.
    
@@ -19,7 +19,7 @@ def download_bernoulli_console_json_20B2():  # pragma: no cover
     >>> jsonpath = download_bernoulli_console_json_20B2()
     
     """
-    return _download_file('bernoulli_console_json_20B2.json')[0]
+    return _download_file('console_bernoulli_linstat.json')[0]
 
 
 """def stand_vtk(read=False) -> Union[str, PolyData]:
