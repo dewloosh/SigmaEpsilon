@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from .fem.mesh import FemMesh
+from .fem.mesh import FemMesh, SolidMesh
 from .fem.pointdata import PointData
 from .fem.structure import Structure
 from .fem.linemesh import LineMesh

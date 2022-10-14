@@ -67,6 +67,27 @@ class FiniteElement(FemCellData, FemMixin):
     """
     Base mixin class for all element types.
     """
+    
+    def nodal_dcm_matrix(self):
+        """
+        Returns nodal direction cosine matrices for all elements
+        in the block.
+            
+        Returns
+        -------
+        numpy.ndarray
+            A 3d numpy float array.
+        
+        See also
+        --------
+        :func:`..tr.nodal_dcm`
+        
+        """
+        nDOF = self.__class__.NDOFN
+        c, r = divmod(nDOF, 3)
+        assert r == 0
+        frames = self.frames  # dcm_G_L
+        return nodal_dcm(frames, c)
 
     def direction_cosine_matrix(self, *args, source: ndarray = None,
                                 target: ndarray = None, N=None, **kwargs):
@@ -79,7 +100,7 @@ class FiniteElement(FemCellData, FemMixin):
         source : ndarray, Optional
             A source frame. Default is None.
 
-        source : ndarray, Optional
+        target : ndarray, Optional
             A target frame. Default is None.
 
         N : int, Optional
@@ -92,9 +113,10 @@ class FiniteElement(FemCellData, FemMixin):
             The dcm matrix for linear transformations from source to target.
 
         """
-        N = self.__class__.NNODE if N is None else N
-        frames = self.frames  # dcm_G_L
-        dcm = element_dcm(nodal_dcm(frames), N)
+        nNE = self.__class__.NNODE if N is None else N
+        nDOF = self.__class__.NDOFN
+        ndcm = self.nodal_dcm_matrix()
+        dcm = element_dcm(ndcm, nNE, nDOF)
         if source is not None:
             if isinstance(source, str):
                 if source == 'global':
@@ -819,7 +841,8 @@ class FiniteElement(FemCellData, FemMixin):
         return fem_coeff_matrix_coo(M_bulk, *args, inds=gnum, N=N, **kwargs)
 
     @squeeze(True)
-    def strain_load_vector(self, values=None, *args, squeeze, **kwargs) -> ndarray:
+    def strain_load_vector(self, values=None, *args, squeeze, 
+                           return_zeroes=False, **kwargs) -> ndarray:
         """
         Generates a load vector from strain loads specified for all cells.
 
@@ -829,6 +852,11 @@ class FiniteElement(FemCellData, FemMixin):
             Strain loads as a 3d numpy array of shape (nE, nS, nRHS). 
             The array must contain values for all cells (nE), strain 
             components (nS) and load cases (nL).
+            
+        return_zeroes : bool, Optional
+            Controls what happends if there are no strain loads provided.
+            If True, a zero array is retured with correct shape, otherwise None. 
+            Default is False.
 
         Returns
         -------
@@ -844,6 +872,8 @@ class FiniteElement(FemCellData, FemMixin):
                 values = self.db[dbkey].to_numpy()
         except Exception as e:
             if dbkey not in self.db.fields:
+                if not return_zeroes:
+                    return None
                 nE = len(self)
                 values = np.zeros((nE, nSTRE, nRHS))
             else:
@@ -865,7 +895,8 @@ class FiniteElement(FemCellData, FemMixin):
 
     @squeeze(True)
     def body_load_vector(self, values=None, *args, source=None,
-                         constant=False, target=None, **kwargs) -> ndarray:
+                         constant=False, target=None, 
+                         return_zeroes=False, **kwargs) -> ndarray:
         """
         Builds the equivalent nodal node representation of body loads
         and returns it in the global frame, or an arbitrary target frame 
@@ -886,6 +917,11 @@ class FiniteElement(FemCellData, FemMixin):
         target : ndarray, Optional
             The frame in which the load vectors are expected.
             Default is None.
+            
+        return_zeroes : bool, Optional
+            Controls what happends if there are no strain loads provided.
+            If True, a zero array is retured with correct shape, otherwise None. 
+            Default is False.
 
         Returns
         -------
@@ -893,21 +929,33 @@ class FiniteElement(FemCellData, FemMixin):
             The nodal load vector for all load cases as a 2d numpy array.
 
         """
+        nRHS = self.pointdata.loads.shape[-1]
         nNE = self.__class__.NNODE
+        dbkey = self.__class__._attr_map_['loads']
+        try:
+            if values is None:
+                values = self.db[dbkey].to_numpy()
+        except Exception as e:
+            if dbkey not in self.db.fields:
+                if not return_zeroes:
+                    return None
+                nE = len(self)
+                values = np.zeros((nE, nNE, nDOF, nRHS))
+            else:
+                raise e
+        finally:
+            values = atleastnd(values, 4, back=True)  # (nE, nNE, nDOF, nRHS)
+
         # prepare data to shape (nE, nNE * nDOF, nRHS)
-        if values is None:
-            values = self.loads
-            values = atleastnd(values, 4, back=True)  # (nE, nNE, nDOF, nRHS)
-        else:
-            if constant:
-                values = atleastnd(values, 3, back=True)  # (nE, nDOF, nRHS)
-                #np.insert(values, 1, values, axis=1)
-                nE, nDOF, nRHS = values.shape
-                values_ = np.zeros((nE, nNE, nDOF, nRHS), dtype=values.dtype)
-                for i in range(nNE):
-                    values_[:, i, :, :] = values
-                values = values_
-            values = atleastnd(values, 4, back=True)  # (nE, nNE, nDOF, nRHS)
+        if constant:
+            values = atleastnd(values, 3, back=True)  # (nE, nDOF, nRHS)
+            #np.insert(values, 1, values, axis=1)
+            nE, nDOF, nRHS = values.shape
+            values_ = np.zeros((nE, nNE, nDOF, nRHS), dtype=values.dtype)
+            for i in range(nNE):
+                values_[:, i, :, :] = values
+            values = values_
+        values = atleastnd(values, 4, back=True)  # (nE, nNE, nDOF, nRHS)
         nE, _, nDOF, nRHS = values.shape
         # (nE, nNE, nDOF, nRHS) -> (nE, nNE * nDOF, nRHS)
         values = values.reshape(nE, nNE * nDOF, nRHS)

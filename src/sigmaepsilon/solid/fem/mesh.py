@@ -12,6 +12,7 @@ from polymesh import PolyData
 from .pointdata import PointData
 from .cells.celldata import CellData
 from .preproc import fem_load_vector, fem_penalty_matrix_coo, fem_nodal_mass_matrix_coo
+from .cells import TET4, TET10, H8, H27
 
 
 class FemMesh(PolyData):
@@ -324,13 +325,15 @@ class FemMesh(PolyData):
         # body loads
         def foo(b): return b.celldata.body_load_vector(squeeze=False)
         try:
-            res += np.sum(list(map(foo, blocks)), axis=0)
+            m = filter(lambda i : i is not None, map(foo, blocks))
+            res += np.sum(list(m), axis=0)
         except Exception:
             pass
         # strain loads
         def foo(b): return b.celldata.strain_load_vector(squeeze=False)
         try:
-            res += np.sum(list(map(foo, blocks)), axis=0)
+            m = filter(lambda i : i is not None, map(foo, blocks))
+            res += np.sum(list(m), axis=0)
         except Exception:
             pass
         return res
@@ -465,3 +468,28 @@ class FemMesh(PolyData):
         currently nothing happens here.
         """
         pass
+    
+    
+class SolidMesh(FemMesh):
+    """
+    A data class dedicated to simple 3d solid cells with 3 degrees of freedom per node.    
+    
+    See also
+    --------
+    :class:`TET4`
+    :class:`TET10`
+    :class:`H8`
+    :class:`H27`
+    """
+
+    dofs = ('UX', 'UY', 'UZ')
+    NDOFN = 3
+    
+    _cell_classes_ = {
+        4: TET4,
+        10: TET10,
+        8: H8,
+        27: H27,
+    }
+
+    

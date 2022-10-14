@@ -20,10 +20,19 @@ class FemMixin:
     dofs = ()
     dofmap = ()
             
+    # optional
+    qrule: str = None
+    quadrature = None
+
+    # advanced settings
+    compatible = True
+    
     # must be reimplemented
     NNODE: int = None  # number of nodes, normally inherited
 
     # from the mesh object
+    # it affects sizing of all kinds of intermediate variables
+    # during calculations (eg. element transformation matrix)
     NDOFN: int = None  # numper of dofs per node, normally
 
     # inherited form the model object
@@ -32,13 +41,6 @@ class FemMixin:
 
     # inherited form the model object
     NSTRE: int = None  # number of internal force components,
-
-    # optional
-    qrule: str = None
-    quadrature = None
-
-    # advanced settings
-    compatible = True
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

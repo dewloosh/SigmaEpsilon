@@ -5,7 +5,27 @@ __cache = True
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def nodal_dcm(dcm: ndarray, N=2):
+def nodal_dcm(dcm: ndarray, N=2) -> ndarray:
+    """
+    Returns a direction cosine matrix for a node, 
+    if the number of nodal degrees of freedom is a
+    multiple of 3. 
+    
+    Parameters
+    ----------
+    dcm : numpy.ndarray
+        A 3x3 direction cosine matrix for many elements.
+    
+    N : int, Optional
+        The number of triplets that make up a nodal vector.
+        Default is 2, which means 6 dofs per node.
+        
+    Returns
+    -------
+    numpy.ndarray
+        A 3d numpy float array.
+                 
+    """
     nE = dcm.shape[0]
     res = np.zeros((nE, 3 * N, 3 * N), dtype=dcm.dtype)
     for i in prange(N):

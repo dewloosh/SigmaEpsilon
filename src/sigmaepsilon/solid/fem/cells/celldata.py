@@ -98,7 +98,8 @@ class CellData(MeshCellData):
 
     def __init__(self, *args, model=None, activity=None, density=None,
                  loads=None, strain_loads=None, t=None, fields=None, 
-                 thickness=None, connectivity=None, areas=None, **kwargs):
+                 thickness=None, connectivity=None, areas=None, 
+                 tight=True, **kwargs):
         amap = self.__class__._attr_map_
 
         t = t if thickness is None else thickness
@@ -143,7 +144,7 @@ class CellData(MeshCellData):
                                     " or integer numpy array!")
 
             # body loads
-            if loads is None:
+            if loads is None and not tight:
                 loads = np.zeros((nE, nNE, NDOFN, 1))
             if loads is not None:
                 assert isinstance(loads, np.ndarray)
@@ -155,7 +156,7 @@ class CellData(MeshCellData):
                         nE, nNE, NDOFN, loads.shape[-1])
 
             # strain loads
-            if strain_loads is None:
+            if strain_loads is None and not tight:
                 strain_loads = np.zeros((nE, NSTRE, 1))
             if strain_loads is not None:
                 assert isinstance(strain_loads, np.ndarray)
@@ -184,7 +185,17 @@ class CellData(MeshCellData):
     def nodes(self, value: ndarray):
         assert isinstance(value, ndarray)
         self._wrapped[self.__class__._attr_map_['nodes']] = value
-        
+    
+    @property
+    def strain_loads(self) -> ndarray:
+        """Returns strain loads."""
+        return self._wrapped[self.__class__._attr_map_['strain-loads']].to_numpy()
+
+    @strain_loads.setter
+    def strain_loads(self, value: ndarray):
+        assert isinstance(value, ndarray)
+        self._wrapped[self.__class__._attr_map_['strain-loads']] = value    
+    
     @property
     def loads(self) -> ndarray:
         """Returns body loads."""
