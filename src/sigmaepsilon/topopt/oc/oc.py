@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from collections import namedtuple
 from copy import deepcopy
+from typing import NamedTuple, Iterable
 
 from neumann.linalg.sparse.csr import csr_matrix as csr
 from polymesh.utils import cells_around
@@ -12,15 +12,113 @@ from .utils import (compliances_bulk, get_filter_factors,
                     get_filter_factors_csr,
                     weighted_stiffness_bulk as weighted_stiffness)
 
-OptRes = namedtuple('OptimizationResult', 'x obj vol pen n')
+
+class OptRes(NamedTuple):
+    """
+    A tuple collecting information about an iteration block.
+            
+    """
+    x : Iterable
+    obj : float
+    vol : float
+    pen : float
+    n : int
 
 
-def OC_SIMP_COMP(structure: Structure, *args,
-                 miniter=50, maxiter=100, p_start=1.0, p_stop=4.0,
-                 p_inc=0.2, p_step=5, q=0.5, vfrac=0.6, dtol=0.1,
-                 r_max=None, summary=True, penalty=None, nostop=True,
-                 neighbours=None, guess=None, i_start=0, **kwargs):
-
+def maximize_stiffness(structure: Structure, *args,
+                       miniter:int=50, maxiter:int=100, 
+                       p_start:float=1.0, p_stop:float=3.0, p_inc:float=0.2, p_step:int=5, 
+                       q:float=0.5, vfrac:float=0.6, dtol:float=0.1, r_max:float=None, 
+                       summary=False, penalty:float=None, nostop:bool=True, 
+                       neighbours:Iterable=None, guess:Iterable=None, i_start:int=0, 
+                       **kwargs) -> OptRes:
+    """
+    Performs topology optimization using an Optimality Criteria Method to
+    maximize the stiffness of a structure, given a design space and a certain 
+    amount of material to distribute.
+    
+    .. math::
+        :nowrap:
+        
+        \\begin{equation}
+            \\begin{array}{rrclcl}
+            \\displaystyle \\min_{\\boldsymbol{\\rho}} & \\mathbf{u(\\boldsymbol{\\rho})}^T \\mathbf{f} \\\\
+            \\textrm{s. t.} \\\\
+            & \\mathbf{K} \\mathbf{u(\\boldsymbol{\\rho})} & = & \\mathbf{f} \\\\
+            & V(\\boldsymbol{\\rho}) - \\eta V_0 & \\leq & 0 & & \\\\
+            & \\rho_i \\in \\{0, 1\\} & & & & \\forall i \\in N
+            \\end{array}
+        \\end{equation}
+    
+    Parameters
+    ----------
+    structure : Structure
+        An instance of sigmaepsilon.solid.fem.Structure.
+        
+    miniter : int, Optional
+        The minimum number of iterations to perform. Default is 50.
+        
+    maxiter : int, Optional
+        The maximum number of iterations to perform. Default is 100.
+    
+    p_start : float, Optional
+        Initial value of the penalty on intermediate densities. Default is 1.
+        
+    p_stop : float, Optional
+        Final value of the penalty on intermediate densities. Default is 3.
+        
+    p_inc : float, Optional
+        Increment of the penalty on intermediate densities. Default is 0.2
+        
+    p_step : int, Optional
+        The number of interations it takes to increment the penalty on intermediate
+        density values. Default is 5.
+        
+    q : float, Optional
+        Smoothing factor. Defaul is 0.5.
+        
+    vfrac : float, Optional
+        The fraction of available volume and the volume of the virgin structure.
+        Default is 0.6.
+        
+    dtol : float, Optional
+        This controls the maximum change in the value of a design variable. 
+        Default is 0.1.
+        
+    r_max : float, Optional
+        Radius for filtering. Default is None.
+        
+    neighbours : float, Optional
+        The neighbours of the cells for filtering. Default is None.
+    
+    guess : numpy.ndarray, Optional
+        A guess on the solution. This parameter can be used to contiue
+        a workflow. Default is None.
+        
+    i_start : int, Optional
+        Starting index for iterations. This parameter can be used to contiue
+        a workflow. Default is 0.
+        
+    summary : bool, Optional
+        If True, a short summary about execution time and the number of iterations
+        is available after execution as `structure.summary['topopt']`. Default is False.
+        
+    nostop : bool, Optional
+        If True, iterations neglect all stopping criteria, those govern by mniniter and maxiter included.
+        Default is False.
+    
+    Yields
+    ------
+    OptRes
+        The results of the actual iteration.
+        
+    Notes
+    -----
+    - The function returns a generator expression.
+    - This function can be used for both size and topology optimization,
+      depending on the inputs.
+    
+    """
     do_filter = r_max is not None
 
     # if i_start==0:
@@ -162,6 +260,6 @@ def OC_SIMP_COMP(structure: Structure, *args,
             'avg. time': dt / cIter,
             'niter': cIter
         }
+        
     femsolver.K[:, :, :] = K_bulk_0
-    # structure.postprocess()
     return OptRes(dens, comp, vol, p, cIter)

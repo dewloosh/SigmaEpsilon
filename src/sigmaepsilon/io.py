@@ -10,6 +10,3 @@ def json2dict(jsonpath: str):
 def dict2json(jsonpath: str, d: dict):
     with open(jsonpath, "w") as outfile:
         json.dump(d, outfile)
-
-
-

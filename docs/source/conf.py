@@ -53,6 +53,7 @@ extensions = [
 
     # for automatic exploration of the source files
     'sphinx.ext.autodoc',
+    'sphinx_toolbox.more_autodoc.autonamedtuple',
 
     # to enable cross referencing other documents on the internet
     'sphinx.ext.intersphinx',

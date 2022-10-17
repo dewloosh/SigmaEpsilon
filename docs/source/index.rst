@@ -13,8 +13,9 @@
     auto_examples/index.rst
 
 .. toctree::
-    :maxdepth: 3
+    :maxdepth: 6
     :glob:
+    :caption: API
 
     api
    
