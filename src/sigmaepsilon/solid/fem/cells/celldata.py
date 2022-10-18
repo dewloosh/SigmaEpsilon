@@ -24,7 +24,8 @@ class CellData(MeshCellData):
         See the Notes. Default is None.
         
     loads : :class:`numpy.ndarray`, Optional
-        2d float array of body loads for each cell and load component.
+        3d (for a single load case) or 4d (for multiple load cases) float array 
+        of body loads for each load component of each node of each cell.
         Default is None.
         
     strain_loads : :class:`numpy.ndarray`, Optional

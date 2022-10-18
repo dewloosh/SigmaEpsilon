@@ -29,7 +29,7 @@ def maximize_stiffness(structure: Structure, *args,
                        miniter:int=50, maxiter:int=100, 
                        p_start:float=1.0, p_stop:float=3.0, p_inc:float=0.2, p_step:int=5, 
                        q:float=0.5, vfrac:float=0.6, dtol:float=0.1, r_max:float=None, 
-                       summary=False, penalty:float=None, nostop:bool=True, 
+                       penalty:float=None, nostop:bool=True, 
                        neighbours:Iterable=None, guess:Iterable=None, i_start:int=0, 
                        **kwargs) -> OptRes:
     """
@@ -188,18 +188,17 @@ def maximize_stiffness(structure: Structure, *args,
         dens = deepcopy(guess)
     vol = np.sum(dens * vols)
     comp = compliance(update_stiffness=True)
-    yield OptRes(dens, comp, vol, p_start, -1)
+    cIter = i_start
+    p = p_start
+    yield OptRes(dens, comp, vol, p, cIter)
 
     # ------------------- ITERATION -------------------
-    p = p_start
-    cIter = -1 + i_start
     dt = 0
     terminate = False
     while not terminate:
         if (p < p_stop) and (np.mod(cIter, p_step) == 0):
             p += p_inc
-        cIter += 1
-
+        
         # estimate lagrangian
         lagr = p * comp / vol
 
@@ -242,6 +241,7 @@ def maximize_stiffness(structure: Structure, *args,
         comp = compliance(update_stiffness=True)
         dt += femsolver._summary['proc', 'time']
         vol = np.sum(dens * vols)
+        cIter += 1
         res = OptRes(dens, comp, vol, p, cIter)
         yield res
 
@@ -254,12 +254,6 @@ def maximize_stiffness(structure: Structure, *args,
                 terminate = True
             else:
                 terminate = (p >= p_stop)
-
-    if summary:
-        structure.summary['topopt'] = {
-            'avg. time': dt / cIter,
-            'niter': cIter
-        }
         
     femsolver.K[:, :, :] = K_bulk_0
     return OptRes(dens, comp, vol, p, cIter)

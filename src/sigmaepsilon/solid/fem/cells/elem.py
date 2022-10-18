@@ -426,7 +426,8 @@ class FiniteElement(FemCellData, FemMixin):
                 Default is None.
 
         rng : Iterable[float], Optional
-            Range where the points of evauation are understood. Default is [0, 1].
+            Range where the points of evauation are understood. 
+            Only for 1d cells. Default is [0, 1].
 
         cells : int or Iterable[int], Optional
             Indices of cells. If not provided, results are returned for all cells.
