@@ -44,7 +44,7 @@ def maximize_stiffness(structure: Structure, *args,
             \\begin{array}{rrclcl}
             \\displaystyle \\min_{\\boldsymbol{\\rho}} & \\mathbf{u(\\boldsymbol{\\rho})}^T \\mathbf{f} \\\\
             \\textrm{s. t.} \\\\
-            & \\mathbf{K} \\mathbf{u(\\boldsymbol{\\rho})} & = & \\mathbf{f} \\\\
+            & \\mathbf{K}(\\boldsymbol{\\rho}) \\mathbf{u(\\boldsymbol{\\rho})} & = & \\mathbf{f} \\\\
             & V(\\boldsymbol{\\rho}) - \\eta V_0 & \\leq & 0 & & \\\\
             & \\rho_i \\in \\{0, 1\\} & & & & \\forall i \\in N
             \\end{array}
