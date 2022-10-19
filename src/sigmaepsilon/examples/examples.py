@@ -17,13 +17,13 @@ from sigmaepsilon.solid.fem.cells import B2 as Beam
 def console_grid_bernoulli() -> Structure:
     """
     Returns a simple console as a grid of 2-noded Bernoulli beams.
-    
+
     Example
     -------
     >>> from sigmaepsilon.examples import console_grid_bernoulli
     >>> structure = console_grid_bernoulli()
     >>> structure.linsolve()
-    
+
     """
     # units in kN and cm
 
@@ -71,7 +71,7 @@ def console_grid_bernoulli() -> Structure:
     section = BeamSection('CHS', d=d, t=t, n=16)
     section.calculate_section_properties()
     section_props = section.section_properties
-    A, Ix, Iy, Iz = getallfromkwargs(['A', 'Ix', 'Iy', 'Iz'], 
+    A, Ix, Iy, Iz = getallfromkwargs(['A', 'Ix', 'Iy', 'Iz'],
                                      **section_props)
 
     G = Ex / (2 * (1 + nu))
@@ -99,7 +99,7 @@ def console_grid_bernoulli() -> Structure:
 
     # pointdata
     pd = PointData(coords=coords, frame=GlobalFrame,
-                loads=nodal_loads, fixity=fixity)
+                   loads=nodal_loads, fixity=fixity)
 
     # celldata
     frames = frames_of_lines(coords, topo)
