@@ -48,7 +48,9 @@ class MetaBernoulli(MetaFiniteElement):
 
 
 class ABCBernoulli(metaclass=MetaBernoulli):
-    """Helper class."""
+    """
+    Helper class.
+    """
     __slots__ = ()
     dofs = ()
     dofmap = ()
@@ -62,10 +64,16 @@ class BernoulliBase(BernoulliBeam):
     Specification of an actual finite element consists of specifying class
     level attributes only.
 
-    See also
+    See Also
     --------
     :class:`sigmaepsilon.solid.fem.cells.bernoulli2.Bernoulli2`
     :class:`sigmaepsilon.solid.fem.cells.bernoulli3.Bernoulli3`
+
+    Note
+    ----
+    Among normal circumstances, you do not have to interact with this class 
+    directly. Only use it if you know what you are doing and understand the 
+    meaning of the inputs precisely.
 
     """
 
@@ -78,7 +86,7 @@ class BernoulliBase(BernoulliBeam):
                               rng: Iterable = None, lengths: Iterable = None,
                               **kwargs) -> ndarray:
         """
-        Evaluates the shape functions at the points specified by 'points'.
+        Evaluates the shape functions at the points specified by 'pcoords'.
 
         Parameters
         ----------
@@ -89,21 +97,25 @@ class BernoulliBase(BernoulliBeam):
             The range in which the locations ought to be understood, 
             typically [0, 1] or [-1, 1]. Default is [0, 1].
 
+        Other Parameters
+        ----------------
+        These parameters are for advanced users and can be omitted.
+        They are here only to avoid repeated evaulation of common quantities.
+
         lengths : Iterable, Optional
-            The lengths of the beams in the block. This is only to avoid repeated
-            evaulation in some circumstances. If not provided, it is calculated from
-            the geometry. Default is None.
+            The lengths of the beams in the block. Default is None.
 
         Returns
         -------
         numpy.ndarray
-            The returned array has a shape of (nE, nP, nNE=2, nDOF=6), where nE, nP, nNE and nDOF
-            stand for the number of elements, evaluation points, nodes per element and number of 
-            degrees of freedom, respectively.
+            The returned array has a shape of (nE, nP, nNE=2, nDOF=6), where nE, nP, 
+            nNE and nDOF stand for the number of elements, evaluation points, nodes 
+            per element and number of degrees of freedom, respectively.
 
         Notes
         -----
-        The returned array is always 4 dimensional, even if there is only one evaluation point.
+        The returned array is always 4 dimensional, even if there is only one 
+        evaluation point.
 
         """
         rng = np.array([-1, 1]) if rng is None else np.array(rng)
@@ -117,21 +129,71 @@ class BernoulliBase(BernoulliBeam):
                                    jac: ndarray = None, dshp: ndarray = None,
                                    lengths=None, **kwargs) -> ndarray:
         """
-        (nE, nP, nNE=2, nDOF=6, 3)
+        Evaluates the shape function derivatives (up to third) at the points specified 
+        by 'pcoords'. The function either returns the derivatives of the master element, 
+        or the actual element, depending on the inputs.
+
+        Valid combination of inputs are:
+
+        - 'pcoords' and optionally 'jac' : this can be used to calculate the derivatives
+        in both the local ('jac' is provided) and the parametric frame ('jac' is not provided).
+
+        - 'dshp' and 'jac' : this combination can only be used to return the derivatives
+        wrt. the local frame.
+
+        Parameters
+        ----------
+        pcoords : float or Iterable, Optional
+            Locations of the evaluation points. Default is None.
+
+        rng : Iterable, Optional
+            The range in which the locations ought to be understood, 
+            typically [0, 1] or [-1, 1]. Only if 'pcoords' is provided.
+            Default is [0, 1].
+
+        jac : Iterable, Optional
+            The jacobian matrix. Default is None.
+
+        dshp : Iterable, Optional
+            The shape function derivatives of the master element, readily evaluated
+            at a certain number of points. Default is None.
+
+        Other Parameters
+        ----------------
+        These parameters are for advanced users and can be omitted.
+        They are here only to avoid repeated evaulation of common quantities.
+
+        lengths : Iterable, Optional
+            The lengths of the beams in the block. Only if 'pcoords' is provided. 
+            Default is None.
+
+        Returns
+        -------
+        numpy.ndarray
+            The returned array has a shape of (nE, nP, nNE=2, nDOF=6, 3), where nE, 
+            nP, nNE and nDOF stand for the number of elements, evaluation points, nodes 
+            per element and number of degrees of freedom, respectively. Number 3 refers 
+            to first, second and third derivatives.
+
+        Notes
+        -----
+        The returned array is always 5 dimensional, even if there is only one 
+        evaluation point.
+
         """
-        lengths = self.lengths() if lengths is None else lengths
         if pcoords is not None:
+            lengths = self.lengths() if lengths is None else lengths
             # calculate derivatives wrt. the parametric coordinates in the range [-1, 1]
             pcoords = atleast1d(np.array(pcoords) if isinstance(
                 pcoords, list) else pcoords)
             rng = np.array([-1, 1]) if rng is None else np.array(rng)
             pcoords = to_range(pcoords, source=rng, target=[-1, 1])
             dshp = self.__class__.dshpfnc(pcoords, lengths)
-            # return derivatives wrt the local frame if jacobian is provided, otherwise
+            # return derivatives wrt. the local frame if jacobian is provided, otherwise
             # return derivatives wrt. the parametric coordinate in the range [-1, 1]
             return dshp.astype(float) if jac is None else gdshpB(dshp, jac).astype(float)
         elif dshp is not None and jac is not None:
-            # return derivatives wrt the local frame
+            # return derivatives wrt. the local frame
             return gdshpB(dshp, jac).astype(float)
 
     def shape_function_matrix(self, pcoords=None, *args, rng=None,
