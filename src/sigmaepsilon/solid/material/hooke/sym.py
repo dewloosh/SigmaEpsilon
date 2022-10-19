@@ -10,7 +10,7 @@ imap_ref_ortho_3D = ComplianceTensor.__imap__
 def upper(ij): return (ij[1], ij[0]) if ij[0] >= ij[1] else (ij[0], ij[1])
 
 
-def smat_sym_ortho_3d(*args, imap: dict = None, simplify=True, **subs):
+def smat_sym_ortho_3d(*args, imap: dict = None, simplify=True, **subs) -> sy.Matrix:
     """
     Reurns the compliance matrix for a 3d orthotropic
     material in symbolic form.
@@ -31,7 +31,8 @@ def smat_sym_ortho_3d(*args, imap: dict = None, simplify=True, **subs):
     Returns
     -------
     sympy.Matrix
-        6x6 symbolic compliance matrix 
+        6x6 symbolic compliance matrix.
+        
     """
     E1, E2, E3 = sy.symbols('E1 E2 E3')
     G23, G12, G13 = sy.symbols('G23 G12 G13')

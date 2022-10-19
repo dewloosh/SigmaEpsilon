@@ -34,24 +34,24 @@ class MetaBernoulli(MetaFiniteElement):
     def __init__(self, name, bases, namespace, *args, **kwargs):
         super().__init__(name, bases, namespace, *args, **kwargs)
 
-    def __new__(metaclass, name, bases, namespace, *args, **kwargs):     
+    def __new__(metaclass, name, bases, namespace, *args, **kwargs):
         cls = super().__new__(metaclass, name, bases, namespace, *args, **kwargs)
-        
+
         if hasattr(cls, 'shpfnc'):
             if cls.shpfnc is None and isinstance(cls.NNODE, int):
                 # generate functions
                 N = cls.NNODE
-    
+
     @classmethod
     def generate_functions(cls, N):
-        pass    
-        
+        pass
+
 
 class ABCBernoulli(metaclass=MetaBernoulli):
     """Helper class."""
     __slots__ = ()
     dofs = ()
-    dofmap = ()  
+    dofmap = ()
 
 
 class BernoulliBase(BernoulliBeam):
@@ -61,12 +61,12 @@ class BernoulliBase(BernoulliBeam):
     by this class are independent of the number of nodes of the cells.
     Specification of an actual finite element consists of specifying class
     level attributes only.
-    
+
     See also
     --------
     :class:`sigmaepsilon.solid.fem.cells.bernoulli2.Bernoulli2`
     :class:`sigmaepsilon.solid.fem.cells.bernoulli3.Bernoulli3`
-    
+
     """
 
     qrule: str = None
@@ -75,10 +75,36 @@ class BernoulliBase(BernoulliBeam):
     dshpfnc: Callable = None
 
     def shape_function_values(self, pcoords: ArrayOrFloat, *args,
-                              rng: Iterable = None, lengths=None,
+                              rng: Iterable = None, lengths: Iterable = None,
                               **kwargs) -> ndarray:
         """
-        (nE, nP, nNE=2, nDOF=6)
+        Evaluates the shape functions at the points specified by 'points'.
+
+        Parameters
+        ----------
+        pcoords : float or Iterable
+            Locations of the evaluation points.
+
+        rng : Iterable, Optional
+            The range in which the locations ought to be understood, 
+            typically [0, 1] or [-1, 1]. Default is [0, 1].
+
+        lengths : Iterable, Optional
+            The lengths of the beams in the block. This is only to avoid repeated
+            evaulation in some circumstances. If not provided, it is calculated from
+            the geometry. Default is None.
+
+        Returns
+        -------
+        numpy.ndarray
+            The returned array has a shape of (nE, nP, nNE=2, nDOF=6), where nE, nP, nNE and nDOF
+            stand for the number of elements, evaluation points, nodes per element and number of 
+            degrees of freedom, respectively.
+
+        Notes
+        -----
+        The returned array is always 4 dimensional, even if there is only one evaluation point.
+
         """
         rng = np.array([-1, 1]) if rng is None else np.array(rng)
         pcoords = atleast1d(np.array(pcoords) if isinstance(
@@ -168,7 +194,7 @@ class BernoulliBase(BernoulliBeam):
 
     @squeeze(True)
     def consistent_mass_matrix(self, *args, lumping=None, alpha: float = 1/50,
-                    frmt='full', **kwargs):
+                               frmt='full', **kwargs):
         """
         lumping : 'direct', None or False
         frmt : only if lumping is specified

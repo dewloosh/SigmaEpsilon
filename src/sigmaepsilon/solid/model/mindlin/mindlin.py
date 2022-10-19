@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-from typing import Tuple
+from typing import Tuple, Union, Callable
 import numpy as np
 from numpy import ndarray
 from numpy.linalg import inv
+import sympy as sy
 
 from ...material.hooke.utils import group_mat_params, get_iso_params
 from ...material.hooke.sym import smat_sym_ortho_3d
@@ -116,7 +117,7 @@ class MindlinShellLayer(Layer):
         monoms = np.array([1, z, z**2])
         return np.dot(monoms, self.sfx), np.dot(monoms, self.sfy)
 
-    def approxfunc(self, data):
+    def approxfunc(self, data) -> Callable:
         z0, z1, z2 = self.zi
         z = np.array([[1, z0, z0**2], [1, z1, z1**2], [1, z2, z2**2]])
         a, b, c = np.linalg.inv(z) @ np.array(data)
@@ -128,7 +129,7 @@ class MindlinPlateLayer(MindlinShellLayer):
     Helper object for the stress analysis of a layer of a plate.
     """
 
-    def stiffness_matrix(self):
+    def stiffness_matrix(self) -> ndarray:
         """
         Returns the uncorrected stiffness contribution to the layer.
         """
@@ -158,6 +159,7 @@ class MindlinShell(Surface):
     >>>         },
     >>>     }
     >>> C = Model.from_dict(model).stiffness_matrix()
+    
     """
     
     __layerclass__ = MindlinShellLayer
@@ -166,7 +168,7 @@ class MindlinShell(Surface):
         super().__init__(*args, **kwargs)
         
     @classmethod    
-    def Hooke(cls, *args, symbolic=False, **kwargs):
+    def Hooke(cls, *args, symbolic=False, **kwargs) -> Union[sy.Matrix, np.ndarray]:
         """
         Returns a Hooke matrix appropriate for shells.
         
@@ -177,7 +179,7 @@ class MindlinShell(Surface):
         
         Returns
         -------
-        Union[sy.Matrix, np.ndarray]
+        Union[sympy.Matrix, numpy.ndarray]
             The matrix in symbolic or numeric form.
             
         Examples
@@ -205,13 +207,13 @@ class MindlinShell(Surface):
             S = np.array(S, dtype=float)
             return np.linalg.inv(S)
 
-    def stiffness_matrix(self):
+    def stiffness_matrix(self) -> ndarray:
         """
         Returns the stiffness matrix of the shell.
                 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             The ABDS matrix of the shell.
             
         """
@@ -308,15 +310,16 @@ class MindlinPlate(MindlinShell):
     >>>         },
     >>>     }
     >>> C = Model.from_dict(model).stiffness_matrix()
+    
     """
     
-    def stiffness_matrix(self):
+    def stiffness_matrix(self) -> ndarray:
         """
         Returns the stiffness matrix of the plate.
                 
         Returns
         -------
-        ndarray
+        numpy.ndarray
             The ABDS matrix of the plate.
             
         """

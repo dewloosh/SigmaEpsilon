@@ -15,40 +15,39 @@ class CellData(MeshCellData):
     
     Parameters
     ----------
-    activity : :class:`numpy.ndarray`, Optional
+    activity : numpy.ndarray, Optional
         1d boolean array describing the activity of the elements.
         
-    density : :class:`numpy.ndarray`, Optional
+    density : numpy.ndarray, Optional
         1d float array describing the density as mass per unit volume if areas
         (or thickness) are provided, mass per unit length (or area) othervise. 
         See the Notes. Default is None.
         
-    loads : :class:`numpy.ndarray`, Optional
+    loads : numpy.ndarray, Optional
         3d (for a single load case) or 4d (for multiple load cases) float array 
         of body loads for each load component of each node of each cell.
         Default is None.
         
-    strain_loads : :class:`numpy.ndarray`, Optional
+    strain_loads : numpy.ndarray, Optional
         2d float array of body strain loads for each cell and strain component.
         Default is None.
         
-    t or thickness : :class:`numpy.ndarray`, Optional
+    t or thickness : numpy.ndarray, Optional
         1d float array of thicknesses. Only for 2d cells.
         Default is None.
         
-    fixity : :class:`numpy.ndarray`, Optional
+    fixity : numpy.ndarray, Optional
         3d boolean array of element connectivity, same as 'connectivity'.
         Default is None.
     
-    connectivity : :class:`numpy.ndarray`, Optional
-        3d boolean array of element connectivity.
-        Default is None.
+    connectivity : numpy.ndarray, Optional
+        3d float array of element connectivity. Default is None.
         
-    areas : :class:`numpy.ndarray`, Optional
+    areas : numpy.ndarray, Optional
         1d float array of cross sectional areas. Only for 1d cells.
         Default is None.
         
-    fields : `dict`, Optional
+    fields : dict, Optional
         Every value of this dictionary is added to the dataset. Default is `None`.
         
     **kwargs : dict, Optional
