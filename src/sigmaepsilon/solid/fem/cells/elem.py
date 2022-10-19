@@ -390,7 +390,11 @@ class FiniteElement(FemCellData, FemMixin):
         except Exception as e:
             if key not in self.db.fields:
                 nE = len(self)
-                nRHS = self.pointdata.loads.shape[-1]
+                nodal_loads = self.pointdata.loads
+                if len(nodal_loads.shape) == 2:
+                    nRHS = 1
+                else:
+                    nRHS = self.pointdata.loads.shape[-1]
                 nSTRE = self.__class__.NSTRE
                 sloads = np.zeros((nE, nSTRE, nRHS))
             else:
