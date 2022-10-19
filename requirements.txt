@@ -9,6 +9,6 @@ awkward
 sectionproperties
 
 linkeddeepdict
-dewloosh.core
+dewloosh.core>=1.0.12
 neumann>=0.0.1
 polymesh>=0.0.5b
