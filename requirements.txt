@@ -13,4 +13,4 @@ linkeddeepdict
 dewloosh.core
 latexdocs
 neumann
-#polymesh
+polymesh
