@@ -18,16 +18,19 @@ def global_shape_function_derivatives_bulk(dshp: ndarray, jac: ndarray):
 
     Parameters
     ----------
-    dshp: a NumPy float array of shape (nE, nP, nNE, nDOF=6, 3)
+    dshp: numpy.ndarray 
+        A float array of shape (nE, nP, nNE, nDOF=6, 3)
         Derivatives of shape functions evaluated at an 'nP' number of 
         points of an 'nE' number of elements.
 
-    jac: a NumPy float array of shape (nE, nP, 1, 1)
+    jac: numpy.ndarray 
+        A float array of shape (nE, nP, 1, 1)
         Jacobi determinants, evaluated for each point in each cell.
 
     Returns
     -------
-    NumPy array of shape (nE, nP, nNE, nDOF=6, 3)
+    numpy.ndarray
+        5d float array of shape (nE, nP, nNE, nDOF=6, 3)
 
     """
     nE, nP, nNE = dshp.shape[:3]
@@ -58,6 +61,7 @@ def shape_function_matrix(shp: ndarray, gdshp: ndarray):
     -----
     The approximation applies a mixture of Lagrange(L) and Hermite(H) 
     polynomials, in the order [L, H, H, L, H, H].
+    
     """
     nNE = shp.shape[0]
     res = np.zeros((__NDOFN__, nNE * __NDOFN__), dtype=gdshp.dtype)
@@ -238,21 +242,27 @@ def lumped_mass_matrices_direct(dens: ndarray, lengths: ndarray, areas: ndarray,
 
     Parameters
     ----------
-    dens : ndarray
+    dens : numpy.ndarray
         1d numpy float array of material densities.
 
-    lengths : ndarray
+    lengths : numpy.ndarray
         1d numpy float array of element lengths.
 
-    areas : ndarray
+    areas : numpy.ndarray
         1d numpy float array of element areas.
 
-    topo : ndarray
+    topo : numpy.ndarray
         2d numpy integer array of node indices referencing the global pointcloud.
 
-    alpha : float
+    alpha : float, Optional
         A nonnegative parameter, typically between 0 and 1/50 (see notes).
         Default is 1/20.
+        
+    Returns
+    -------
+    numpy.ndarray
+        A 3d float array of shape (nE, 6 * nNE), where nE and nNE are the number of
+        elements and nodes per element. 
 
     Notes
     -----

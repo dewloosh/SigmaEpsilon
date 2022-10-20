@@ -7,8 +7,10 @@ numba
 sympy
 awkward
 sectionproperties
+randomdict
 
 linkeddeepdict
 dewloosh.core
+latexdocs
 neumann
-polymesh
+#polymesh

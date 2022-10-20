@@ -199,7 +199,37 @@ class BernoulliBase(BernoulliBeam):
     def shape_function_matrix(self, pcoords=None, *args, rng=None,
                               lengths=None, **kwargs) -> ndarray:
         """
-        (nE, nP, nDOF, nDOF * nNODE)
+        Evaluates the shape function matrix at the points specified by 'pcoords'.
+
+        Parameters
+        ----------
+        pcoords : float or Iterable
+            Locations of the evaluation points.
+
+        rng : Iterable, Optional
+            The range in which the locations ought to be understood, 
+            typically [0, 1] or [-1, 1]. Default is [0, 1].
+
+        Other Parameters
+        ----------------
+        These parameters are for advanced users and can be omitted.
+        They are here only to avoid repeated evaulation of common quantities.
+
+        lengths : Iterable, Optional
+            The lengths of the beams in the block. Default is None.
+
+        Returns
+        -------
+        numpy.ndarray
+            The returned array has a shape of (nE, nP, nDOF, nDOF * nNE), where nE, nP, 
+            nNE and nDOF stand for the number of elements, evaluation points, nodes 
+            per element and number of degrees of freedom respectively.
+
+        Notes
+        -----
+        The returned array is always 4 dimensional, even if there is only one 
+        evaluation point.
+        
         """
         pcoords = atleast1d(np.array(pcoords) if isinstance(
             pcoords, list) else pcoords)
@@ -212,7 +242,30 @@ class BernoulliBase(BernoulliBeam):
 
     def integrate_body_loads(self, values: ndarray) -> ndarray:
         """
-        values (nE, nNE * nDOF, nRHS)
+        Returns nodal representation of body loads.
+        
+        Parameters
+        ----------
+        values : numpy.ndarray
+            2d or 3d numpy float array of material densities of shape
+            (nE, nNE * nDOF, nRHS) or (nE, nNE * nDOF), where nE, nNE, nDOF and nRHS 
+            stand for the number of elements, nodes per element, number of degrees 
+            of freedom and number of load cases respectively.
+            
+        Returns
+        -------
+        numpy.ndarray
+            An array of shape (nE, nNE * 6, nRHS).
+            
+        Notes
+        -----
+        The returned array is always 3 dimensional, even if there is only one 
+        load case.
+        
+        See Also
+        --------
+        :func:`~body_load_vector_bulk`
+        
         """
         values = atleastnd(values, 3, back=True)
         # (nE, nNE * nDOF, nRHS) -> (nE, nRHS, nNE * nDOF)
@@ -258,12 +311,56 @@ class BernoulliBase(BernoulliBeam):
     def consistent_mass_matrix(self, *args, lumping=None, alpha: float = 1/50,
                                frmt='full', **kwargs):
         """
+        Returns the consistent mass matrix of the block.
         lumping : 'direct', None or False
         frmt : only if lumping is specified
         """
         dbkey = self.__class__._attr_map_['M']
         if is_none_or_false(lumping):
             return super().consistent_mass_matrix(*args, squeeze=False, **kwargs)
+        if lumping == 'direct':
+            dens = self.db.density
+            try:
+                areas = self.areas()
+            except Exception:
+                areas = np.ones_like(dens)
+            lengths = self.lengths()
+            topo = self.topology()
+            ediags = dlump(dens, lengths, areas, topo, alpha)
+            if frmt == 'full':
+                N = ediags.shape[-1]
+                M = np.zeros((ediags.shape[0], N, N))
+                inds = np.arange(N)
+                M[:, inds, inds] = ediags
+                self.db[dbkey] = M
+                return M
+            elif frmt == 'diag':
+                self.db[dbkey] = ediags
+                return ediags
+        raise RuntimeError("Lumping mode not recognized :(")
+    
+    @squeeze(True)
+    def lumped_mass_matrix(self, *args, lumping:str='direct', alpha: float = 1/50,
+                               frmt:str='full', **kwargs):
+        """
+        Returns the lumped mass matrix of the block.
+        
+        Parameters
+        ----------
+        alpha : float, Optional
+            A nonnegative parameter, typically between 0 and 1/50 (see notes).
+            Default is 1/20.
+        
+        lumping : str, Optional
+            Controls lumping. Currently only direct lumping is available.
+            Default is 'direct'.
+        
+        frmt : str, Optional
+            Possible values are 'full' or 'diag'. If 'diag', only the diagonal
+            entries are returned, if 'full' a full matrix is returned.
+        
+        """
+        dbkey = self.__class__._attr_map_['M']
         if lumping == 'direct':
             dens = self.db.density
             try:
