@@ -94,6 +94,9 @@ class CellData(MeshCellData):
         'activity' : 'activity',
         'connectivity' : 'connectivity',
         'areas' : 'areas',
+        'K': 'K',  # stiffness matrix
+        'M': 'M',  # mass matrix
+        'B': 'B',  # strain displacement matrix
     }
 
     def __init__(self, *args, model=None, activity=None, density=None,
@@ -176,6 +179,26 @@ class CellData(MeshCellData):
 
         self._model = model
         
+    @property
+    def _dbkey_stiffness_matrix_(self) -> str:
+        return self.__class__._attr_map_['K']
+
+    @property
+    def _dbkey_strain_displacement_matrix_(self) -> str:
+        return self.__class__._attr_map_['B']
+
+    @property
+    def _dbkey_mass_matrix_(self) -> str:
+        return self.__class__._attr_map_['M']
+    
+    @property
+    def _dbkey_connectivity_(self) -> str:
+        return self.__class__._attr_map_['connectivity']
+    
+    @property
+    def has_connectivity(self):
+        return self._dbkey_connectivity_ in self._wrapped.fields
+    
     @property
     def nodes(self) -> ndarray:
         """Returns the topology of the cells."""

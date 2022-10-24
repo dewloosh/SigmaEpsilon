@@ -14,6 +14,9 @@ __all__ = ['Bernoulli3']
 
 
 class Bernoulli3(ABC, Bernoulli, Line, FiniteElement):
+    """
+    Finite element class to handle 3-noded Bernoulli beams.
+    """
 
     qrule = 'full'
     quadrature = {

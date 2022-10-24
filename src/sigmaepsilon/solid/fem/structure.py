@@ -385,6 +385,13 @@ class Structure(Wrapper):
         Returns the internal forces for one or more elements.
         """
         return self.mesh.internal_forces(*args, flatten=flatten, squeeze=False, **kwargs)
+    
+    @squeeze(True)
+    def external_forces(self, *args, flatten=False, squeeze=True, **kwargs) -> np.ndarray:
+        """
+        Returns the external forces for one or more elements.
+        """
+        return self.mesh.external_forces(*args, flatten=flatten, squeeze=False, **kwargs)
 
     def postprocess(self, *args, cleanup=False, **kwargs) -> 'Structure':
         """

@@ -30,7 +30,7 @@ def global_shape_function_derivatives_bulk(dshp: ndarray, jac: ndarray):
     Returns
     -------
     numpy.ndarray
-        5d float array of shape (nE, nP, nNE, nDOF=6, 3)
+        5d float array of shape (nE, nP, nNE, nDOF=6, 3).
 
     """
     nE, nP, nNE = dshp.shape[:3]
@@ -47,21 +47,35 @@ def global_shape_function_derivatives_bulk(dshp: ndarray, jac: ndarray):
 @njit(nogil=True, parallel=True, cache=__cache__)
 def shape_function_matrix(shp: ndarray, gdshp: ndarray):
     """
-    Returns the shape function matrix for a Bernoulli beam.
+    Returns the shape function matrix of a single Bernoulli beam.
 
-    The input contains evaluations of the shape functions and at lest 
+    The input contains evaluations of the shape functions and at least 
     the first global derivatives of the shape functions. 
 
-    shp (nNE, nDOF=6)
-    gdshp (nNE, nDOF=6, 3)
-    ---
-    (nDOF, nDOF * nNODE)
+    Parameters
+    ----------
+    shp: numpy.ndarray
+        A float array of shape (nNE, nDOF=6), being the shape 
+        functions evaluated at a single point of a single cell.
+
+    dshp: numpy.ndarray
+        A float array of shape (nNE, nDOF=6, 3), being derivatives of shape 
+        functions evaluated at a single point of a single cell.
+
+    Returns
+    -------
+    numpy.ndarray
+        2d float array of shape (nDOF, nDOF * nNODE).
 
     Notes
     -----
     The approximation applies a mixture of Lagrange(L) and Hermite(H) 
     polynomials, in the order [L, H, H, L, H, H].
-    
+
+    See Also
+    --------
+    :func:`shape_function_matrix_bulk`
+
     """
     nNE = shp.shape[0]
     res = np.zeros((__NDOFN__, nNE * __NDOFN__), dtype=gdshp.dtype)
@@ -89,14 +103,30 @@ def shape_function_matrix(shp: ndarray, gdshp: ndarray):
 @njit(nogil=True, parallel=True, cache=__cache__)
 def shape_function_matrix_bulk(shp: ndarray, gdshp: ndarray):
     """
-    In
-    --
-    shp (nE, nP, nNE, nDOF=6)
-    gdshp (nE, nP, nNE, nDOF=6, 3)
+    Returns the shape function matrix for several Bernoulli beams.
 
-    Out
-    ---
-    (nE, nP, nDOF, nDOF * nNODE)
+    The input contains evaluations of the shape functions and at least 
+    the first global derivatives of the shape functions. 
+
+    Parameters
+    ----------
+    shp: numpy.ndarray
+        A float array of shape (nE, nP, nNE, nDOF=6), being the shape 
+        functions evaluated at a nP number of points of several cells.
+
+    dshp: numpy.ndarray
+        A float array of shape (nE, nP, nNE, nDOF=6, 3), being derivatives 
+        of shape functions evaluated at a nP number of points of several cells.
+
+    Returns
+    -------
+    numpy.ndarray
+        2d float array of shape (nE, nP, nDOF, nDOF * nNODE).
+
+    See Also
+    --------
+    :func:`shape_function_matrix`
+
     """
     nE, nP, nNE = gdshp.shape[:3]
     res = np.zeros((nE, nP, __NDOFN__, nNE * __NDOFN__), dtype=gdshp.dtype)
@@ -107,17 +137,12 @@ def shape_function_matrix_bulk(shp: ndarray, gdshp: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache__)
-def shape_function_matrix_L(shp: ndarray):
+def _shape_function_matrix_L(shp: ndarray):
     """
     Returns the shape function matrix for a line.
-
     The input contains evaluations of the shape functions. 
 
-    In
-    --
     shp (nNE, nDOF=6)
-
-    Out
     ---
     (nDOF, nDOF * nNODE)
     """
@@ -135,24 +160,19 @@ def shape_function_matrix_L(shp: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache__)
-def shape_function_matrix_L_multi(shp: ndarray):
+def _shape_function_matrix_L_multi(shp: ndarray):
     """
     Returns the shape function matrix for a line.
-
     The input contains evaluations of the shape functions. 
 
-    In
-    --
     shp (nP, nNE, nDOF=6)
-
-    Out
     ---
     (nP, nDOF, nDOF * nNODE)
     """
     nP, nNE = shp.shape[:2]
     res = np.zeros((nP, __NDOFN__, nNE * __NDOFN__), dtype=shp.dtype)
     for iP in prange(nP):
-        res[iP] = shape_function_matrix_L(shp[iP])
+        res[iP] = _shape_function_matrix_L(shp[iP])
     return res
 
 
@@ -162,72 +182,41 @@ def body_load_vector_bulk(values: ndarray, shp: ndarray, gdshp: ndarray,
     """
     Input values are assumed to be evaluated at multiple (nG) Gauss points of
     multiple (nE) cells.
+    
+    Parameters
+    ----------
+    values: numpy.ndarray
+        A 3d float array of body loads of shape (nE, nRHS, nNE * 6)
+        for several elements and load cases.
+    
+    shp: numpy.ndarray
+        A float array of shape (nE, nG, nNE, nDOF=6), being the shape 
+        functions evaluated at a nG number of Gauss points of several cells.
 
-    values (nE, nRHS, nNE * 6)
-    djac (nE, nG)
-    shp (nE, nG, nNE=2, nDOF=6)
-    w (nG)
-    ---
-    (nE, nNE * 6, nRHS)
+    djac: numpy.ndarray
+        A float array of shape (nE, nG), being jacobian determinants
+        evaluated at the Gauss points of several cells.
+        
+    w: numpy.ndarray
+        1d float array of weights for an nG number of Gauss points,
+        with a shape of (nG,).
+
+    Returns
+    -------
+    numpy.ndarray
+        3d float array of shape (nE, nNE * 6, nRHS).
+
     """
     nRHS = values.shape[1]
     nE, nG, nNE = shp.shape[:3]
     NH = shape_function_matrix_bulk(shp, gdshp)  # (nE, nG, nDOF, nDOF * nNODE)
-    NL = shape_function_matrix_L_multi(shp[0])  # (nG, nDOF, nDOF * nNODE)
+    NL = _shape_function_matrix_L_multi(shp[0])  # (nG, nDOF, nDOF * nNODE)
     res = np.zeros((nE, nNE * __NDOFN__, nRHS), dtype=values.dtype)
     for iG in range(nG):
         for iRHS in prange(nRHS):
             for iE in prange(nE):
-                res[iE, :, iRHS] += NH[iE, iG].T @ NL[iG] @ values[iE,
-                                                                   iRHS, :] * djac[iE, iG] * w[iG]
-    return res
-
-
-@njit(nogil=True, parallel=True, cache=__cache__)
-def calculate_element_forces_bulk(dofsol: ndarray, B: ndarray,
-                                  D: ndarray, shp: ndarray,
-                                  gdshp: ndarray, body_forces: ndarray):
-    """
-    Calculates internal forces from dof solution.
-    """
-    nE = dofsol.shape[0]
-    nP = B.shape[1]
-    res = np.zeros((__NDOFN__, nE, nP), dtype=dofsol.dtype)
-    for i in prange(nE):
-        for j in prange(nP):
-            pyy, pzz = body_forces[i, 0, 4:] * shp[j, 0] + \
-                body_forces[i, 1, 4:] * shp[j, 1]
-            N, T, My, Mz = D[i] @ B[i, j] @ dofsol[i]
-            res[0, i, j] = N
-            # Vy
-            res[1, i, j] = -D[i, 3, 3] * (
-                gdshp[i, j, 2, 2] * dofsol[i, 1] +
-                gdshp[i, j, 3, 2] * dofsol[i, 5] +
-                gdshp[i, j, 4, 2] * dofsol[i, 7] +
-                gdshp[i, j, 5, 2] * dofsol[i, 11]) - pzz
-            # Vz
-            res[2, i, j] = -D[i, 2, 2] * (
-                gdshp[i, j, 6, 2] * dofsol[i, 2] +
-                gdshp[i, j, 7, 2] * dofsol[i, 4] +
-                gdshp[i, j, 8, 2] * dofsol[i, 8] +
-                gdshp[i, j, 9, 2] * dofsol[i, 10]) + pyy
-            res[3, i, j] = T
-            res[4, i, j] = My
-            res[5, i, j] = Mz
-    return res
-
-
-@njit(nogil=True, parallel=True, cache=__cache__)
-def interpolate_element_data_bulk(edata: ndarray, N: ndarray):
-    """
-    N (nE, nP, nDOF, nDOF * nNODE)  shape function matrix
-    edata (nE, nDOF * nNODE)  element data
-    """
-    nE, nP = N.shape[:2]
-    res = np.zeros(N.shape[:3], dtype=N.dtype)
-    for iE in prange(nE):
-        for iP in prange(nP):
-            res[iE, iP, :] = N[iE, iP] @ edata[iE]
+                res[iE, :, iRHS] += NH[iE, iG].T @ NL[iG] @ values[iE, iRHS, :] * \
+                    djac[iE, iG] * w[iG]
     return res
 
 
@@ -257,7 +246,7 @@ def lumped_mass_matrices_direct(dens: ndarray, lengths: ndarray, areas: ndarray,
     alpha : float, Optional
         A nonnegative parameter, typically between 0 and 1/50 (see notes).
         Default is 1/20.
-        
+
     Returns
     -------
     numpy.ndarray

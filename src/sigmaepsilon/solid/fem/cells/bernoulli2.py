@@ -12,6 +12,9 @@ __all__ = ['Bernoulli2']
 
 
 class Bernoulli2(ABC, Bernoulli, Line, FiniteElement):
+    """
+    Finite element class to handle 2-noded Bernoulli beams.
+    """
 
     qrule = 'full'
     quadrature = {

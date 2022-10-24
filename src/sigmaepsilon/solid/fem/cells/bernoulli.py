@@ -135,11 +135,11 @@ class BernoulliBase(BernoulliBeam):
 
         Valid combination of inputs are:
 
-        - 'pcoords' and optionally 'jac' : this can be used to calculate the derivatives
-        in both the local ('jac' is provided) and the parametric frame ('jac' is not provided).
-
-        - 'dshp' and 'jac' : this combination can only be used to return the derivatives
-        wrt. the local frame.
+            * 'pcoords' and optionally 'jac' : this can be used to calculate the derivatives
+              in both the local ('jac' is provided) and the parametric frame ('jac' is not provided).
+            
+            * 'dshp' and 'jac' : this combination can only be used to return the derivatives
+              wrt. the local frame.
 
         Parameters
         ----------
@@ -306,38 +306,6 @@ class BernoulliBase(BernoulliBeam):
         D = self.model_stiffness_matrix()[cells]
         values = calculate_shear_forces(dofsol, values, D, gdshp)
         return values  # (nE, nP, 6, nRHS)
-
-    @squeeze(True)
-    def consistent_mass_matrix(self, *args, lumping=None, alpha: float = 1/50,
-                               frmt='full', **kwargs):
-        """
-        Returns the consistent mass matrix of the block.
-        lumping : 'direct', None or False
-        frmt : only if lumping is specified
-        """
-        dbkey = self.__class__._attr_map_['M']
-        if is_none_or_false(lumping):
-            return super().consistent_mass_matrix(*args, squeeze=False, **kwargs)
-        if lumping == 'direct':
-            dens = self.db.density
-            try:
-                areas = self.areas()
-            except Exception:
-                areas = np.ones_like(dens)
-            lengths = self.lengths()
-            topo = self.topology()
-            ediags = dlump(dens, lengths, areas, topo, alpha)
-            if frmt == 'full':
-                N = ediags.shape[-1]
-                M = np.zeros((ediags.shape[0], N, N))
-                inds = np.arange(N)
-                M[:, inds, inds] = ediags
-                self.db[dbkey] = M
-                return M
-            elif frmt == 'diag':
-                self.db[dbkey] = ediags
-                return ediags
-        raise RuntimeError("Lumping mode not recognized :(")
     
     @squeeze(True)
     def lumped_mass_matrix(self, *args, lumping:str='direct', alpha: float = 1/50,
@@ -358,6 +326,7 @@ class BernoulliBase(BernoulliBeam):
         frmt : str, Optional
             Possible values are 'full' or 'diag'. If 'diag', only the diagonal
             entries are returned, if 'full' a full matrix is returned.
+            Default is 'full'.
         
         """
         dbkey = self.__class__._attr_map_['M']

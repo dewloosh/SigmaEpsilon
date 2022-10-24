@@ -1,5 +1,5 @@
-SigmaEpsilon API Reference
-==========================
+API Reference
+=============
 
 .. toctree::
     /api/solid/api_models

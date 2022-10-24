@@ -631,21 +631,6 @@ def assert_min_stiffness_bulk(K: ndarray, minval = 1e-12):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def internal_forces(K: ndarray, dofsol: ndarray):
-    """
-    Transforms element stiffness matrices from local to global.
-    ---
-    (nE, nRHS, nEVAB)
-    """
-    nE, nRHS, nEVAB  = dofsol.shape
-    res = np.zeros_like(dofsol)
-    for i in prange(nE):
-        for j in prange(nRHS):
-            res[i, j] = K[i] @ dofsol[i, j]
-    return res
-
-
-@njit(nogil=True, parallel=True, cache=__cache)
 def nodal_mass_matrix_data(nodal_masses: ndarray, ndof:int=6):
     N = nodal_masses.shape[0]
     res = np.zeros((N*ndof))

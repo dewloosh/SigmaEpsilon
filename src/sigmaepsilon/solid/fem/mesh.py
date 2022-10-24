@@ -384,7 +384,7 @@ class FemMesh(PolyData):
     @squeeze(True)
     def strains(self, *args, cells=None, squeeze=True, **kwargs) -> np.ndarray:
         """
-        Returns strain solution for each cell.
+        Returns strains for each cell.
         """
         blocks = self.cellblocks(inclusive=True)
         kwargs.update(squeeze=False)
@@ -399,9 +399,26 @@ class FemMesh(PolyData):
             return np.vstack(list(map(foo, blocks)))
 
     @squeeze(True)
+    def external_forces(self, *args, cells=None, flatten=True, squeeze=True, **kwargs) -> np.ndarray:
+        """
+        Returns external forces for each cell.
+        """
+        blocks = self.cellblocks(inclusive=True)
+        kwargs.update(flatten=flatten, squeeze=False)
+        if cells is not None:
+            kwargs.update(cells=cells)
+            res = {}
+            def foo(b): return b.celldata.external_forces(*args, **kwargs)
+            [res.update(d) for d in map(foo, blocks)]
+            return res
+        else:
+            def foo(b): return b.celldata.external_forces(*args, **kwargs)
+            return np.vstack(list(map(foo, blocks)))
+    
+    @squeeze(True)
     def internal_forces(self, *args, cells=None, flatten=True, squeeze=True, **kwargs) -> np.ndarray:
         """
-        Returns internal force solution for each cell.
+        Returns internal forces for each cell.
         """
         blocks = self.cellblocks(inclusive=True)
         kwargs.update(flatten=flatten, squeeze=False)

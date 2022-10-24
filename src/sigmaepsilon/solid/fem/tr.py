@@ -5,16 +5,47 @@ __cache = True
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def nodal_dcm(dcm: ndarray, N=2) -> ndarray:
+def nodal_dcm(dcm: ndarray, N:int=2) -> ndarray:
     """
-    Returns a direction cosine matrix for a node, 
-    if the number of nodal degrees of freedom is a
-    multiple of 3. 
+    Assembles the nodal direction cosine matrix of a single node.
     
     Parameters
     ----------
     dcm : numpy.ndarray
-        A 3x3 direction cosine matrix for many elements.
+        A 3x3 direction cosine matrix.
+    
+    N : int, Optional
+        The number of triplets that make up a nodal vector.
+        Default is 2, which means 6 dofs per node.
+        
+    Returns
+    -------
+    numpy.ndarray
+        A 2d numpy float array.
+    
+    Note
+    ----
+    The template 'dcm' should be the matrix you would use to transform a 
+    position vector in 3d Euclidean space.
+    
+    """
+    res = np.zeros((3 * N, 3 * N), dtype=dcm.dtype)
+    for i in prange(N):
+        _i = i * 3
+        i_ = _i + 3
+        res[_i:i_, _i:i_] = dcm
+    return res
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def nodal_dcm_bulk(dcm: ndarray, N:int=2) -> ndarray:
+    """
+    Assembles the nodal direction cosine matrices of several cells. 
+    
+    Parameters
+    ----------
+    dcm : numpy.ndarray
+        A 3x3 direction cosine matrix for each element (4d).
     
     N : int, Optional
         The number of triplets that make up a nodal vector.
@@ -24,7 +55,12 @@ def nodal_dcm(dcm: ndarray, N=2) -> ndarray:
     -------
     numpy.ndarray
         A 3d numpy float array.
-                 
+    
+    Note
+    ----
+    Typically, 'dcm' should be the matrix you would use to transform a 
+    position vector in 3d Euclidean space.
+    
     """
     nE = dcm.shape[0]
     res = np.zeros((nE, 3 * N, 3 * N), dtype=dcm.dtype)
@@ -37,6 +73,16 @@ def nodal_dcm(dcm: ndarray, N=2) -> ndarray:
 
 @njit(nogil=True, parallel=True, cache=__cache)
 def element_dcm(nodal_dcm: ndarray, nNE: int = 2, nDOF: int=6):
+    nEVAB = nNE * nDOF
+    res = np.zeros((nEVAB, nEVAB), dtype=nodal_dcm.dtype)
+    for iNE in prange(nNE):
+        i0, i1 = nDOF*iNE, nDOF * (iNE+1)
+        res[i0: i1, i0: i1] = nodal_dcm
+    return res
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def element_dcm_bulk(nodal_dcm: ndarray, nNE: int = 2, nDOF: int=6):
     nE = nodal_dcm.shape[0]
     nEVAB = nNE * nDOF
     res = np.zeros((nE, nEVAB, nEVAB), dtype=nodal_dcm.dtype)
