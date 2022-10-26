@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from numpy import ndarray
+from numpy import ndarray, swapaxes as swap
 from numba import njit, prange
+from scipy.interpolate import interp1d
 __cache = True
 
 
@@ -102,5 +103,15 @@ def explode_kinetic_strains(kstrains: ndarray, nP: int):
     return res
 
 
+def extrapolate_gauss_data_1d(gpos: ndarray, gdata: ndarray):
+    gdata = swap(gdata, 0, 2)  # (nDOFN, nE, nP) --> (nP, nE, nDOFN)
+    approx = interp1d(gpos, gdata, fill_value='extrapolate', axis=0)
+    def inner(*args, **kwargs):
+        res = approx(*args, **kwargs)
+        return swap(res, 0, 2)  # (nP, nE, nDOFN) --> (nDOFN, nE, nP)
+    return inner
+
+
 def extrapolate_gauss_data(data, x_in, x_out):
     pass
+
