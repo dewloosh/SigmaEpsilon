@@ -48,10 +48,10 @@ class FiniteElement(CellData, FemMixin):
     """
     Base mixin class for all element types. Functions of this class
     can be called on any class of SigmEpsilon.
-    
+
     """
 
-    def nodal_dcm_matrix(self, N:int=None):
+    def nodal_dcm_matrix(self, N: int = None):
         """
         Returns nodal direction cosine matrices for all elements
         in the block.
@@ -62,7 +62,7 @@ class FiniteElement(CellData, FemMixin):
             The number of triplets it takes to make up a vector
             of generalized variables. Default is None, which means
             that it is inferred from class properties.
-        
+
         Returns
         -------
         numpy.ndarray
@@ -76,13 +76,13 @@ class FiniteElement(CellData, FemMixin):
         ----
         If 'N' is Nonem current implementation assumes that the number of 
         deegrees of freedom per node is a multiple of 3.
-        
+
         """
         nDOF = self.__class__.NDOFN
         frames = self.frames  # dcm_G_L
         if isinstance(N, int):
             return nodal_dcm_bulk(frames, N)
-        else:    
+        else:
             c, r = divmod(nDOF, 3)
             assert r == 0, "The default mechanism assumes that the number of " + \
                 "deegrees of freedom per node is a multiple of 3."
@@ -427,28 +427,28 @@ class FiniteElement(CellData, FemMixin):
             return explode_kinetic_strains(sloads[cells], nP)
         else:
             return sloads[cells]
-        
+
     @squeeze(True)
-    def external_forces(self, *args, cells:Iterable=None, flatten: bool = True, 
-                        target:Union[str, ReferenceFrame]='local',
+    def external_forces(self, *args, cells: Iterable = None, flatten: bool = True,
+                        target: Union[str, ReferenceFrame] = 'local',
                         **kwargs) -> Union[dict, ndarray]:
         """
         Evaluates :math:`\mathbf{f}_e = \mathbf{K}_e @ \mathbf{u}_e` for one or several cells
         and load cases.
-        
+
         Parameters
         ----------
         cells : int or Iterable[int], Optional
             Indices of cells. If not provided, results are returned for all cells.
             Default is None.
-        
+
         target : Union[str, ReferenceFrame], Optional
             The target frame. Default is 'local', which means that the returned forces should
             be understood as coordinates of generalized vectors in the local frames of the cells.
-            
+
         flatten: bool, Optional
             Determines the shape of the resulting array. Default is True.
-        
+
         Returns
         -------
         numpy.ndarray or dict
@@ -456,7 +456,7 @@ class FiniteElement(CellData, FemMixin):
             The shape of the subarrays is (nP * nDOF, nRHS) if 'flatten' is True else (nP, nDOF, nRHS), 
             where nE is the number of cells, nP the number of evaluation points, nDOF is the number of 
             force components and nRHS is the number of load cases. 
-        
+
         """
         if cells is not None:
             cells = atleast1d(cells)
@@ -480,13 +480,13 @@ class FiniteElement(CellData, FemMixin):
         dofsol = ascont(np.swapaxes(dofsol, 1, 2))
         dofsol = tr_cells_1d_in_multi(dofsol, dcm)
         dofsol = ascont(np.swapaxes(dofsol, 1, 2))  # (nE, nEVAB, nRHS)
-        
+
         # approximation matrix
         # values -> (nE, nEVAB, nRHS)
         points = np.array(self.lcoords()).flatten()
         N = self.shape_function_matrix(points, rng=[-1, 1])[cells]
         # N -> (nE, nNE, nDOF, nDOF * nNODE)
-      
+
         # calculate external forces
         dbkey = self._dbkey_stiffness_matrix_
         K = self.db[dbkey].to_numpy()
@@ -498,7 +498,7 @@ class FiniteElement(CellData, FemMixin):
         dofsol = ascont(np.swapaxes(dofsol, 1, 2))  # (nE, nEVAB, nRHS)
         forces = ascont(np.moveaxis(forces, 1, -1))
         # forces ->  (nE, nNE, nDOF, nRHS)
-    
+
         if target is not None:
             if isinstance(target, str) and target == 'local':
                 values = forces
@@ -533,7 +533,7 @@ class FiniteElement(CellData, FemMixin):
 
     @squeeze(True)
     def internal_forces(self, *args, cells=None, points=None, rng=None,
-                        flatten: bool = True, target:Union[str, ReferenceFrame]='local', 
+                        flatten: bool = True, target: Union[str, ReferenceFrame] = 'local',
                         **kwargs) -> Union[dict, ndarray]:
         """
         Returns internal forces for many cells and evaluation points.
@@ -553,11 +553,11 @@ class FiniteElement(CellData, FemMixin):
         cells : int or Iterable[int], Optional
             Indices of cells. If not provided, results are returned for all cells.
             Default is None.
-            
+
         target : Union[str, ReferenceFrame], Optional
             The target frame. Default is 'local', which means that the returned forces should
             be understood as coordinates of generalized vectors in the local frames of the cells.
-            
+
         flatten: bool, Optional
             Determines the shape of the resulting array. Default is True.
 
@@ -625,7 +625,7 @@ class FiniteElement(CellData, FemMixin):
         dofsol = ascont(np.swapaxes(dofsol, 1, 2))  # (nE, nEVAB, nRHS)
         # forces -> (nE, nP, nSTRE, nRHS)
         forces = self._postproc_local_internal_forces(forces, points=points, rng=rng,
-                                                        cells=cells, dofsol=dofsol)
+                                                      cells=cells, dofsol=dofsol)
         # forces -> (nE, nP, nDOF, nRHS)
 
         if target is not None:

@@ -100,3 +100,7 @@ def explode_kinetic_strains(kstrains: ndarray, nP: int):
                 for m in prange(nSTRE):
                     res[i, j, k, m] = kstrains[i, m, j]
     return res
+
+
+def extrapolate_gauss_data(data, x_in, x_out):
+    pass
