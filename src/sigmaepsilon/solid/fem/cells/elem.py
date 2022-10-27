@@ -194,7 +194,7 @@ class FiniteElement(CellData, FemMixin):
         cells : int or numpy.ndarray, Optional
             Indices of cells. If not provided, results are returned for all cells.
             If cells are provided, the function returns a dictionary, with the cell indices
-            being the keys.  Default is None.
+            being the keys. Default is None.
 
         target : numpy.ndarray, Optional
             Reference frame for the output. A value of None or 'local' refers to the local system
@@ -279,6 +279,75 @@ class FiniteElement(CellData, FemMixin):
                 "Invalid data type <> for cells.".format(type(cells)))
         return data
 
+    def _extrapolate_gauss_strains_(self, *, cells=None, points=None,
+                                    ec=None, rng=None, **kwargs):
+        # nodal dof solution
+        dofsol = kwargs.get('_u', None)
+        if dofsol is None:
+            dofsol = self.pointdata.dofsol
+            dofsol = atleastnd(dofsol, 3, back=True)
+            nP, nDOF, nRHS = dofsol.shape
+            dofsol = dofsol.reshape(nP * nDOF, nRHS)
+
+        # selective integration
+        q = kwargs.get('_q', None)
+        if q is None:
+            nSTRE = self.__class__.NSTRE
+            nDOF = self.__class__.NDOFN
+            nRHS = dofsol.shape[-1]
+            nE = len(self)
+            
+            if cells is not None:
+                cells = atleast1d(cells)
+                conds = np.isin(cells, self.id)
+                cells = atleast1d(cells[conds])
+                if len(cells) == 0:
+                    return {}
+            else:
+                cells = np.s_[:]
+                            
+            ec = self.local_coordinates()[cells]
+            dofsol = self.dof_solution()
+            rng = np.array([-1., 1.])
+            
+            result = np.zeros((nE, nP, nSTRE, nRHS))
+            q = self.quadrature[self.qrule]
+            func = partial(self._extrapolate_gauss_strains_, 
+                           cells=cells, ec=ec, rng=rng)
+            if isinstance(q, dict):  # selective integration
+                for qinds, qvalue in q.items():
+                    if isinstance(qvalue, str):
+                        # indirect
+                        qpos, qweight = self.quadrature[qvalue]
+                    else:
+                        # direct
+                        qpos, qweight = qvalue
+                    q = Quadrature(qinds, qpos, qweight)
+            else:
+                # one side loop
+                qpos, qweight = self.quadrature[self.qrule]
+                q = Quadrature(None, qpos, qweight)
+                qdata = func(points=q.pos)
+                approx = extrapolate_gauss_data(gauss.pos, gdata)
+                cell_ndata = approx(cls.lcoords)
+            return None
+        
+        if points is None:
+            points = np.array(self.lcoords()).flatten()
+            rng = [-1, 1]
+        else:
+            if not isinstance(points, ndarray):
+                points = np.array(points)
+            rng = np.array([-1., 1.]) if rng is None else np.array(rng)
+        points, rng = to_range(
+            points, source=rng, target=[-1, 1]).flatten(), [-1, 1]
+        nP = len(points)
+
+        dshp = self.shape_function_derivatives(points, rng=rng)[cells]
+        jac = self.jacobian_matrix(dshp=dshp, ecoords=ec)  # (nE, nP, nD, nD)
+        B = self.strain_displacement_matrix(dshp=dshp, jac=jac)
+        # B -> (nE, nP, nSTRE, nEVAB)
+    
     @squeeze(True)
     def strains(self, *args, cells=None, points=None, rng=None,
                 separate=False, **kwargs) -> Union[dict, ndarray]:
@@ -348,10 +417,10 @@ class FiniteElement(CellData, FemMixin):
             points, source=rng, target=[-1, 1]).flatten(), [-1, 1]
 
         dshp = self.shape_function_derivatives(points, rng=rng)[cells]
-        jac = self.jacobian_matrix(
-            dshp=dshp, ecoords=ecoords)  # (nE, nP, 1, 1)
-        B = self.strain_displacement_matrix(
-            dshp=dshp, jac=jac)  # (nE, nP, 4, nNODE * 6)
+        jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)  
+        # (nE, nP, nD, nD)
+        B = self.strain_displacement_matrix(dshp=dshp, jac=jac)
+        # (nE, nP, nSTRE, nEVAB)  
 
         values = ascont(np.swapaxes(values, 1, 2))  # (nE, nRHS, nEVAB)
         values = approx_element_solution_bulk(values, B)  # (nE, nRHS, nP, 4)

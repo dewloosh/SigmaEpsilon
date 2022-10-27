@@ -4,7 +4,7 @@ from numpy import ndarray
 from collections import Iterable
 from typing import Union, Callable
 
-from neumann import squeeze, is_none_or_false
+from neumann import squeeze
 from neumann.array import atleast1d, atleastnd, ascont
 from neumann.utils import to_range
 
