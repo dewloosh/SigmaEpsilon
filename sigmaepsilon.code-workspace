@@ -7,16 +7,13 @@
 			"path": "../dewloosh/PolyMesh"
 		},
 		{
+			"path": "../dewloosh/latexdocs"
+		},
+		{
 			"path": "../dewloosh/Neumann"
 		},
 		{
 			"path": "../../Google Drive/dewloosh/working"
-		},
-		{
-			"path": "../3DBeam"
-		},
-		{
-			"path": "../Bernoulli-Dash"
 		}
 	],
 	"settings": {}

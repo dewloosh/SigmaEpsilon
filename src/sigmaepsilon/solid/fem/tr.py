@@ -94,127 +94,53 @@ def element_dcm_bulk(nodal_dcm: ndarray, nNE: int = 2, nDOF: int=6):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def element_transformation_matrices(Q: ndarray, nNE: int=2):
-    nE = Q.shape[0]
-    nEVAB = nNE * 6
-    res = np.zeros((nE, nEVAB, nEVAB), dtype=Q.dtype)
-    for iE in prange(nE):
-        for j in prange(2*nNE):
-            res[iE, 3*j : 3*(j+1), 3*j : 3*(j+1)] = Q[iE]
-    return res
-
-
-@njit(nogil=True, parallel=True, cache=__cache)
-def nodal_transformation_matrices(Q: ndarray):
-    nE = Q.shape[0]
-    res = np.zeros((nE, 6, 6), dtype=Q.dtype)
-    for iE in prange(nE):
-        for j in prange(2):
-            res[iE, 3*j : 3*(j+1), 3*j : 3*(j+1)] = Q[iE]
-    return res
-
-
-@njit(nogil=True, parallel=True, cache=__cache)
-def transform_element_matrices_out(A: ndarray, Q: ndarray):
-    res = np.zeros_like(A)
-    for iE in prange(res.shape[0]):
-        res[iE] = Q[iE].T @ A[iE] @ Q[iE]
-    return res
-
-
-@njit(nogil=True, parallel=True, cache=__cache)
-def transform_element_vectors_out(A: ndarray, Q: ndarray):
+def tr_element_vectors_bulk_multi(values: ndarray, dcm: ndarray, 
+                             invert:bool=False) -> ndarray:
     """
-    Transforms element load vectors from local to global.
-    """
-    res = np.zeros_like(A)
-    for iE in prange(res.shape[0]):
-        res[iE] = Q[iE].T @ A[iE]
-    return res
-
-
-@njit(nogil=True, parallel=True, cache=__cache)
-def transform_element_vectors_out_multi(A: ndarray, Q: ndarray):
-    """
-    Transforms multiple element load vectors from 
-    local to global.
-    """
-    nE, nP = A.shape[:2]
-    res = np.zeros_like(A)
-    for iE in prange(nE):
-        for iP in prange(nP):
-            res[iE, iP] = Q[iE].T @ A[iE, iP]
-    return res
-
-
-@njit(nogil=True, parallel=True, cache=__cache)
-def transform_element_vectors_in(dofsol: ndarray, Q: ndarray):
-    """
-    Transforms element dof solutions from global to local.
-    """
-    res = np.zeros_like(dofsol)
-    for i in prange(res.shape[0]):
-        res[i] = Q[i] @ dofsol[i]
-    return res
-
-
-@njit(nogil=True, parallel=True, cache=__cache)
-def transform_numint_forces_out(data: ndarray, dcm_G_L: ndarray):
-    """
-    Transforms internal forces of several elements
-    and evaluation points from local frames
-    to one global frame.
+    Transforms element vectors for multiple cases.
     
     Parameters
     ----------
-    data: (nE, nP, nRHS, nDOFN) numpy.ndarray
-        nE : number of elements
-        nP : number of sampling points
-        nRHS : number of datasets (eg. load cases)
-        nDOFN : number of dofs of a node
-        
-    dcm_G_L : (nE, 3, 3) numpy array
-        Array of DCM matrices from global to local.
+    values : numpy.ndarray
+        The values to transform as an array of shape (nE, nRHS, nX).
     
+    dcm : numpy.ndarray
+        The direct cosine matrix of the transformation as an
+        array of shape (nE, nX).
+        
+    invert : bool, Optional
+        If True, the DCM matrices are transposed before transformation.
+        This makes this function usable in both directions.
+        Default is False.
+        
     Returns
     -------
-    (nE, nP, nRHS, nDOFN) numpy.ndarray
+    numpy.ndarray
+        An array with the same shape as 'values'.
+    
     """
-    nE, nP, nC = data.shape[:3]
-    res = np.zeros_like(data)
-    for iE in prange(nE):
-        for iP in prange(nP):
-            for iC in prange(nC):
-                res[iE, iP, iC, :] = dcm_G_L[iE].T @ data[iE, iP, iC, :]
+    res = np.zeros_like(values)
+    if not invert:
+        for iE in prange(res.shape[0]):
+            for jRHS in prange(res.shape[1]):
+                res[iE, jRHS] = dcm[iE] @ values[iE, jRHS]
+    else:
+        for iE in prange(res.shape[0]):
+            for jRHS in prange(res.shape[1]):
+                res[iE, jRHS] = dcm[iE].T @ values[iE, jRHS]
     return res
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def transform_numint_forces_in(data: ndarray, dcm_G_L: ndarray):
+def tr_element_matrices_bulk(K: ndarray, dcm: ndarray, invert:bool=False):
     """
-    Transforms internal forces of several elements
-    and numerical integration points form one global frame
-    to several local frames.
-    
-    Parameters
-    ----------
-    data: (nE, nP, nRHS, nDOF) numpy.ndarray
-        nE : number of elements
-        nP : number of sampling points
-        nRHS : number of datasets (eg. load cases)
-        nDOFN : number of dofs of a node
-        
-    dcm_G_L : (nE, 3, 3) numpy array
-        Array of DCM matrices from global to local.
-    
-    Returns
-    -------
-    (nE, nP, nRHS, nDOFN) numpy.ndarray   
+    Transforms element stiffness matrices from local to global.
     """
-    nE, nP, nC = data.shape[:3]
-    res = np.zeros_like(data)
-    for i in prange(nE):
-        for j in prange(nP):
-            for k in prange(nC):
-                res[i, j, k, :] = dcm_G_L[i] @ data[i, j, k, :]
+    res = np.zeros_like(K)
+    if not invert:
+        for iE in prange(res.shape[0]):
+            res[iE] = dcm[iE] @ K[iE] @ dcm[iE].T
+    else:
+        for iE in prange(res.shape[0]):
+            res[iE] = dcm[iE].T @ K[iE] @ dcm[iE]
     return res

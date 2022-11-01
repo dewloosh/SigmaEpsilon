@@ -93,8 +93,3 @@ class DrillingMembrane(Membrane):
     NDOFN = 3
     NSTRE = _NSTRE_
     
-
-if __name__ == '__main__':
-    
-    print(Membrane.NDOFN)
-

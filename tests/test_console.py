@@ -3,37 +3,37 @@ import unittest
 import numpy as np
 
 from sigmaepsilon.solid import Structure, LineMesh, PointData, FemMesh
-from neumann.linalg import linspace, Vector
-from polymesh.space import StandardFrame, PointCloud, frames_of_lines
-from sigmaepsilon.solid.fem.cells import B2 as Beam, Q4M, Q9P, H8
-from neumann.array import repeat
-from polymesh.grid import gridQ4, gridQ9, gridH8
 from sigmaepsilon.solid.model import Membrane, MindlinPlate
+from sigmaepsilon.solid.fem.cells import B2 as Beam, Q4M, Q9P, H8
+from neumann.linalg import linspace, Vector
+from neumann.array import repeat
+from polymesh.space import StandardFrame, PointCloud, frames_of_lines
+from polymesh.grid import gridQ4, gridQ9, gridH8
 
 
 class TestConsole(unittest.TestCase):
-    
+
     def test_console_Bernoulli_1d(self):
         L = 100.  # length of the console
         w, h = 10., 10.  # width and height
         F = -100.  # value of the vertical load at the free end
         E = 210000.0  # Young's modulus
         nu = 0.3  # Poisson's ratio
-        
+
         # cross section
         A = w * h
         Iy = w * h**3 / 12
         Iz = w * h**3 / 12
         Ix = Iy + Iz
-        
+
         # Bernoulli solution
         EI = E * Iy
         sol_exact = F * L**3 / (3 * EI)
         tol = np.abs(sol_exact / 1000)
         sol_exact
-        
+
         nElem = 20  # number of finite elements to use
-        
+
         # model stiffness matrix
         G = E / (2 * (1 + nu))
         Hooke = np.array([
@@ -42,7 +42,7 @@ class TestConsole(unittest.TestCase):
             [0, 0, E*Iy, 0],
             [0, 0, 0, E*Iz]
         ])
-        
+
         # space
         GlobalFrame = StandardFrame(dim=3)
 
@@ -64,7 +64,7 @@ class TestConsole(unittest.TestCase):
 
         # pointdata
         pd = PointData(coords=coords, frame=GlobalFrame,
-                    loads=loads, fixity=fixity)
+                       loads=loads, fixity=fixity)
 
         # celldata
         frames = frames_of_lines(coords, topo)
@@ -80,7 +80,7 @@ class TestConsole(unittest.TestCase):
         dofsol = structure.nodal_dof_solution()[:, :3]
         local_dof_solution = dofsol[-1, :3]
         sol_fem_1d_B2 = local_dof_solution[2]"""
-        
+
     def test_console_Bernoulli_2dM(self):
         L = 100.  # length of the console
         w, h = 10., 10.  # width and height
@@ -112,7 +112,8 @@ class TestConsole(unittest.TestCase):
 
         # loads
         loads = np.zeros((coords.shape[0], 6))
-        cond = (coords[:, 0] > (Lx-(1e-12))) & (np.abs(coords[:, 2] - (Lz/2)) < 1e-12)
+        cond = (coords[:, 0] > (Lx-(1e-12))
+                ) & (np.abs(coords[:, 2] - (Lz/2)) < 1e-12)
         nbcinds = np.where(cond)[0]
         loads[nbcinds, 2] = F
 
@@ -129,7 +130,7 @@ class TestConsole(unittest.TestCase):
 
         # pointdata
         pd = PointData(coords=coords, frame=GlobalFrame,
-                    loads=loads, fixity=fixity)
+                       loads=loads, fixity=fixity)
 
         # celldata
         frame = GlobalFrame.orient_new('Body', [np.pi/2, 0, 0], 'XYZ')
@@ -143,14 +144,14 @@ class TestConsole(unittest.TestCase):
 
         dofsol = structure.nodal_dof_solution()
         sol_fem_2d_M = dofsol[:, 2].min()"""
-        
+
     def test_console_Bernoulli_2dP(self):
         L = 100.  # length of the console
         w, h = 10., 10.  # width and height
         F = -100.  # value of the vertical load at the free end
         E = 210000.0  # Young's modulus
         nu = 0.3  # Poisson's ratio
-        
+
         size = Lx, Ly = (L, w)
         shape = nx, ny = (200, 20)
 
@@ -175,7 +176,8 @@ class TestConsole(unittest.TestCase):
 
         # loads
         loads = np.zeros((coords.shape[0], 6))
-        cond = (coords[:, 0] > (Lx-(1e-12))) & (np.abs(coords[:, 1] - (Ly/2)) < 1e-12)
+        cond = (coords[:, 0] > (Lx-(1e-12))
+                ) & (np.abs(coords[:, 1] - (Ly/2)) < 1e-12)
         nbcinds = np.where(cond)[0]
         loads[nbcinds, 2] = F
 
@@ -192,7 +194,7 @@ class TestConsole(unittest.TestCase):
 
         # pointdata
         pd = PointData(coords=coords, frame=GlobalFrame,
-                    loads=loads, fixity=fixity)
+                       loads=loads, fixity=fixity)
 
         # celldata
         frames = repeat(np.eye(3), topo.shape[0])
@@ -206,14 +208,14 @@ class TestConsole(unittest.TestCase):
 
         dofsol = structure.nodal_dof_solution()
         sol_fem_2d_P = dofsol[:, 2].min()"""
-        
+
     def test_console_Bernoulli_3d(self):
         L = 100.  # length of the console
         w, h = 10., 10.  # width and height
         F = -100.  # value of the vertical load at the free end
         E = 210000.0  # Young's modulus
         nu = 0.3  # Poisson's ratio
-        
+
         size = Lx, Ly, Lz = (L, w, h)
         shape = nx, ny, nz = (100, 10, 10)
 
@@ -253,7 +255,7 @@ class TestConsole(unittest.TestCase):
 
         # pointdata
         pd = PointData(coords=coords, frame=GlobalFrame,
-                    loads=loads, fixity=fixity)
+                       loads=loads, fixity=fixity)
 
         # celldata
         frames = repeat(GlobalFrame.show(), topo.shape[0])
@@ -267,9 +269,8 @@ class TestConsole(unittest.TestCase):
         dofsol = structure.nodal_dof_solution()
         structure.mesh.pointdata['x'] = coords + dofsol[:, :3]
         sol_fem_3d = dofsol[:, 2].min()"""
-        
-                        
-    
+
+
 if __name__ == "__main__":
-    
+
     unittest.main()

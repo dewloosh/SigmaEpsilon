@@ -4,7 +4,7 @@ from numba import njit, prange
 import numpy as np
 from numpy import ndarray
 
-from neumann.linalg import inv
+from neumann.linalg import ReferenceFrame, inv
 
 from polymesh.utils import cells_coords
 
@@ -22,7 +22,8 @@ def element_centers(ecoords: np.ndarray):
 
 @njit(nogil=True, cache=__cache)
 def loc_to_glob(pcoord: np.ndarray, gcoords: np.ndarray, shpfnc: Callable):
-    """Local to global transformation for a single cell and point.
+    """
+    Local to global transformation for a single cell and point.
 
     Returns global coordinates of a point in an element, provided the global
     corodinates of the points of the element, an array of parametric
@@ -52,6 +53,7 @@ def loc_to_glob(pcoord: np.ndarray, gcoords: np.ndarray, shpfnc: Callable):
     -----
     'shpfnc' must be a numba-jitted function, that accepts a 1D array of
     exactly nDP number of components.
+    
     """
     return gcoords.T @ shpfnc(pcoord)
 

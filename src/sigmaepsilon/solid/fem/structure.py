@@ -9,7 +9,7 @@ from linkeddeepdict import LinkedDeepDict
 from dewloosh.core.wrapping import Wrapper
 
 from neumann import squeeze
-from neumann.array import repeat
+from neumann.array import repeat, atleastnd
 
 from .mesh import FemMesh
 from .femsolver import FemSolver
@@ -41,7 +41,7 @@ class Structure(Wrapper):
 
     Parameters
     ----------
-    mesh : :class:`FemMesh`
+    mesh : FemMesh
         A finite element mesh.
 
     """
@@ -82,7 +82,7 @@ class Structure(Wrapper):
 
         Returns
         -------
-        :class:`.femsolver.FemSolver`
+        FemSolver
 
         """
         return self._solver
@@ -204,10 +204,10 @@ class Structure(Wrapper):
 
         Returns
         -------
-        :class:`numpy.ndarray`
+        numpy.ndarray
             The natural circular frequencies.
 
-        :class:`numpy.ndarray`
+        numpy.ndarray
             The eigenvectors, only if 'return_vectors' is True.
 
         """
@@ -221,7 +221,7 @@ class Structure(Wrapper):
 
         Returns
         -------
-        :class:`numpy.ndarray` or :class:`scipy.sparse.coo_matrix`
+        numpy.ndarray or scipy.sparse.coo_matrix
 
         """
         return self.mesh.elastic_stiffness_matrix(*args, **kwargs)
@@ -232,7 +232,7 @@ class Structure(Wrapper):
 
         Returns
         -------
-        :class:`scipy.sparse.coo_matrix`
+        scipy.sparse.coo_matrix
 
         """
         return self.mesh.penalty_matrix_coo(*args, **kwargs)
@@ -248,7 +248,7 @@ class Structure(Wrapper):
 
         Returns
         -------
-        :class:`numpy.ndarray` or :class:`scipy.sparse.coo_matrix`
+        numpy.ndarray or scipy.sparse.coo_matrix
 
         """
         M = self.mesh.consistent_mass_matrix(*args, **kwargs)
@@ -279,6 +279,10 @@ class Structure(Wrapper):
         store : str, Optional
             If a string is provided, the resulting data can be later accessed as an attribute
             of the pointdata of the mesh object. Default is None.
+            
+        Returns
+        -------
+        numpy.ndarray
 
         """
         mesh = self._wrapped
@@ -319,7 +323,11 @@ class Structure(Wrapper):
         store : str, Optional
             If a string is provided, the resulting data can be later accessed as an attribute
             of the pointdata of the mesh object. Default is None.
-
+        
+        Returns
+        -------
+        numpy.ndarray
+        
         """
         mesh = self._wrapped
         nDOFN = mesh.NDOFN
@@ -332,7 +340,8 @@ class Structure(Wrapper):
             res = np.reshape(r, (nN, nDOFN))
         else:
             res = np.reshape(r, (nN, nDOFN, nRHS))
-
+        res = atleastnd(res, 3, back=True)
+        
         if isinstance(store, str):
             mesh.pointdata[store] = res
 
@@ -385,7 +394,7 @@ class Structure(Wrapper):
         Returns the internal forces for one or more elements.
         """
         return self.mesh.internal_forces(*args, flatten=flatten, squeeze=False, **kwargs)
-    
+
     @squeeze(True)
     def external_forces(self, *args, flatten=False, squeeze=True, **kwargs) -> np.ndarray:
         """
@@ -406,7 +415,8 @@ class Structure(Wrapper):
 
             - vector of reaction forces, available with key 'reactions'
 
-        For information on the generated cell-related data see :func:`sigmaepsilon.solid.fem.mesh.FemMesh.postprocess`.
+        For information on the generated cell-related data see 
+        :func:`sigmaepsilon.solid.fem.mesh.FemMesh.postprocess`.
 
         Parameters
         ----------
@@ -433,7 +443,7 @@ class Structure(Wrapper):
 
         Returns
         -------
-        :class:`Structure`
+        Structure
 
         """
         mesh = self._wrapped
@@ -450,7 +460,7 @@ class Structure(Wrapper):
 
         Returns
         -------
-        :class:`Structure`
+        Structure
 
         """
         self.Solver = None
