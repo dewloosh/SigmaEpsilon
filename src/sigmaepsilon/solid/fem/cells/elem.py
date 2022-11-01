@@ -980,11 +980,11 @@ class FiniteElement(CellData, FemMixin):
                     cond = np.sum(factors, axis=1) < nEVAB2
                     i = np.where(cond)[0]
                     K[i] = constrain_local_stiffness_bulk(K[i], factors[i])
-                    return K
                 else:
                     msg = "Unknown shape of <{}> for 'connectivity'.".format(
                         conn.shape)
                     raise NotImplementedError(msg)
+        return K
 
     def elastic_stiffness_matrix_coo(self, *args, **kwargs) -> coo_matrix:
         """
