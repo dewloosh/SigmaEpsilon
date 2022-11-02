@@ -11,7 +11,7 @@ from neumann.linalg import ReferenceFrame
 from neumann.array import atleast1d, atleastnd, ascont
 from neumann.utils import to_range
 from neumann.linalg.sparse.jaggedarray import JaggedArray
-from polymesh.utils import distribute_nodal_data, collect_nodal_data
+from polymesh.utils import distribute_nodal_data_bulk, collect_nodal_data_bulk
 from polymesh.topo import TopologyArray
 
 from ..preproc import fem_coeff_matrix_coo
@@ -224,13 +224,9 @@ class FiniteElement(CellData, FemMixin):
         if target is not None:
             # transform values to a destination frame, otherwise return
             # the results in the local frames of the cells
-            if isinstance(target, str):
-                if target == 'local':
-                    pass
-                elif target == 'global':
-                    nDOF = values.shape[2]
-                    target = ReferenceFrame(dim=nDOF)
-            if isinstance(target, ReferenceFrame):
+            if isinstance(target, str) and target == 'local':
+                pass
+            else:
                 nE, nRHS, nP, nDOF = values.shape
                 values = values.reshape(nE, nRHS, nP * nDOF)
                 dcm = self.direction_cosine_matrix(N=nP, target=target)[cells]
@@ -751,13 +747,13 @@ class FiniteElement(CellData, FemMixin):
         key = self.__class__._attr_map_['ndf']
         topo = self.topology().to_numpy()
         ndf = self.db[key].to_numpy()
-        self.db[key] = distribute_nodal_data(data, topo, ndf)
+        self.db[key] = distribute_nodal_data_bulk(data, topo, ndf)
 
     def collect_nodal_data(self, key, *args, N=None, **kwargs):
         topo = self.topology().to_numpy()
         N = len(self.pointdata) if N is None else N
         cellloads = self.db[key].to_numpy()
-        return collect_nodal_data(cellloads, topo, N)
+        return collect_nodal_data_bulk(cellloads, topo, N)
 
     def compatibility_penalty_matrix_coo(self, *args, nam_csr_tot, p=1e12, **kwargs):
         """
