@@ -1,4 +1,4 @@
 # -*- coding: utf-8 -*-
-__version__ = "0.0.24b"
+__version__ = "0.0.25b"
 
 __description__ = "High-Performance Computational Mechanics in Python."

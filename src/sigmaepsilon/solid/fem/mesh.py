@@ -17,20 +17,21 @@ from .cells import TET4, TET10, H8, H27
 
 class FemMesh(PolyData):
     """
-    A descendant of :class:`polymesh.PolyData` to handle polygonal meshes for the **Finite Element Method**.
+    A descendant of :class:`polymesh.PolyData` to handle polygonal meshes for 
+    the **Finite Element Method**.
 
     Parameters
     ----------
-    pd : :class:`polymesh.PolyData` or :class:`polymesh.CellData`, Optional
+    pd : polymesh.PolyData or polymesh.CellData, Optional
         A PolyData or a CellData instance. Dafault is None.
 
-    cd : :class:`polymesh.CellData`, Optional
+    cd : polymesh.CellData, Optional
         A CellData instance, if the first argument is provided. Dafault is None.
 
-    coords : :class:`numpy.ndarray`, Optional
+    coords : numpy.ndarray, Optional
         2d numpy array of floats, describing a pointcloud. Default is None.
 
-    topo : :class:`numpy.ndarray`, Optional
+    topo : numpy.ndarray, Optional
         2d numpy array of integers, describing the topology of a polygonal mesh. 
         Default is None.
 
@@ -140,7 +141,8 @@ class FemMesh(PolyData):
         def foo(b): return b.celldata.global_dof_numbering()
         return np.vstack(list(map(foo, blocks)))
 
-    def elastic_stiffness_matrix(self, *args, sparse=True, **kwargs) -> Union[np.ndarray, coo_matrix]:
+    def elastic_stiffness_matrix(self, *args, sparse=True, 
+                                 **kwargs) -> Union[np.ndarray, coo_matrix]:
         """
         Returns the elastic stiffness matrix in dense or sparse format.
 
@@ -294,7 +296,8 @@ class FemMesh(PolyData):
                                        sum_duplicates=sum_duplicates)
         return K_coo.tocoo()
 
-    def approximation_matrix_coo(self, *args, eliminate_zeros=True, **kwargs) -> coo_matrix:
+    def approximation_matrix_coo(self, *args, eliminate_zeros=True,
+                                 **kwargs) -> coo_matrix:
         blocks = self.cellblocks(inclusive=True)
         def foo(b): return b.celldata.approximation_matrix_coo()
         res = np.sum(list(map(foo, blocks))).tocoo()
@@ -302,7 +305,8 @@ class FemMesh(PolyData):
             res.eliminate_zeros()
         return res
 
-    def nodal_approximation_matrix_coo(self, *args, eliminate_zeros=True, **kwargs) -> coo_matrix:
+    def nodal_approximation_matrix_coo(self, *args, eliminate_zeros=True, 
+                                       **kwargs) -> coo_matrix:
         blocks = self.cellblocks(inclusive=True)
         def foo(b): return b.celldata.nodal_approximation_matrix_coo()
         res = np.sum(list(map(foo, blocks))).tocoo()
@@ -399,7 +403,8 @@ class FemMesh(PolyData):
             return np.vstack(list(map(foo, blocks)))
 
     @squeeze(True)
-    def external_forces(self, *args, cells=None, flatten=True, squeeze=True, **kwargs) -> np.ndarray:
+    def external_forces(self, *args, cells=None, flatten=True, squeeze=True, 
+                        **kwargs) -> np.ndarray:
         """
         Returns external forces for each cell.
         """
@@ -416,7 +421,8 @@ class FemMesh(PolyData):
             return np.vstack(list(map(foo, blocks)))
     
     @squeeze(True)
-    def internal_forces(self, *args, cells=None, flatten=True, squeeze=True, **kwargs) -> np.ndarray:
+    def internal_forces(self, *args, cells=None, flatten=True, squeeze=True, 
+                        **kwargs) -> np.ndarray:
         """
         Returns internal forces for each cell.
         """
