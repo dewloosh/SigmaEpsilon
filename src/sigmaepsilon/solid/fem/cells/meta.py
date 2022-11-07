@@ -136,7 +136,7 @@ class FemMixin:
     def weights(self, *args, **kwargs):
         raise NotImplementedError
     
-    def _postproc_local_internal_forces(self, forces, *args, points, rng, cells, **kwargs):
+    def _postproc_local_internal_forces_(self, forces, *args, points, rng, cells, **kwargs):
         """
         The aim of this function os to guarantee a standard shape of output, that contains
         values for each of the 6 internal force compoents, irrespective of the kinematical

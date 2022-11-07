@@ -92,11 +92,11 @@ def calculate_shear_forces(dofsol: ndarray, forces: ndarray,
             for k in prange(nRHS):
                 for m in range(nNE):
                     # Vy
-                    res[i, j, 1, k] += - D[i, 3, 3] * (
+                    res[i, j, 1, k] -= D[i, 3, 3] * (
                         gdshp[i, j, m, 1, 2] * dofsol[i, m, 1, k] +
                         gdshp[i, j, m, 5, 2] * dofsol[i, m, 5, k])
                     # Vz
-                    res[i, j, 2, k] += - D[i, 2, 2] * (
+                    res[i, j, 2, k] -= D[i, 2, 2] * (
                         gdshp[i, j, m, 2, 2] * dofsol[i, m, 2, k] +
                         gdshp[i, j, m, 4, 2] * dofsol[i, m, 4, k])
     return res

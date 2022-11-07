@@ -285,21 +285,6 @@ class FiniteElement(CellData, FemMixin):
         points, rng = to_range_1d(
             points, source=rng, target=[-1, 1]).flatten(), [-1, 1]
         
-        ###
-        dofsol = self.pointdata.dofsol
-        dofsol = atleastnd(dofsol, 3, back=True)
-        nP, nDOF, nRHS = dofsol. shape
-        dofsol = dofsol.reshape(nP * nDOF, nRHS)
-        gnum = self.global_dof_numbering()[cells]
-        
-        # transform values to cell-local frames
-        dcm = self.direction_cosine_matrix(source='global')[cells]
-        dofsol = element_dof_solution_bulk(dofsol, gnum)  # (nE, nEVAB, nRHS)
-        dofsol = ascont(np.swapaxes(dofsol, 1, 2))
-        dofsol = tr1d(dofsol, dcm)
-        dofsol = ascont(np.swapaxes(dofsol, 1, 2))
-        ###
-
         dshp = self.shape_function_derivatives(points, rng=rng)[cells]
         ecoords = self.local_coordinates()[cells]
         jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)
@@ -512,22 +497,7 @@ class FiniteElement(CellData, FemMixin):
         # values : (nE, nEVAB, nRHS)
         points, rng = to_range_1d(
             points, source=rng, target=[-1, 1]).flatten(), [-1, 1]
-        
-        ###
-        dofsol = self.pointdata.dofsol
-        dofsol = atleastnd(dofsol, 3, back=True)
-        nP, nDOF, nRHS = dofsol. shape
-        dofsol = dofsol.reshape(nP * nDOF, nRHS)
-        gnum = self.global_dof_numbering()[cells]
-        
-        # transform values to cell-local frames
-        dcm = self.direction_cosine_matrix(source='global')[cells]
-        dofsol = element_dof_solution_bulk(dofsol, gnum)  # (nE, nEVAB, nRHS)
-        dofsol = ascont(np.swapaxes(dofsol, 1, 2))
-        dofsol = tr1d(dofsol, dcm)
-        dofsol = ascont(np.swapaxes(dofsol, 1, 2))
-        ###
-        
+                
         dshp = self.shape_function_derivatives(points, rng=rng)[cells]
         ecoords = self.local_coordinates()[cells]
         jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)
@@ -547,8 +517,8 @@ class FiniteElement(CellData, FemMixin):
         forces = ascont(np.moveaxis(forces, 1, -1))
         dofsol = ascont(np.swapaxes(dofsol, 1, 2))  # (nE, nEVAB, nRHS)
         # forces -> (nE, nP, nSTRE, nRHS)
-        forces = self._postproc_local_internal_forces(forces, points=points, rng=rng,
-                                                      cells=cells, dofsol=dofsol)
+        forces = self._postproc_local_internal_forces_(forces, points=points, rng=rng,
+                                                       cells=cells, dofsol=dofsol)
         # forces -> (nE, nP, nDOF, nRHS)
 
         if target is not None:

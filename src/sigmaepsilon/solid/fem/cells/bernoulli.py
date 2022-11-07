@@ -271,8 +271,8 @@ class BernoulliBase(BernoulliBeam):
         # (nE, nP, nNE=2, nDOF=6, 3)
         return body_load_vector_bulk(values, shp, gdshp, djac, qweights).astype(float)
 
-    def _postproc_local_internal_forces(self, values: np.ndarray, *args,
-                                        rng, points, cells, dofsol, **kwargs):
+    def _postproc_local_internal_forces_(self, values: np.ndarray, *args,
+                                         rng, points, cells, dofsol, **kwargs):
         """
         Documentation is at the base element at '...solid\\fem\\elem.py'
         values (nE, nP, 4, nRHS)
@@ -282,10 +282,10 @@ class BernoulliBase(BernoulliBeam):
         """
         ecoords = self.local_coordinates()[cells]
         dshp = self.shape_function_derivatives(points, rng=rng)[cells]
-        jac = self.jacobian_matrix(
-            dshp=dshp, ecoords=ecoords)  # (nE, nP, 1, 1)
+        jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)  
+        # (nE, nP, 1, 1)
         gdshp = self.shape_function_derivatives(jac=jac, dshp=dshp)
-        nE, nEVAB, nRHS = dofsol.shape
+        nE, _, nRHS = dofsol.shape
         nNE, nDOF = self.__class__.NNODE, self.__class__.NDOFN
         dofsol = dofsol.reshape(nE, nNE, nDOF, nRHS)
         D = self.model_stiffness_matrix()[cells]
