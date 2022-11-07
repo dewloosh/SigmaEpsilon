@@ -58,7 +58,7 @@ def shape_function_matrix(shp: ndarray, gdshp: ndarray):
         A float array of shape (nNE, nDOF=6), being the shape 
         functions evaluated at a single point of a single cell.
 
-    dshp: numpy.ndarray
+    gdshp: numpy.ndarray
         A float array of shape (nNE, nDOF=6, 3), being derivatives of shape 
         functions evaluated at a single point of a single cell.
 
@@ -250,7 +250,7 @@ def lumped_mass_matrices_direct(dens: ndarray, lengths: ndarray, areas: ndarray,
     Returns
     -------
     numpy.ndarray
-        A 3d float array of shape (nE, 6 * nNE), where nE and nNE are the number of
+        A 2d float array of shape (nE, 6 * nNE), where nE and nNE are the number of
         elements and nodes per element. 
 
     Notes

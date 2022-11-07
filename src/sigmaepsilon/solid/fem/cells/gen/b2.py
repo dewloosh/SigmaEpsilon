@@ -6,9 +6,23 @@ __cache = True
 
 
 @njit(nogil=True, cache=__cache)
-def shape_function_values(x, L):
+def shape_function_values(x: float, L: float = 2):
     """
     Evaluates the shape functions at a point x in the range [-1, 1].
+
+    Parameters
+    ----------
+    x : float
+        A point in the range [-1, 1].
+
+    L : float, Optional
+        Length of the beam element. Default is 2.
+
+    Returns
+    -------
+    numpy.ndarray
+        A 2d float array.
+
     """
     return np.array([
         [
@@ -31,10 +45,24 @@ def shape_function_values(x, L):
 
 
 @njit(nogil=True, cache=__cache)
-def shape_function_derivatives_1(x, L):
+def shape_function_derivatives_1(x: float, L: float = 2):
     """
     Evaluates the first derivatives of the shape
     functions at a point x in the range [-1, 1].
+
+    Parameters
+    ----------
+    x : float
+        A point in the range [-1, 1].
+
+    L : float, Optional
+        Length of the beam element. Default is 2.
+
+    Returns
+    -------
+    numpy.ndarray
+        A 2d float array.
+
     """
     return np.array([
         [
@@ -57,10 +85,24 @@ def shape_function_derivatives_1(x, L):
 
 
 @njit(nogil=True, cache=__cache)
-def shape_function_derivatives_2(x, L):
+def shape_function_derivatives_2(x: float, L: float = 2):
     """
     Evaluates the second derivatives of the shape
     functions at a point x in the range [-1, 1].
+
+    Parameters
+    ----------
+    x : float
+        A point in the range [-1, 1].
+
+    L : float, Optional
+        Length of the beam element. Default is 2.
+
+    Returns
+    -------
+    numpy.ndarray
+        A 2d float array.
+
     """
     return np.array([
         [
@@ -76,17 +118,31 @@ def shape_function_derivatives_2(x, L):
             -1.5 * x,
             -1.5 * x,
             0,
-            -L * (0.75 * x + 0.25),
+            L * (-0.75 * x - 0.25),
             L * (0.75 * x + 0.25)
         ]
     ])
 
 
 @njit(nogil=True, cache=__cache)
-def shape_function_derivatives_3(x, L):
+def shape_function_derivatives_3(x: float, L: float = 2):
     """
     Evaluates the third derivatives of the shape
     functions at a point x in the range [-1, 1].
+
+    Parameters
+    ----------
+    x : float
+        A point in the range [-1, 1].
+
+    L : float, Optional
+        Length of the beam element. Default is 2.
+
+    Returns
+    -------
+    numpy.ndarray
+        A 2d float array.
+
     """
     return np.array([
         [
@@ -116,12 +172,16 @@ def shape_function_values_bulk(x: ndarray, L: ndarray):
 
     Parameters
     ----------
-    x : 1d numpy float array
-        The points of interest in the range [-1, -1]
+    x : numpy.ndarray
+        1d array of floats in the range [-1, -1].
+
+    L : numpy.ndarray
+        Lengths of the beam elements. Default is None.
 
     Returns
     -------
-    numpy float array of shape (nE, nP, nNE, nDOF=6)
+    numpy.ndarray
+        3d float array of shape (nP, nNE=2, nDOF=6).
     """
     nP = x.shape[0]
     nE = L.shape[0]
@@ -133,7 +193,7 @@ def shape_function_values_bulk(x: ndarray, L: ndarray):
 
 
 @njit(nogil=True, cache=__cache)
-def shape_function_derivatives(x, L):
+def shape_function_derivatives(x: float, L: float = 2):
     """
     Evaluates the derivatives of the shape
     functions at a point x in the range [-1, 1].
@@ -141,16 +201,15 @@ def shape_function_derivatives(x, L):
     Parameters
     ----------
     x : float
-        The point of interest in the range [-1, -1]
+        A point in the range [-1, 1].
 
-    djac : float
-        Determinant of the Jacobi matrix of local-global transformation
-        between the master elment and the actual element.
-        Default is 1.0.
+    L : float, Optional
+        Length of the beam element. Default is 2.
 
     Returns
     -------
-    numpy float array of shape (nNE, nDOF=6, 3)
+    numpy.ndarray
+        3d float array of shape (nNE=2, nDOF=6, 3).
     """
     res = np.zeros((2, 6, 3))
     res[:, :, 0] = shape_function_derivatives_1(x, L)
@@ -165,9 +224,18 @@ def shape_function_derivatives_bulk(x: ndarray, L: ndarray):
     Evaluates the derivatives of the shape
     functions at several points in the range [-1, 1].
 
+    Parameters
+    ----------
+    x : numpy.ndarray
+        1d array of floats in the range [-1, -1].
+
+    L : numpy.ndarray
+        Lengths of the beam elements. Default is None.
+
     Returns
     -------
-    dshp (nE, nP, nNE, nDOF=6, 3)
+    numpy.ndarray
+        5d float array of shape (nE, nP, nNE=2, nDOF=6, 3).
     """
     nP = x.shape[0]
     nE = L.shape[0]

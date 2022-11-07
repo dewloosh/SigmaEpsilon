@@ -10,9 +10,8 @@ from neumann.array import atleast3d
 from polymesh import PolyData
 
 from .pointdata import PointData
-from .cells.celldata import CellData
 from .preproc import fem_load_vector, fem_penalty_matrix_coo, fem_nodal_mass_matrix_coo
-from .cells import TET4, TET10, H8, H27
+from .cells import TET4, TET10, H8, H27, CellData
 
 
 class FemMesh(PolyData):
@@ -27,16 +26,6 @@ class FemMesh(PolyData):
 
     cd : polymesh.CellData, Optional
         A CellData instance, if the first argument is provided. Dafault is None.
-
-    coords : numpy.ndarray, Optional
-        2d numpy array of floats, describing a pointcloud. Default is None.
-
-    topo : numpy.ndarray, Optional
-        2d numpy array of integers, describing the topology of a polygonal mesh. 
-        Default is None.
-
-    celltype : int, Optional
-        An integer spcifying a valid celltype.
 
     Note
     ----
@@ -67,50 +56,22 @@ class FemMesh(PolyData):
     NDOFN = 6
     _point_class_ = PointData
 
-    def __init__(self, *args, model=None, fixity=None, loads=None, body_loads=None,
-                 strain_loads=None, t=None, density=None, mass=None,
-                 cell_fields=None, point_fields=None, activity=None,
-                 connectivity=None, **kwargs):
+    def __init__(self, *args, model=None, cell_fields=None, point_fields=None, **kwargs):
         # fill up data objects with obvious data
-        pkeys = self.__class__._point_class_._attr_map_
         point_fields = {} if point_fields is None else point_fields
-        point_fields[pkeys['loads']] = loads
-        point_fields[pkeys['mass']] = mass
-        point_fields[pkeys['fixity']] = fixity
-        point_fields[pkeys['loads']] = loads
-        ckeys = CellData._attr_map_
         cell_fields = {} if cell_fields is None else cell_fields
-        cell_fields[ckeys['loads']] = body_loads
-        cell_fields[ckeys['strain-loads']] = strain_loads
-        cell_fields[ckeys['density']] = density
-        cell_fields[ckeys['t']] = t
-        cell_fields[ckeys['connectivity']] = connectivity
-        super().__init__(*args, point_fields=point_fields,
-                         cell_fields=cell_fields, **kwargs)
-        # nodal data can only be provided for the root object
-        if not self.is_root():
-            assert loads is None, "At object creation, nodal loads can only \
-                be provided at the top level."
-            assert fixity is None, "At object creation, fixity information \
-                can only be provided at the top level."
-            assert mass is None, "At object creation, nodal masses can only \
-                be provided at the top level."
-        # it is determined by the size of `activity` whether it refers to
-        # cells or points
-        if isinstance(activity, np.ndarray):
-            nA = activity.shape[0]
-            if self.celldata is not None:
-                N = len(self.celldata)
-                if nA == N:
-                    self.celldata.activity = activity
-                    nA = -1
-            if nA > 0 and self.pointdata is not None:
-                N = len(self.pointdata)
-                if nA == N:
-                    self.pointdata.activity = activity
-                    nA = -1
-            assert nA < 0
+        super().__init__(*args, point_fields=point_fields, cell_fields=cell_fields, **kwargs)
         self._model = model
+        
+    @property
+    def pd(self) -> PointData:
+        """Returns the attached pointdata."""
+        return self.pointdata
+
+    @property
+    def cd(self) -> CellData:
+        """Returns the attached celldata."""
+        return self.celldata
 
     def cells_coords(self, *args, points=None, cells=None, **kwargs) \
             -> Union[np.ndarray, List[np.ndarray]]:

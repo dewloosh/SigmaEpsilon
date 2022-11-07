@@ -446,12 +446,11 @@ class Structure(Wrapper):
         Structure
 
         """
-        mesh = self._wrapped
-        mesh.postprocess(*args, **kwargs)
-
-        # clean up
-        _ = self.cleanup() if cleanup else None
-
+        u = self.nodal_dof_solution()
+        self.mesh.pd.dofsol = u
+        self.mesh.postprocess(*args, **kwargs)
+        if cleanup:
+            self.cleanup()
         return self
 
     def cleanup(self) -> 'Structure':
