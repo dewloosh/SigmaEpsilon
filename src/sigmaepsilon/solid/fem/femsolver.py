@@ -122,7 +122,7 @@ class FemSolver(Solver):
             
         penalize: bool, Optional
             If this is True, what is returendd is the sum of the elastic stiffness matrix
-            plus the Courant-type penalty stiffness matrix of the essential boundary conditions.
+            and the Courant-type penalty stiffness matrix of the essential boundary conditions.
             Default is True.
         
         Returns
@@ -140,9 +140,16 @@ class FemSolver(Solver):
             else:
                 return self.Ke
             
-    def consistent_mass_matrix(self) -> spmatrix:
+    def consistent_mass_matrix(self, penalize=True) -> spmatrix:
         """
         Returns the consistent mass matrix of the solver.
+        
+        Parameters
+        ----------            
+        penalize: bool, Optional
+            If this is True, what is returendd is the sum of the consistent stiffness matrix
+            and the Courant-type penalty stiffness matrix of the essential boundary conditions.
+            Default is True.
         
         Note
         ----
@@ -156,7 +163,10 @@ class FemSolver(Solver):
             The mass matrix.
             
         """
-        return self.M
+        if penalize:
+            return self.M + self.Kp
+        else:
+            return self.M
 
     def encode(self) -> 'FemSolver':
         if self.imap is None and not self.regular:
@@ -282,7 +292,7 @@ class FemSolver(Solver):
             
         """
         K = self.Ke + self.Kp
-        M = self.M
+        M = self.M + self.Kp
         self.vmodes = natural_circular_frequencies(K, M, *args, return_vectors=True, **kwargs)
         if return_vectors:
             return self.vmodes
@@ -328,7 +338,7 @@ class FemSolver(Solver):
             One or more floats.
             
         """
-        M = self.M
+        M = self.M + self.Kp
         if isinstance(f, ndarray) and u is None:
             K = self.Ke + self.Kp
             K.eliminate_zeros()

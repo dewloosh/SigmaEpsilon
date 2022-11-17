@@ -21,3 +21,4 @@ dewloosh.mpl
 dewloosh.plotly
 pylatex
 latexdocs
+texttable

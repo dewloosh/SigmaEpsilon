@@ -42,7 +42,7 @@ flabel_to_int = {v: k for k, v in flabels.items()}
 class FiniteElement(CellData, FemMixin):
     """
     Base mixin class for all element types. Functions of this class
-    can be called on any class of SigmEpsilon.
+    can be called on any class of SigmaEpsilon.
 
     """
 

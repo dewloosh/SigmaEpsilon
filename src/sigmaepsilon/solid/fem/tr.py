@@ -134,7 +134,7 @@ def tr_element_vectors_bulk_multi(values: ndarray, dcm: ndarray,
 @njit(nogil=True, parallel=True, cache=__cache)
 def tr_element_matrices_bulk(K: ndarray, dcm: ndarray, invert:bool=False):
     """
-    Transforms element stiffness matrices from local to global.
+    Transforms element stiffness matrices.
     """
     res = np.zeros_like(K)
     if not invert:

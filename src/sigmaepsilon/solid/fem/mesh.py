@@ -32,8 +32,8 @@ class FemMesh(PolyData):
     Note
     ----
     The suggested way of usage is to create the pointdata and celldata
-    objects in advance, and provide them as the firts argument when building the model.
-    See below for how it works!
+    objects in advance, and provide them as the firts argument when building 
+    the model.
 
     Examples
     --------

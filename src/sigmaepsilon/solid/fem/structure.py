@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-from typing import Union, Tuple, Callable
+from typing import Tuple, Callable
 
 import numpy as np
+from numpy import ndarray
 from scipy.sparse import coo_matrix
 
 from linkeddeepdict import LinkedDeepDict
@@ -41,21 +42,17 @@ class Structure(Wrapper):
 
     Parameters
     ----------
-    mesh : FemMesh
+    mesh : FemMesh, Optional
         A finite element mesh.
 
     """
 
-    def __init__(self, *args, mesh: FemMesh = None, constraints=None, **kwargs):
+    def __init__(self, *args, mesh: FemMesh = None, **kwargs):
         if not isinstance(mesh, FemMesh):
             raise NotImplementedError
         super().__init__(wrap=mesh)
-        assert mesh is not None, "Some kind of a finite element mesh must be \
-            provided with keyword 'mesh'!"
         self.summary = LinkedDeepDict()
-        self.solver = 'scipy'
         self.Solver = None
-        self._constraints = constraints
 
     @property
     def mesh(self) -> FemMesh:
@@ -209,13 +206,15 @@ class Structure(Wrapper):
             The eigenvectors, only if 'return_vectors' is True.
 
         """
-        if self.Solver.M is not None:
+        if self.Solver.M is None:
             self.consistent_mass_matrix()
         return self.Solver.natural_circular_frequencies(*args, **kwargs)
 
-    def elastic_stiffness_matrix(self, *args, **kwargs) -> Union[np.ndarray, coo_matrix]:
+    def elastic_stiffness_matrix(self, *args, **kwargs) -> Union[ndarray, 
+                                                                 coo_matrix]:
         """
-        Returns the elastic stiffness matrix of the structure in dense or sparse format.
+        Returns the elastic stiffness matrix of the structure in dense or 
+        sparse format.
 
         Returns
         -------
@@ -235,7 +234,8 @@ class Structure(Wrapper):
         """
         return self.mesh.penalty_matrix_coo(*args, **kwargs)
 
-    def consistent_mass_matrix(self, *args, **kwargs) -> Union[np.ndarray, coo_matrix]:
+    def consistent_mass_matrix(self, *args, **kwargs) -> Union[ndarray, 
+                                                               coo_matrix]:
         """
         Returns the consistent mass matrix of the structure.
 
@@ -251,14 +251,13 @@ class Structure(Wrapper):
         """
         M = self.mesh.consistent_mass_matrix(*args, **kwargs)
         if self.Solver is not None:
-            if self.Solver.M is None:
-                self.Solver.M = M
+            self.Solver.M = M
         return M
 
     @flatten_pd(False)
     @squeeze(True)
     def nodal_dof_solution(self, *args, flatten: bool = False, squeeze: bool = True,
-                           store: str = None, **kwargs) -> np.ndarray:
+                           store: str = None, **kwargs) -> ndarray:
         """
         Returns the vector of nodal displacements and optionally stores the result
         with a specified key.
@@ -271,12 +270,12 @@ class Structure(Wrapper):
         squeeze : bool, Optional
             Calls :func:`numpy.squeeze` on the result. This might be relevant for 
             single element operations, or if there is only one load case, etc. Then,
-            it depends on the enviroment if a standard shape is desirable to maintain or not.
-            Default is True.
+            it depends on the enviroment if a standard shape is desirable to maintain 
+            or not. Default is True.
 
         store : str, Optional
-            If a string is provided, the resulting data can be later accessed as an attribute
-            of the pointdata of the mesh object. Default is None.
+            If a string is provided, the resulting data can be later accessed as an 
+            attribute of the pointdata of the mesh object. Default is None.
             
         Returns
         -------
@@ -303,7 +302,7 @@ class Structure(Wrapper):
     @flatten_pd(False)
     @squeeze(True)
     def reaction_forces(self, *args, flatten: bool = False, squeeze: bool = True,
-                        store: str = None, **kwargs) -> np.ndarray:
+                        store: str = None, **kwargs) -> ndarray:
         """
         Returns the vector of reaction forces.
 
@@ -315,12 +314,12 @@ class Structure(Wrapper):
         squeeze : bool, Optional
             Calls :func:`numpy.squeeze` on the result. This might be relevant for 
             single element operations, or if there is only one load case, etc. Then,
-            it depends on the enviroment if a standard shape is desirable to maintain or not.
-            Default is True.
+            it depends on the enviroment if a standard shape is desirable to maintain 
+            or not. Default is True.
 
         store : str, Optional
-            If a string is provided, the resulting data can be later accessed as an attribute
-            of the pointdata of the mesh object. Default is None.
+            If a string is provided, the resulting data can be later accessed as an 
+            attribute of the pointdata of the mesh object. Default is None.
         
         Returns
         -------
@@ -348,7 +347,7 @@ class Structure(Wrapper):
     @flatten_pd(False)
     @squeeze(True)
     def nodal_forces(self, *args, flatten: bool = False, squeeze: bool = True,
-                     store: str = None, **kwargs) -> np.ndarray:
+                     store: str = None, **kwargs) -> ndarray:
         """
         Returns the vector of nodal forces.
 
@@ -360,12 +359,12 @@ class Structure(Wrapper):
         squeeze : bool, Optional
             Calls :func:`numpy.squeeze` on the result. This might be relevant for 
             single element operations, or if there is only one load case, etc. Then,
-            it depends on the enviroment if a standard shape is desirable to maintain or not.
-            Default is True.
+            it depends on the enviroment if a standard shape is desirable to maintain 
+            or not. Default is True.
 
         store : str, Optional
-            If a string is provided, the resulting data can be later accessed as an attribute
-            of the pointdata of the mesh object. Default is None.
+            If a string is provided, the resulting data can be later accessed as an 
+            attribute of the pointdata of the mesh object. Default is None.
 
         """
 
@@ -387,25 +386,30 @@ class Structure(Wrapper):
         return res
 
     @squeeze(True)
-    def internal_forces(self, *args, flatten=False, squeeze=True, **kwargs) -> np.ndarray:
+    def internal_forces(self, *args, flatten:bool=False, squeeze:bool=True, 
+                        **kwargs) -> ndarray:
         """
         Returns the internal forces for one or more elements.
         """
-        return self.mesh.internal_forces(*args, flatten=flatten, squeeze=False, **kwargs)
+        return self.mesh.internal_forces(*args, flatten=flatten, 
+                                         squeeze=False, **kwargs)
 
     @squeeze(True)
-    def external_forces(self, *args, flatten=False, squeeze=True, **kwargs) -> np.ndarray:
+    def external_forces(self, *args, flatten:bool=False, squeeze:bool=True, 
+                        **kwargs) -> ndarray:
         """
         Returns the external forces for one or more elements.
         """
-        return self.mesh.external_forces(*args, flatten=flatten, squeeze=False, **kwargs)
+        return self.mesh.external_forces(*args, flatten=flatten, 
+                                         squeeze=False, **kwargs)
 
     def postprocess(self, *args, cleanup=False, **kwargs) -> 'Structure':
         """
-        Runs general postprocessing of the solution data. Returns the object for continuation.
+        Runs general postprocessing of the solution data. Returns the object for 
+        continuation.
 
-        The calculations produce the following point-related data, stored in the pointdata
-        object of the root object of the finite element mesh:
+        The calculations produce the following point-related data, stored in the 
+        pointdata object of the root object of the finite element mesh:
 
             - nodal dof solution, available with key 'dofsol'
 
@@ -436,8 +440,8 @@ class Structure(Wrapper):
 
         Note
         ----
-        This can be triggered automatically during linear solution when calling :func:`linsolve`
-        with `postproc=True`.
+        This can be triggered automatically during linear solution when 
+        calling :func:`linsolve` with `postproc=True`.
 
         Returns
         -------
