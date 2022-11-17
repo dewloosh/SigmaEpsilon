@@ -132,7 +132,6 @@ class Structure(Wrapper):
 
         """
         self.initialize(*args, **kwargs)
-        # self.mesh.nodal_distribution_factors(store=True, key='ndf')  # sets mesh.celldata.ndf
         self.Solver = self.to_standard_form(*args, **kwargs)
         return self
 
@@ -152,18 +151,17 @@ class Structure(Wrapper):
             self.summary['linsolve'] = self.Solver.summary[-1]
         return self
 
-    def to_standard_form(self, *args, ensure_comp=False, solver=FemSolver, **kwargs) -> Solver:
+    def to_standard_form(self, *args, **kwargs) -> Solver:
         """
-        Returns a solver of the problem in standard form. Creation of the solver happens
-        during the preprocessing stage.
+        Returns a solver of the problem in standard form. Creation of the 
+        solver happens during the preprocessing stage.
         """
         mesh = self._wrapped
         f = mesh.load_vector()
-        Kp_coo = mesh.penalty_matrix_coo(ensure_comp=ensure_comp, **kwargs)
+        Kp_coo = mesh.penalty_matrix_coo(**kwargs)
         K_bulk = mesh.elastic_stiffness_matrix(*args, sparse=False, **kwargs)
         gnum = mesh.element_dof_numbering()
-        solvertype = solver if solver is not None else FemSolver
-        return solvertype(K_bulk, Kp_coo, f, gnum, regular=False)
+        return FemSolver(K_bulk, Kp_coo, f, gnum, regular=False)
 
     def linsolve(self, *args, summary=False, postproc=True, **kwargs) -> 'Structure':
         """

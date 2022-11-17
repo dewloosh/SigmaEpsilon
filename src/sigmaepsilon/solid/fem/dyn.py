@@ -13,7 +13,7 @@ from .eigsolve import eig_sparse, eig_dense
 ArrayLike = Union[ndarray, spmatrix]
 
 
-def effective_modal_mass(M: ArrayLike, action: ndarray, mode: ndarray):
+def effective_modal_mass(M: ArrayLike, action: ndarray, mode: ndarray) -> float:
     """
     Returns the effective modal mass for a specific mode.
 
@@ -129,7 +129,7 @@ def Rayleigh_quotient(M: spmatrix, *args, K: spmatrix = None, u: ndarray = None,
 
 def natural_circular_frequencies(K: spmatrix, M: spmatrix, *args, k: int = 10, return_vectors: bool = False,
                                  maxiter: int = 5000, normalize: bool = True, as_dense: bool = False,
-                                 around: float = None, nmode: str = 'M', which: str = 'LM', **kwargs) -> Tuple[ndarray]:
+                                 around: float = None, nmode: str = 'M', which: str = 'SM', **kwargs) -> Tuple[ndarray]:
     """
     Returns the natural circular frequencies :math:`\omega_{0i}` and optionally the 
     corresponding eigenvectors as (not trivial) solutions to the eigenproblem

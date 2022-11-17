@@ -140,3 +140,4 @@ notebooks/*.npz
 # topopt
 #.src/sigmaepsilon/topopt/
 .dash/
+sigmaepsilon.code-workspace

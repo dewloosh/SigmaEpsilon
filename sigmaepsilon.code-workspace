@@ -4,19 +4,16 @@
 			"path": "."
 		},
 		{
-			"path": "../dewloosh/PolyMesh"
+			"path": "../Neumann"
 		},
 		{
-			"path": "../dewloosh/latexdocs"
+			"path": "../PolyMesh"
 		},
 		{
-			"path": "../dewloosh/Neumann"
+			"path": "../latexdocs"
 		},
 		{
-			"path": "../../Google Drive/dewloosh/working"
-		},
-		{
-			"path": "../dewloosh/dewloosh-plotly"
+			"path": "F:/My Drive/dewloosh/working"
 		}
 	],
 	"settings": {}

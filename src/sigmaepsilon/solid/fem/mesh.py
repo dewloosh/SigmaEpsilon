@@ -3,6 +3,7 @@ from typing import Union, List
 
 from scipy.sparse import coo_matrix
 import numpy as np
+from numpy import ndarray
 
 from neumann import squeeze
 from neumann.array import atleast3d
@@ -10,7 +11,8 @@ from neumann.array import atleast3d
 from polymesh import PolyData
 
 from .pointdata import PointData
-from .preproc import fem_load_vector, fem_penalty_matrix_coo, fem_nodal_mass_matrix_coo
+from .preproc import (fem_load_vector, fem_penalty_matrix_coo, 
+                      fem_nodal_mass_matrix_coo)
 from .cells import TET4, TET10, H8, H27, CellData
 
 
@@ -74,7 +76,7 @@ class FemMesh(PolyData):
         return self.celldata
 
     def cells_coords(self, *args, points=None, cells=None, **kwargs) \
-            -> Union[np.ndarray, List[np.ndarray]]:
+            -> Union[ndarray, List[ndarray]]:
         """
         Returns the coordinates of the cells as a 3d numpy array if the 
         subblocks form a regular mesh, or a list of such arrays.
@@ -94,7 +96,7 @@ class FemMesh(PolyData):
                 def foo(b): return b.celldata.coords(*args, **kwargs)
                 return np.vstack(list(map(foo, blocks)))
 
-    def element_dof_numbering(self, *args, **kwargs) -> np.ndarray:
+    def element_dof_numbering(self, *args, **kwargs) -> ndarray:
         """
         Returns global ids of the local degrees of freedoms for each cell.
         """
@@ -103,7 +105,7 @@ class FemMesh(PolyData):
         return np.vstack(list(map(foo, blocks)))
 
     def elastic_stiffness_matrix(self, *args, sparse=True, 
-                                 **kwargs) -> Union[np.ndarray, coo_matrix]:
+                                 **kwargs) -> Union[ndarray, coo_matrix]:
         """
         Returns the elastic stiffness matrix in dense or sparse format.
 
@@ -151,7 +153,7 @@ class FemMesh(PolyData):
             K.sum_duplicates()
         return K
 
-    def masses(self, *args, **kwargs) -> np.ndarray:
+    def masses(self, *args, **kwargs) -> ndarray:
         """
         Returns cell masses of the cells as a 1d numpy array.
         """
@@ -167,8 +169,8 @@ class FemMesh(PolyData):
 
     def consistent_mass_matrix(self, *args, sparse=True, **kwargs):
         """
-        Returns the consistent mass matrix of the mesh with either dense 
-        or sparse layout.
+        Returns the stiffness consistent mass matrix of the mesh with 
+        either dense or sparse layout.
 
         Parameters
         ----------
@@ -183,17 +185,14 @@ class FemMesh(PolyData):
         """
         if sparse:
             return self.consistent_mass_matrix_coo(*args, **kwargs)
-        else:
-            dbkey = self.__class__._point_class_._attr_map_['mass']
-            if dbkey in self.root().pointdata.fields:
-                return self.consistent_mass_matrix_coo(*args, **kwargs)
         # distributed masses (cells)
         blocks = self.cellblocks(inclusive=True)
         def foo(b): return b.celldata.consistent_mass_matrix()
         return np.vstack(list(map(foo, blocks)))
 
     def consistent_mass_matrix_coo(self, *args, eliminate_zeros=True,
-                                   sum_duplicates=True, distribute=False, **kwargs):
+                                   sum_duplicates=True, distribute=False, 
+                                   **kwargs):
         """
         Returns the mass matrix in coo format. If `distribute` is set 
         to `True`, nodal masses are distributed over neighbouring cells 
@@ -245,40 +244,44 @@ class FemMesh(PolyData):
             M.sum_duplicates()
         return M
 
-    def penalty_matrix_coo(self, *args, eliminate_zeros=True,
-                           sum_duplicates=True, ensure_comp=False,
-                           distribute=False, **kwargs) -> coo_matrix:
+    def penalty_matrix_coo(self, fixity:ndarray=None, *args, eliminate_zeros:bool=True,
+                           sum_duplicates:bool=True, **kwargs) -> coo_matrix:
         """
         A penalty matrix that enforces Dirichlet boundary conditions. 
         Returns a scipy sparse matrix in coo format.
+        
+        Parameters
+        ----------
+        fixity : numpy.ndarray, Optional
+            The fixity values as a 2d array. The length of the first axis must equal
+            the number of nodes, the second the number of DOFs of the model.
+            If not specified, the data is assumed to be stored in the attached pointdata
+            with the same key. Default is None.
+            
+        eliminate_zeros : bool, Optimal
+            Eliminates zeros from the matrix. Default is True.
+            
+        eliminate_zeros : bool, Optimal
+            Summs duplicate entries in the matrix. Default is True.
+            
+        Returns
+        -------
+        scipy.sparse.coo_matrix
+        
         """
         fixity = self.root().pointdata.fixity
         K_coo = fem_penalty_matrix_coo(values=fixity, eliminate_zeros=eliminate_zeros,
                                        sum_duplicates=sum_duplicates)
         return K_coo.tocoo()
 
-    def approximation_matrix_coo(self, *args, eliminate_zeros=True,
-                                 **kwargs) -> coo_matrix:
-        blocks = self.cellblocks(inclusive=True)
-        def foo(b): return b.celldata.approximation_matrix_coo()
-        res = np.sum(list(map(foo, blocks))).tocoo()
-        if eliminate_zeros:
-            res.eliminate_zeros()
-        return res
-
-    def nodal_approximation_matrix_coo(self, *args, eliminate_zeros=True, 
-                                       **kwargs) -> coo_matrix:
-        blocks = self.cellblocks(inclusive=True)
-        def foo(b): return b.celldata.nodal_approximation_matrix_coo()
-        res = np.sum(list(map(foo, blocks))).tocoo()
-        if eliminate_zeros:
-            res.eliminate_zeros()
-        return res
-
     @squeeze(True)
-    def load_vector(self, *args, **kwargs) -> np.ndarray:
+    def load_vector(self, *args, **kwargs) -> ndarray:
         """
         Returns the nodal load vector.
+        
+        Returns
+        -------
+        numpy.ndarray
 
         """
         # concentrated nodal loads
@@ -314,9 +317,14 @@ class FemMesh(PolyData):
         list(map(foo, blocks))
 
     @squeeze(True)
-    def nodal_dof_solution(self, *args, flatten=False, **kwargs) -> np.ndarray:
+    def nodal_dof_solution(self, *args, flatten=False, **kwargs) -> ndarray:
         """
         Returns nodal degree of freedom solution.
+        
+        Returns
+        -------
+        numpy.ndarray
+        
         """
         dofsol = self.root().pointdata.dofsol
         if flatten:
@@ -329,10 +337,15 @@ class FemMesh(PolyData):
             return dofsol
 
     @squeeze(True)
-    def cell_dof_solution(self, *args, cells=None, flatten=True,
-                          squeeze=True, **kwargs) -> np.ndarray:
+    def cell_dof_solution(self, *args, cells=None, flatten:bool=True,
+                          squeeze:bool=True, **kwargs) -> ndarray:
         """
         Returns degree of freedom solution for each cell.
+        
+        Returns
+        -------
+        numpy.ndarray
+        
         """
         blocks = self.cellblocks(inclusive=True)
         kwargs.update(flatten=flatten, squeeze=False)
@@ -347,9 +360,14 @@ class FemMesh(PolyData):
             return np.vstack(list(map(foo, blocks)))
 
     @squeeze(True)
-    def strains(self, *args, cells=None, squeeze=True, **kwargs) -> np.ndarray:
+    def strains(self, *args, cells=None, squeeze:bool=True, **kwargs) -> ndarray:
         """
         Returns strains for each cell.
+        
+        Returns
+        -------
+        numpy.ndarray
+        
         """
         blocks = self.cellblocks(inclusive=True)
         kwargs.update(squeeze=False)
@@ -364,10 +382,15 @@ class FemMesh(PolyData):
             return np.vstack(list(map(foo, blocks)))
 
     @squeeze(True)
-    def external_forces(self, *args, cells=None, flatten=True, squeeze=True, 
-                        **kwargs) -> np.ndarray:
+    def external_forces(self, *args, cells=None, flatten:bool=True, 
+                        squeeze:bool=True, **kwargs) -> ndarray:
         """
         Returns external forces for each cell.
+        
+        Returns
+        -------
+        numpy.ndarray
+        
         """
         blocks = self.cellblocks(inclusive=True)
         kwargs.update(flatten=flatten, squeeze=False)
@@ -382,10 +405,15 @@ class FemMesh(PolyData):
             return np.vstack(list(map(foo, blocks)))
     
     @squeeze(True)
-    def internal_forces(self, *args, cells=None, flatten=True, squeeze=True, 
-                        **kwargs) -> np.ndarray:
+    def internal_forces(self, *args, cells=None, flatten:bool=True, 
+                        squeeze:bool=True, **kwargs) -> ndarray:
         """
         Returns internal forces for each cell.
+        
+        Returns
+        -------
+        numpy.ndarray
+        
         """
         blocks = self.cellblocks(inclusive=True)
         kwargs.update(flatten=flatten, squeeze=False)
@@ -399,7 +427,7 @@ class FemMesh(PolyData):
             def foo(b): return b.celldata.internal_forces(*args, **kwargs)
             return np.vstack(list(map(foo, blocks)))
 
-    def stresses_at_cells_nodes(self, *args, **kwargs) -> np.ndarray:
+    def stresses_at_cells_nodes(self, *args, **kwargs) -> ndarray:
         """
         Returns stresses at all nodes of all cells.
         """
@@ -407,9 +435,14 @@ class FemMesh(PolyData):
         def foo(b): return b.celldata.stresses_at_nodes(*args, **kwargs)
         return np.vstack(list(map(foo, blocks)))
 
-    def stresses_at_centers(self, *args, **kwargs) -> np.ndarray:
+    def stresses_at_centers(self, *args, **kwargs) -> ndarray:
         """
         Returns stresses at the centers of all cells.
+        
+        Returns
+        -------
+        numpy.ndarray
+        
         """
         blocks = self.cellblocks(inclusive=True)
         def foo(b): return b.celldata.stresses_at_centers(*args, **kwargs)
@@ -456,9 +489,10 @@ class FemMesh(PolyData):
     
 class SolidMesh(FemMesh):
     """
-    A data class dedicated to simple 3d solid cells with 3 degrees of freedom per node.    
+    A data class dedicated to simple 3d solid cells with 3 degrees of 
+    freedom per node.    
     
-    See also
+    See Also
     --------
     :class:`TET4`
     :class:`TET10`
