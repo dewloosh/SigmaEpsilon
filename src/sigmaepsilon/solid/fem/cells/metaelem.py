@@ -1,18 +1,10 @@
 # -*- coding: utf-8 -*-
-from abc import abstractmethod
-from inspect import signature, Parameter
 import numpy as np
 
 from polymesh.abc import ABCMeta_MeshData
 from polymesh.cell import PolyCell
 
-from copy import deepcopy
-from functools import partial
-from typing import Callable, Any
-
-
-dofs = ('UX', 'UY', 'UZ', 'ROTX', 'ROTY', 'ROTZ')
-dofmap = {d : i for i, d in enumerate(dofs)}
+from ..dofmap import DOF
 
 
 class FemMixin:
@@ -197,7 +189,7 @@ class MetaFiniteElement(ABCMeta_MeshData):
                     cls.Model = base
                     cls.dofs = base.dofs
                     cls.NDOFN = len(cls.dofs)
-                    cls.dofmap = np.array([dofmap[d] for d in cls.dofs], dtype=int)
+                    cls.dofmap = np.array(DOF.dofmap(cls.dofs), dtype=int)
         return cls
     
 

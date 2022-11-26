@@ -168,8 +168,3 @@ def extrapolate_gauss_data_1d(gpos: ndarray, gdata: ndarray):
         res = approx(*args, **kwargs)
         return swap(res, 0, 2)  # (nP, nE, nDOFN) --> (nDOFN, nE, nP)
     return inner
-
-
-def extrapolate_gauss_data(data, x_in, x_out):
-    pass
-

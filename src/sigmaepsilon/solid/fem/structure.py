@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Union, List
 
 import numpy as np
 from numpy import ndarray
@@ -21,8 +21,8 @@ __all__ = ['Structure']
 
 def flatten_pd(default=True):
     def decorator(fnc: Callable):
-        def inner(*args, **kwargs):
-            if kwargs.get('flatten', default):
+        def inner(*args, flatten:bool=default, **kwargs):
+            if flatten:
                 x = fnc(*args, **kwargs)
                 if len(x.shape) == 2:
                     return x.flatten()
@@ -47,13 +47,14 @@ class Structure(Wrapper):
 
     """
 
-    def __init__(self, *args, mesh: FemMesh = None, **kwargs):
+    def __init__(self, mesh: FemMesh = None):
         if not isinstance(mesh, FemMesh):
             raise NotImplementedError
         super().__init__(wrap=mesh)
         self.summary = LinkedDeepDict()
-        self.Solver = None
-
+        self._solver = None
+        self.clear_constraints()
+        
     @property
     def mesh(self) -> FemMesh:
         """
@@ -75,6 +76,7 @@ class Structure(Wrapper):
 
         See also
         --------
+        :func:`assemble`
         :func:`preprocess`
 
         Returns
@@ -83,10 +85,25 @@ class Structure(Wrapper):
 
         """
         return self._solver
-
-    @Solver.setter
-    def Solver(self, value: Solver):
-        self._solver = value
+    
+    @property
+    def constraints(self) -> List:
+        """
+        Returns the constraints of the structure as a list. Note that
+        this is an independent mechanism from the 'fixity' data defined
+        for the :class:`sigmaepsilon.solid.fem.pointdata.PointData` object 
+        of the underlying mesh instance.
+        """
+        if self._constraints is None:
+            self._constraints = []
+        return self._constraints
+    
+    def clear_constraints(self):
+        """
+        Clears up the constraints. This does not affect the 'fixity'
+        definitions in the pointdata of the mesh.
+        """
+        self._constraints = None
 
     def initialize(self, *args, **kwargs) -> 'Structure':
         """
@@ -103,85 +120,18 @@ class Structure(Wrapper):
         blocks = self.mesh.cellblocks(inclusive=True)
         for block in blocks:
             nE = len(block.celldata)
-
             # populate material stiffness matrices
             if not 'mat' in block.celldata.fields:
                 C = block.material_stiffness_matrix()
                 if not len(C.shape) == 3:
                     C = repeat(block.material_stiffness_matrix(), nE)
                 block.celldata._wrapped['mat'] = C
-
             # populate frames
             if not 'frames' in block.celldata.fields:
                 frames = repeat(block.frame.show(), nE)
                 block.celldata._wrapped['frames'] = frames
         return self
-
-    def preprocess(self, *args, **kwargs) -> 'Structure':
-        """
-        Initializes the database and converts the discription into standard form.
-        Returns the object for continuation.
-
-        See also
-        --------
-        :func:`initialize`
-        :func:`to_standard_form`
-
-        """
-        self.initialize(*args, **kwargs)
-        self.Solver = self.to_standard_form(*args, **kwargs)
-        return self
-
-    def process(self, *args, summary=False, **kwargs) -> 'Structure':
-        """
-        Performs a linear elastostatic solution and returns the structure
-        and returns the object for continuation.
-
-        Parameters
-        ----------
-        summary : bool, Optional
-            Appends related data to the summary. Default is False.
-
-        """
-        self.Solver.linsolve(*args, summary=True, **kwargs)
-        if summary:
-            self.summary['linsolve'] = self.Solver.summary[-1]
-        return self
-
-    def to_standard_form(self, *args, **kwargs) -> Solver:
-        """
-        Returns a solver of the problem in standard form. Creation of the 
-        solver happens during the preprocessing stage.
-        """
-        mesh = self._wrapped
-        f = mesh.load_vector()
-        Kp_coo = mesh.penalty_matrix_coo(**kwargs)
-        K_bulk = mesh.elastic_stiffness_matrix(*args, sparse=False, **kwargs)
-        gnum = mesh.element_dof_numbering()
-        return FemSolver(K_bulk, Kp_coo, f, gnum, regular=False)
-
-    def linsolve(self, *args, summary=False, postproc=True, **kwargs) -> 'Structure':
-        """
-        Performs a linear elastostatic calculation with pre- and 
-        post-processing.
-
-        Parameters
-        ----------
-        summary : bool, Optional
-            Appends to the overall summary if True. This is available
-            as `obj.summary`. Default is False.
-
-        postproc : bool, Optional
-            To do postprocessing or not. Default is True.
-
-        """
-        self.preprocess(*args, summary=summary, **kwargs)
-        self.process(*args, summary=summary, **kwargs)
-        if postproc:
-            return self.postprocess(*args, summary=summary, **kwargs)
-        else:
-            return self
-
+    
     def natural_circular_frequencies(self, *args, **kwargs) -> Tuple:
         """
         Returns natural circular frequencies. The call forwards all parameters
@@ -207,7 +157,7 @@ class Structure(Wrapper):
 
         """
         if self.Solver.M is None:
-            self.consistent_mass_matrix()
+            self.mass_matrix()
         return self.Solver.natural_circular_frequencies(*args, **kwargs)
 
     def elastic_stiffness_matrix(self, *args, **kwargs) -> Union[ndarray, 
@@ -223,7 +173,7 @@ class Structure(Wrapper):
         """
         return self.mesh.elastic_stiffness_matrix(*args, **kwargs)
 
-    def penalty_stiffness_matrix(self, *args, **kwargs) -> coo_matrix:
+    def essential_penalty_matrix(self, *args, **kwargs) -> coo_matrix:
         """
         Returns the penalty stiffness matrix of the structure.
 
@@ -232,24 +182,18 @@ class Structure(Wrapper):
         scipy.sparse.coo_matrix
 
         """
-        return self.mesh.penalty_matrix_coo(*args, **kwargs)
+        return self.mesh.essential_penalty_matrix(*args, **kwargs)
 
-    def consistent_mass_matrix(self, *args, **kwargs) -> Union[ndarray, 
-                                                               coo_matrix]:
+    def mass_matrix(self, *args, **kwargs) -> coo_matrix:
         """
-        Returns the consistent mass matrix of the structure.
-
-        Notes
-        -----
-        If there are nodal masses defined, only sparse output is 
-        available at the moment.
+        Returns the mass matrix of the structure.
 
         Returns
         -------
-        numpy.ndarray or scipy.sparse.coo_matrix
+        scipy.sparse.coo_matrix
 
         """
-        M = self.mesh.consistent_mass_matrix(*args, **kwargs)
+        M = self.mesh.mass_matrix(*args, **kwargs)
         if self.Solver is not None:
             self.Solver.M = M
         return M
@@ -395,15 +339,90 @@ class Structure(Wrapper):
                                          squeeze=False, **kwargs)
 
     @squeeze(True)
-    def external_forces(self, *args, flatten:bool=False, squeeze:bool=True, 
-                        **kwargs) -> ndarray:
+    def external_forces(self, *args, flatten:bool=False, **kwargs) -> ndarray:
         """
         Returns the external forces for one or more elements.
         """
         return self.mesh.external_forces(*args, flatten=flatten, 
                                          squeeze=False, **kwargs)
 
-    def postprocess(self, *args, cleanup=False, **kwargs) -> 'Structure':
+    def linsolve(self, *args, postproc:bool=True, **kwargs) -> 'Structure':
+        """
+        Performs a linear elastostatic calculation with pre- and 
+        post-processing.
+
+        Parameters
+        ----------
+        summary : bool, Optional
+            Appends to the overall summary if True. This is available
+            as `obj.summary`. Default is False.
+
+        postproc : bool, Optional
+            To do postprocessing or not. Default is True.
+
+        """
+        self.preprocess(*args,  **kwargs)
+        self.process(*args, **kwargs)
+        if postproc:
+            return self.postprocess(*args, **kwargs)
+        else:
+            return self
+    
+    def assemble(self, *args, **kwargs) -> Solver:
+        """
+        Assembles the equilibrium equations and returns the object for 
+        continuation.
+        """
+        mesh = self._wrapped
+        
+        # general assembly
+        f = mesh.nodal_load_vector()
+        K_bulk = mesh.elastic_stiffness_matrix(sparse=False, **kwargs)
+        gnum = mesh.element_dof_numbering()
+        
+        # penalize essential boundary conditions
+        Kp = mesh.essential_penalty_matrix(**kwargs)
+        fp = np.zeros(f.shape[0], dtype=float)
+        for c in self.constraints:
+            Kpc, fpc = c.assemble(mesh)
+            Kp += Kpc
+            fp += fpc
+        if len(f.shape) == 2:
+            for i in f.shape[1]:
+                f[:, i] += fp
+        else:
+            f += fp
+            
+        self._solver = FemSolver(K_bulk, Kp.tocoo(), f, gnum, 
+                                 regular=False, mesh=mesh)
+        return self
+    
+    def preprocess(self, *args, **kwargs) -> 'Structure':
+        """
+        Initializes the database and asssembles the equilibrium equations.
+        Returns the object for continuation.
+
+        See also
+        --------
+        :func:`initialize`
+        :func:`assemble`
+
+        """
+        self.initialize(*args, **kwargs)
+        self.assemble(*args, **kwargs)
+        return self
+
+    def process(self, *args, **kwargs) -> 'Structure':
+        """
+        Performs a linear elastostatic solution and returns the structure
+        and returns the object for continuation.
+
+        """
+        self.Solver.linsolve(*args, **kwargs)
+        self.summary['linsolve'] = self.Solver.summary[-1]
+        return self
+    
+    def postprocess(self, *args, cleanup:bool=False, **kwargs) -> 'Structure':
         """
         Runs general postprocessing of the solution data. Returns the object for 
         continuation.
@@ -464,5 +483,5 @@ class Structure(Wrapper):
         Structure
 
         """
-        self.Solver = None
+        self._solver = None
         return self

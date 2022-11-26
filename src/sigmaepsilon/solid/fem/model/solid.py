@@ -6,7 +6,7 @@ from neumann.array import atleast2d, atleast3d
 from .utils import (model_strains, model_strains_multi,
                     stresses_from_strains, stresses_from_strains_multi)
 from ..utils import topo_to_gnum
-from ..cells.meta import FemModel
+from ..cells.metaelem import FemModel
 
 
 __all__ = ['Solid']

@@ -7,7 +7,7 @@ from .gen.b3 import (shape_function_values_bulk,
                      shape_function_derivatives_bulk)
     
 from .elem import FiniteElement
-from .meta import ABCFiniteElement as ABC
+from .metaelem import ABCFiniteElement as ABC
     
     
 __all__ = ['Bernoulli3']

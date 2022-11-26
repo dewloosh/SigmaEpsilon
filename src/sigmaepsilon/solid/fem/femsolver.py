@@ -7,13 +7,15 @@ import time
 from typing import Union
 
 from linkeddeepdict import LinkedDeepDict
-
 from neumann.array import atleast2d
+
+from .mesh import FemMesh
 from .utils import irows_icols_bulk
 from .linsolve import (box_fem_data_bulk, solve_standard_form, 
                        unbox_lhs)
 from .dyn import (effective_modal_masses, Rayleigh_quotient, 
                   natural_circular_frequencies)
+from .constants import DEFAULT_PENALTY_RATIO
 
 """
 PARDISO MATRIX TYPES
@@ -61,33 +63,36 @@ class FemSolver(Solver):
 
     Parameters
     ----------
-    K : Union[:class:`scipy.sparse.spmatrix`, :class:`numpy.ndarray`]
-        The stiffness matrix.
+    K : numpy.ndarray
+        The stiffness matrix in in dense format.
     
-    Kp : :class:`scipy.sparse.spmatrix`
-        The penalty stiffness matrix for the Courant-type penalization
-        of the essential boundary conditions.
+    Kp : scipy.sparse.spmatrix
+        The penalty stiffness matrix of the essential boundary conditions.
     
-    f : :class:`numpy.ndarray`
+    f : numpy.ndarray
         The load vector as an 1d or 2d numpy array.
         
-    gnum : :class:`numpy.ndarray`
-        Global dof numbering as a numpy array.
+    gnum : numpy.ndarray
+        Global dof numbering as 2d integer array.
     
-    imap : Union[dict, :class:`numpy.ndarray`], Optional
+    imap : Union[dict, numpy.ndarray], Optional
         Index mapper. Default is None.
         
     regular : bool, Optional
         If True it is assumed that the structure is regular. Default is True.
         
-    M : Union[:class:`scipy.sparse.spmatrix`, :class:`numpy.ndarray`], Optional
+    M : scipy.sparse.spmatrix, Optional
         The mass matrix. Default is None.
+        
+    mesh : FemMesh, Optional
+        The mesh the input data belongs to. Only necessary for
+        nonlinear calculations. Default is None.
         
     """
 
-    def __init__(self, K : Union[spmatrix, ndarray], Kp : spmatrix, f : ndarray, 
-                 gnum: ndarray, imap : Union[dict, ndarray]=None, regular:bool=True, 
-                 M:Union[spmatrix, ndarray]=None, **config):
+    def __init__(self, K : ndarray, Kp : spmatrix, f : ndarray, gnum: ndarray, 
+                 imap : Union[dict, ndarray]=None, regular:bool=True, 
+                 M:Union[spmatrix, ndarray]=None, mesh:FemMesh=None, **config):
         self.K = K
         self.M = M
         self.Kp = Kp
@@ -97,6 +102,7 @@ class FemSolver(Solver):
         self.config = config
         self.regular = regular
         self.imap = imap
+        self.mesh = mesh
         if imap is not None:
             # Ff imap.shape[0] > f.shape[0] it means that the inverse of
             # the mapping is given. It would require to store more data, but
@@ -104,12 +110,13 @@ class FemSolver(Solver):
             # input is a representation of.
             assert imap.shape[0] == f.shape[0]
         self.regular = False if imap is not None else regular
-        self.core = self.encode()
+        self.core = self.box()
         self.READY = False
         self.summary = []
         self._summary = LinkedDeepDict()
     
-    def elastic_stiffness_matrix(self, sparse=True, penalize=True) -> Union[ndarray, spmatrix]:
+    def elastic_stiffness_matrix(self, sparse:bool=True, 
+                                 penalize:bool=True) -> Union[ndarray, spmatrix]:
         """
         Returns the stiffness matrix.
         
@@ -122,12 +129,12 @@ class FemSolver(Solver):
             
         penalize: bool, Optional
             If this is True, what is returendd is the sum of the elastic stiffness matrix
-            and the Courant-type penalty stiffness matrix of the essential boundary conditions.
+            and the penalty stiffness matrix of the essential boundary conditions.
             Default is True.
         
         Returns
         -------
-        Union[:class:`numpy.ndarray`, :class:`scipy.linalg.spmatrix`]
+        Union[numpy.ndarray, scipy.linalg.spmatrix]
             The stiffness matrix.
             
         """
@@ -140,35 +147,33 @@ class FemSolver(Solver):
             else:
                 return self.Ke
             
-    def consistent_mass_matrix(self, penalize=True) -> spmatrix:
+    def mass_matrix(self, penalize:bool=True, DEFAULT_PENALTY_RATIO:float=DEFAULT_PENALTY_RATIO) -> spmatrix:
         """
         Returns the consistent mass matrix of the solver.
         
         Parameters
         ----------            
         penalize: bool, Optional
-            If this is True, what is returendd is the sum of the consistent stiffness matrix
-            and the Courant-type penalty stiffness matrix of the essential boundary conditions.
-            Default is True.
+            If this is True, what is returend is the sum of the stiffness matrix
+            and the Courant-type penalty stiffness matrix of the essential boundary 
+            conditions. Default is True.
         
-        Note
-        ----
-        The 'consistent' attribute means that when formulating
-        the element matrices, we use the same shape functions that we
-        use to formulate the stiffness matrix.
+        DEFAULT_PENALTY_RATIO : float, Optional
+            The penalty ratio. Only if 'penalize' is True. 
+            Default is `sigmaepsilon.solid.fem.config.DEFAULT_PENALTY_RATIO`.
         
         Returns
         -------
-        :class:`scipy.linalg.spmatrix`
+        scipy.linalg.spmatrix
             The mass matrix.
             
         """
         if penalize:
-            return self.M + self.Kp
+            return self.M + self.Kp * DEFAULT_PENALTY_RATIO
         else:
             return self.M
 
-    def encode(self) -> 'FemSolver':
+    def box(self) -> 'FemSolver':
         if self.imap is None and not self.regular:
             Kp, gnum, f, imap = box_fem_data_bulk(self.Kp, self.gnum, self.f)
             self.imap = imap
@@ -176,13 +181,16 @@ class FemSolver(Solver):
         else:
             return self
         
-    def decode(self):
+    def __setattr__(self, name, value):
+        self.__dict__[name] = value
+        
+    def unbox(self):
         assert not self.regular
         N = self.gnum.max() + 1
         self.u = unbox_lhs(self.core.u, self.imap, N=N)
         self.r = unbox_lhs(self.core.r, self.imap, N=N)
 
-    def preproc(self, force=False):
+    def preproc(self, force:bool=False):
         _t0 = time.time()
         if self.READY and not force:
             return
@@ -206,11 +214,11 @@ class FemSolver(Solver):
         self._summary['preproc', 'time'] = _dt
         self._summary['preproc', 'N'] = self.N
 
-    def update_stiffness(self, K):
+    def update_stiffness(self, K:ndarray):
         self.K = K
         self.preproc(force=True)
 
-    def proc(self, preproc=False, solver=None):
+    def proc(self, preproc:bool=False, solver:str=None):
         if preproc:
             self.preproc(force=True)
         _t0 = time.time()
@@ -231,43 +239,38 @@ class FemSolver(Solver):
         if not self.regular:
             self.core.postproc()
             self._summary['core'] = self.core._summary
-            return self.decode()
+            return self.unbox()
         self.r = np.reshape(self.Ke.dot(self.u), self.f.shape) - self.f
         _dt = time.time() - _t0
         self._summary['postproc', 'time'] = _dt
 
-    def linsolve(self, *args, solver=None, summary=False, **kwargs):
+    def linsolve(self, *, solver:str=None) -> ndarray:
         """
         Performs a linear elastostatic analysis and returns the unknown
         coefficients as a numpy array.
         
         Parameters
         ----------
-        solver : str, Optional.
+        solver : str, Optional
+            The solver to use. Currently supported options are 'scipy' and 'pardiso'. 
+            If nothing is specified, we prefer 'pardiso' if it is around, otherwise the 
+            solver falls back to SciPy.
         
         Returns
         -------
-        :class:`numpy.ndarray`
+        numpy.ndarray
             The vector of nodal displacements as a numpy array.
-        
-        dict, Optional
-            A summary about the solution, only if 'summary' is True.
             
         """
         self._summary = LinkedDeepDict()
-
         self.preproc()
         self.proc(solver=solver)
         self.postproc()
-
         self.summary.append(self._summary)
+        return self.u
         
-        if summary:
-            return self.u, self.summary
-        else:
-            return self.u
-        
-    def natural_circular_frequencies(self, *args, return_vectors=False, **kwargs):
+    def natural_circular_frequencies(self, *args, return_vectors:bool=False, 
+                                     DEFAULT_PENALTY_RATIO:float=DEFAULT_PENALTY_RATIO, **kwargs):
         """
         Returns natural circular frequencies. The call forwards all parameters
         to :func:`sigmaepslion.solid.fem.dyn.natural_circular_frequencies`, 
@@ -277,6 +280,10 @@ class FemSolver(Solver):
         ----------
         return_vectors : bool, Optional
             To return eigenvectors or not. Default is False.
+            
+        DEFAULT_PENALTY_RATIO : float, Optional
+            The penalty ratio. Only if 'penalize' is True. 
+            Default is `sigmaepsilon.solid.fem.config.DEFAULT_PENALTY_RATIO`.
                 
         See also
         --------
@@ -284,22 +291,22 @@ class FemSolver(Solver):
         
         Returns
         -------
-        :class:`numpy.ndarray`
+        numpy.ndarray
             The natural circular frequencies.
 
-        :class:`numpy.ndarray`
+        numpy.ndarray
             The eigenvectors, only if 'return_vectors' is True.
             
         """
-        K = self.Ke + self.Kp
-        M = self.M + self.Kp
+        K = self.elastic_stiffness_matrix(penalize=True)
+        M = self.mass_matrix(penalize=True, DEFAULT_PENALTY_RATIO=DEFAULT_PENALTY_RATIO)
         self.vmodes = natural_circular_frequencies(K, M, *args, return_vectors=True, **kwargs)
         if return_vectors:
             return self.vmodes
         else:
             return self.vmodes[0] 
 
-    def effective_modal_masses(self, *args, action=None, modes=None, **kwargs):
+    def effective_modal_masses(self, *, action:ndarray=None, modes:ndarray=None) -> ndarray:
         """
         Returns effective modal masses of several modes of vibration. 
         The call forwards all parameters to 
@@ -312,7 +319,7 @@ class FemSolver(Solver):
         
         Returns
         -------
-        :class:`numpy.ndarray`
+        numpy.ndarray
             An array of effective mass values.
             
         """
@@ -321,7 +328,7 @@ class FemSolver(Solver):
         vecs = self.vmodes[1] if modes is None else modes
         return effective_modal_masses(self.M, action, vecs)
     
-    def Rayleigh_quotient(self, *args, u=None, f=None, **kwargs) -> ndarray:
+    def Rayleigh_quotient(self, u:ndarray=None, f:ndarray=None) -> ndarray:
         """
         Returns Rayleigh's quotient. The call forwards all parameters
         to :func:`sigmaepslion.solid.fem.dyn.Rayleigh_quotient`, see the 
@@ -334,18 +341,18 @@ class FemSolver(Solver):
         
         Returns
         -------
-        float or :class:`numpy.ndarray`
+        float or numpy.ndarray
             One or more floats.
             
         """
-        M = self.M + self.Kp
+        M = self.mass_matrix(penalize=True)
         if isinstance(f, ndarray) and u is None:
-            K = self.Ke + self.Kp
+            K = self.elastic_stiffness_matrix(penalize=True)
             K.eliminate_zeros()
             K.sum_duplicates()
             u = atleast2d(solve_standard_form(K, f), back=True)
         elif isinstance(u, ndarray) and f is None:
-            K = self.Ke + self.Kp
+            K = self.elastic_stiffness_matrix(penalize=True)
             K.eliminate_zeros()
             K.sum_duplicates()
             f = K @ u

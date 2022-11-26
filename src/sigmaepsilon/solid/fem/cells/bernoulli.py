@@ -13,7 +13,7 @@ from .utils.bernoulli import (
     lumped_mass_matrices_direct as dlump
 )
 
-from .meta import MetaFiniteElement
+from .metaelem import MetaFiniteElement
 from ..model.beam import BernoulliBeam, calculate_shear_forces
 
 

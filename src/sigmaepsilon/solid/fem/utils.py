@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
+from typing import Union
+
 from numba import njit, prange
 import numpy as np
 from numpy import ndarray
+from scipy.sparse import spmatrix
 
 from neumann.linalg.sparse.csr import csr_matrix as csr
 from neumann.array import find1d, flatten2dC
@@ -64,8 +67,8 @@ def nodes2d_to_dofs1d(inds: np.ndarray, values: np.ndarray):
         1d numpy array of integers, listing global node indices.
 
     values : numpy.ndarray
-        3d numpy float array of shape (nN, nDOF, nRHS), 
-        listing values for each node in 'inds'.
+        3d numpy float array of shape (nN, nDOF, nX), listing values 
+        for each node in 'inds'. nX is the number of datasets.
 
     Returns
     -------
@@ -73,7 +76,7 @@ def nodes2d_to_dofs1d(inds: np.ndarray, values: np.ndarray):
         1d numpy array of integers, denoting global dof indices.
 
     dofvals : numpy.ndarray
-        2d numpy float array of shape (nN * nDOF, nRHS), denoting values 
+        2d numpy float array of shape (nN * nDOF, nX), denoting values 
         on dofs in 'dofinds'.
 
     """
@@ -322,8 +325,10 @@ def penalty_factor_matrix(cellfixity: ndarray, shp: ndarray):
 
 @njit(nogil=True, parallel=True, cache=__cache)
 def approximation_matrix(ndf: ndarray, NDOFN: int):
-    """Returns a matrix of approximation coefficients 
-    for all elements."""
+    """
+    Returns a matrix of approximation coefficients 
+    for all elements.
+    """
     nE, nNE = ndf.shape[:2]
     N = nNE * NDOFN
     nappr = np.eye(N, dtype=ndf.dtype)
@@ -339,8 +344,10 @@ def approximation_matrix(ndf: ndarray, NDOFN: int):
 
 @njit(nogil=True, parallel=True, cache=__cache)
 def nodal_approximation_matrix(ndf: ndarray):
-    """Returns a matrix of nodal approximation coefficients 
-    for all elements."""
+    """
+    Returns a matrix of nodal approximation coefficients 
+    for all elements.
+    """
     nE, nNE = ndf.shape[:2]
     nappr = np.eye(nNE, dtype=ndf.dtype)
     res = np.zeros((nE, nNE, nNE), dtype=ndf.dtype)
@@ -602,3 +609,20 @@ def nodal_mass_matrix_data(nodal_masses: ndarray, ndof: int = 6):
     for i in prange(N):
         res[i*ndof: i*ndof + 3] = nodal_masses[i]
     return res
+
+
+def min_stiffness_diagonal(K: Union[ndarray, spmatrix]) -> float:
+    """
+    Returns the minimum diagonal entry of the stiffness matrix.
+    
+    Parameters
+    ----------
+    K : Union[ndarray, spmatrix]
+        The stiffness matrix as a dense or a sparse array.
+        
+    """
+    if isinstance(K, spmatrix):
+        return np.min(K.diagonal())
+    else:
+        i = np.arange(K.shape[-1])
+        return np.min(K[:, i, i])

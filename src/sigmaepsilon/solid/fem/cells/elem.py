@@ -24,7 +24,7 @@ from ..tr import (nodal_dcm, nodal_dcm_bulk, element_dcm, element_dcm_bulk,
                   tr_element_vectors_bulk_multi as tr1d, tr_element_matrices_bulk as tr2d)
 from .utils import (stiffness_matrix_bulk2, strain_displacement_matrix_bulk2,
                     unit_strain_load_vector_bulk, strain_load_vector_bulk, mass_matrix_bulk)
-from .meta import FemMixin
+from .metaelem import FemMixin
 from .celldata import CellData
 
 Quadrature = namedtuple('QuadratureRule', ['inds', 'pos', 'weight'])
@@ -148,7 +148,8 @@ class FiniteElement(CellData, FemMixin):
 
     @squeeze(True)
     def dof_solution(self, *args, target: Union[str, ReferenceFrame] = 'local',
-                     cells: Union[int, Iterable[int]] = None, points: Union[float, Iterable] = None,
+                     cells: Union[int, Iterable[int]] = None, 
+                     points: Union[float, Iterable] = None,
                      rng: Iterable = None, flatten: bool = True, **kwargs) -> ndarray:
         """
         Returns nodal displacements for the cells, wrt. their local frames.
@@ -157,26 +158,27 @@ class FiniteElement(CellData, FemMixin):
         ----------
         points : float or Iterable, Optional
                 Points of evaluation. If provided, it is assumed that the given values
-                are wrt. the range [0, 1], unless specified otherwise with the 'rng' parameter. 
-                If not provided, results are returned for the nodes of the selected elements.
-                Default is None.
+                are wrt. the range [0, 1], unless specified otherwise with the 'rng' 
+                parameter. If not provided, results are returned for the nodes of the 
+                selected elements. Default is None.
 
         rng : Iterable, Optional
             Range where the points of evauation are understood. Default is [0, 1].
 
         cells : int or Iterable[int], Optional
             Indices of cells. If not provided, results are returned for all cells.
-            If cells are provided, the function returns a dictionary, with the cell indices
-            being the keys. Default is None.
+            If cells are provided, the function returns a dictionary, with the cell 
+            indices being the keys. Default is None.
 
         target : str or ReferenceFrame, Optional
-            Reference frame for the output. A value of None or 'local' refers to the local system
-            of the cells. Default is 'local'.
+            Reference frame for the output. A value of None or 'local' refers to the 
+            local system of the cells. Default is 'local'.
 
         Returns
         -------
         numpy.ndarray
-            An array of shape (nE, nEVAB, nRHS) if 'flatten' is True else (nE, nNE, nDOF, nRHS).
+            An array of shape (nE, nEVAB, nRHS) if 'flatten' is True 
+            else (nE, nNE, nDOF, nRHS).
 
         """
         if cells is not None:
@@ -248,9 +250,9 @@ class FiniteElement(CellData, FemMixin):
         ----------
         points : float or Iterable[float], Optional
                 Points of evaluation. If provided, it is assumed that the given values
-                are wrt. the range [0, 1], unless specified otherwise with the 'rng' parameter. 
-                If not provided, results are returned for the nodes of the selected elements.
-                Default is None.
+                are wrt. the range [0, 1], unless specified otherwise with the 'rng' 
+                parameter. If not provided, results are returned for the nodes of the 
+                selected elements. Default is None.
 
         rng : Iterable, Optional
             Range where the points of evauation are understood. Only for 1d cells.
@@ -360,8 +362,9 @@ class FiniteElement(CellData, FemMixin):
             return sloads[cells]
 
     @squeeze(True)
-    def external_forces(self, *args, cells: Union[int, Iterable[int]] = None, flatten: bool = True,
-                        target: Union[str, ReferenceFrame] = 'local', **kwargs) -> ndarray:
+    def external_forces(self, *args, cells: Union[int, Iterable[int]] = None, 
+                        flatten: bool = True, target: Union[str, ReferenceFrame] = 'local', 
+                        **kwargs) -> ndarray:
         """
         Evaluates :math:`\mathbf{f}_e = \mathbf{K}_e @ \mathbf{u}_e` for one or several 
         cells and load cases.
@@ -383,7 +386,8 @@ class FiniteElement(CellData, FemMixin):
         Returns
         -------
         numpy.ndarray
-            An array of shape (nE, nP * nDOF, nRHS) if 'flatten' is True else (nE, nP, nDOF, nRHS).
+            An array of shape (nE, nP * nDOF, nRHS) if 'flatten' is True else 
+            (nE, nP, nDOF, nRHS).
 
         """
         dofsol = self.dof_solution(squeeze=False, flatten=True, cells=cells)
@@ -439,9 +443,10 @@ class FiniteElement(CellData, FemMixin):
         return values
 
     @squeeze(True)
-    def internal_forces(self, *args, cells: Union[int, Iterable[int]] = None, rng: Iterable = None, 
-                        points: Union[float, Iterable] = None, flatten: bool = True, 
-                        target: Union[str, ReferenceFrame] = 'local', **kwargs) -> ndarray:
+    def internal_forces(self, *args, cells: Union[int, Iterable[int]] = None, 
+                        rng: Iterable = None, points: Union[float, Iterable] = None, 
+                        flatten: bool = True, target: Union[str, ReferenceFrame] = 'local', 
+                        **kwargs) -> ndarray:
         """
         Returns internal forces for many cells and evaluation points.
 
@@ -449,9 +454,9 @@ class FiniteElement(CellData, FemMixin):
         ----------
         points : float or Iterable[float], Optional
                 Points of evaluation. If provided, it is assumed that the given values
-                are wrt. the range [0, 1], unless specified otherwise with the 'rng' parameter. 
-                If not provided, results are returned for the nodes of the selected elements.
-                Default is None.
+                are wrt. the range [0, 1], unless specified otherwise with the 'rng' 
+                parameter. If not provided, results are returned for the nodes of the 
+                selected elements. Default is None.
 
         rng : Iterable[float], Optional
             Range where the points of evauation are understood. 
@@ -462,8 +467,9 @@ class FiniteElement(CellData, FemMixin):
             Default is None.
 
         target : Union[str, ReferenceFrame], Optional
-            The target frame. Default is 'local', which means that the returned forces should
-            be understood as coordinates of generalized vectors in the local frames of the cells.
+            The target frame. Default is 'local', which means that the returned forces 
+            should be understood as coordinates of generalized vectors in the local frames 
+            of the cells.
 
         flatten: bool, Optional
             Determines the shape of the resulting array. Default is True.
@@ -471,7 +477,8 @@ class FiniteElement(CellData, FemMixin):
         Returns
         -------
         numpy.ndarray
-            An array of shape (nE, nP * nDOF, nRHS) if 'flatten' is True else (nE, nP, nDOF, nRHS).
+            An array of shape (nE, nP * nDOF, nRHS) if 'flatten' is True else 
+            (nE, nP, nDOF, nRHS).
 
         """
         dofsol = self.dof_solution(squeeze=False, flatten=True, cells=cells)
@@ -896,8 +903,8 @@ class FiniteElement(CellData, FemMixin):
         -------
         numpy.ndarray
             The nodal load vector for all load cases as a 2d numpy array
-            of shape (nX, nRHS), where nX and nRHS are the total number of unknowns of
-            the structure and the number of load cases.
+            of shape (nX, nRHS), where nX and nRHS are the total number of unknowns 
+            of the structure and the number of load cases.
 
         """
         nRHS = self.pointdata.loads.shape[-1]

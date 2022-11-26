@@ -2,7 +2,7 @@
 from linkeddeepdict import LinkedDeepDict
 
 from .elem import FiniteElement
-from .meta import ABCFiniteElement
+from .metaelem import ABCFiniteElement
 from .celldata import CellData
 
 from .bernoulli2 import Bernoulli2 as B2

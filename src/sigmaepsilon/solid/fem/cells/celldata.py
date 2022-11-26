@@ -9,9 +9,9 @@ from polymesh.celldata import CellData as MeshCellData
 
 class CellData(MeshCellData): 
     """
-    A subclass of :class:`polymesh.celldata.CellData`to handle data related to the cells 
-    of a finite element mesh. This class does not need to be used directly, but rather serves 
-    as a base class for finite element classes.
+    A subclass of :class:`polymesh.celldata.CellData`to handle data related 
+    to the cells of a finite element mesh. This class does not need to be used 
+    directly, but rather serves as a base class for finite element classes.
     
     Parameters
     ----------
@@ -35,13 +35,9 @@ class CellData(MeshCellData):
     t or thickness : numpy.ndarray, Optional
         1d float array of thicknesses. Only for 2d cells.
         Default is None.
-        
+            
     fixity : numpy.ndarray, Optional
-        3d boolean array of element connectivity, same as 'connectivity'.
-        Default is None.
-    
-    connectivity : numpy.ndarray, Optional
-        3d float array of element connectivity. Default is None.
+        3d boolean array of element fixity. Default is None.
         
     areas : numpy.ndarray, Optional
         1d float array of cross sectional areas. Only for 1d cells.
@@ -57,10 +53,11 @@ class CellData(MeshCellData):
         
     Notes
     -----
-    For 1d and 2d cells, it is the user's responsibility to ensure that the input data makes sense.
-    For example, 'areas' can be omitted, but then 'density' must be 'mass per unit length'.
-    The same way, 'thickness' can be omitted for 2d cells if 'density' is 'mass per unit area'.
-    Otherwise 'density' is expected as 'mass per unit volume'.
+    For 1d and 2d cells, it is the user's responsibility to ensure that the input 
+    data makes sense. For example, 'areas' can be omitted, but then 'density' must 
+    be 'mass per unit length'. The same way, 'thickness' can be omitted for 2d cells 
+    if 'density' is 'mass per unit area'. Otherwise 'density' is expected as 'mass per 
+    unit volume'.
     
     See also
     --------
@@ -92,17 +89,18 @@ class CellData(MeshCellData):
         'strain-loads': 'strain-loads',
         'density': 'density',
         'activity' : 'activity',
-        'connectivity' : 'connectivity',
+        'fixity' : 'fixity',
         'areas' : 'areas',
         'K': 'K',  # stiffness matrix
         'M': 'M',  # mass matrix
         'B': 'B',  # strain displacement matrix
     }
 
-    def __init__(self, *args, model=None, activity=None, density=None,
-                 loads=None, strain_loads=None, t=None, fields=None, 
-                 thickness=None, connectivity=None, areas=None, 
-                 tight=True, **kwargs):
+    def __init__(self, *args, model:ndarray=None, activity:ndarray=None, 
+                 density:ndarray=None, loads:ndarray=None, fields:dict=None,
+                 strain_loads:ndarray=None, t:ndarray=None, thickness:ndarray=None, 
+                 fixity:ndarray=None, areas:ndarray=None, tight:bool=True, 
+                 **kwargs):
         amap = self.__class__._attr_map_
 
         t = t if thickness is None else thickness
@@ -128,9 +126,9 @@ class CellData(MeshCellData):
                     "'activity' must be a 1d boolean numpy array!"
             self.activity = activity
             
-            # connectivity
-            if isinstance(connectivity, np.ndarray):
-                self.connectivity = connectivity
+            # fixity
+            if isinstance(fixity, np.ndarray):
+                self.fixity = fixity
                 
             # areas
             if isinstance(areas, np.ndarray):
@@ -192,12 +190,12 @@ class CellData(MeshCellData):
         return self.__class__._attr_map_['M']
     
     @property
-    def _dbkey_connectivity_(self) -> str:
-        return self.__class__._attr_map_['connectivity']
+    def _dbkey_fixity_(self) -> str:
+        return self.__class__._attr_map_['fixity']
     
     @property
-    def has_connectivity(self):
-        return self._dbkey_connectivity_ in self._wrapped.fields
+    def has_fixity(self):
+        return self._dbkey_fixity_ in self._wrapped.fields
     
     @property
     def nodes(self) -> ndarray:
@@ -255,16 +253,16 @@ class CellData(MeshCellData):
         self._wrapped[self.__class__._attr_map_['activity']] = value
     
     @property
-    def connectivity(self) -> ndarray:
-        """Returns the connectivity of the cells."""
-        key = self.__class__._attr_map_['connectivity']
+    def fixity(self) -> ndarray:
+        """Returns the fixity of the cells."""
+        key = self.__class__._attr_map_['fixity']
         if key in self._wrapped.fields:
             return self._wrapped[key].to_numpy()
         else:
             return None
 
-    @connectivity.setter
-    def connectivity(self, value: ndarray):
-        """Sets the connectivity of the cells."""
+    @fixity.setter
+    def fixity(self, value: ndarray):
+        """Sets the fixity of the cells."""
         assert isinstance(value, ndarray)
-        self._wrapped[self.__class__._attr_map_['connectivity']] = value
+        self._wrapped[self.__class__._attr_map_['fixity']] = value

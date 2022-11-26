@@ -26,8 +26,8 @@ if __haspardiso__:
 arraylike = Union[ndarray, spmatrix]
 
 
-def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack=True, summary=False,
-                        permc_spec='COLAMD', solver=None, mtype=11, assume_regular=False,
+def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack:bool=True, summary:bool=False,
+                        permc_spec:str='COLAMD', solver:str=None, mtype:int=11, assume_regular:bool=False,
                         **kwargs):
     """
     Solves the discrete equilibrium equations :math:`\mathbf{K} \mathbf{u} = \mathbf{f}`
@@ -35,10 +35,10 @@ def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack=True, summary=
     
     Parameters
     ----------
-    K : :class:`scipy.sparse.spmatrix`
+    K : scipy.sparse.spmatrix
         The stiffness matrix in coo format.
         
-    f : :class:`numpy.ndarray`
+    f : numpy.ndarray
         The vector of nodal loads.
         
     use_umfpack : bool, Optional
@@ -63,7 +63,7 @@ def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack=True, summary=
     
     Returns
     -------
-    :class:`numpy.ndarray`
+    numpy.ndarray
         The solution as a numpy array. The returned array has the same shape as `f`.
         
     dict, Optional
@@ -152,8 +152,9 @@ def box_fem_data_sparse(K_coo: coo, Kp_coo: coo, f: ndarray):
     """
     Notes:
     ------
-        (1) If the load vector 'f' is dense, it must contain values for all
-            nodes, even the passive ones.
+    If the load vector 'f' is dense, it must contain values for all
+    nodes, even the passive ones.
+    
     """
     # data for boxing and unboxing
     loc_to_glob, glob_to_loc = index_mappers(K_coo, return_inverse=True)
@@ -167,8 +168,9 @@ def box_fem_data_bulk(Kp_coo: coo, gnum: ndarray, f: ndarray):
     """
     Notes:
     ------
-        (1) If the load vector 'f' is dense, it must contain values for all
-            nodes, even the passive ones.
+    If the load vector 'f' is dense, it must contain values for all
+    nodes, even the passive ones.
+    
     """
     # data for boxing and unboxing
     N = f.shape[0]
@@ -186,8 +188,9 @@ def linsolve_sparse(K_coo: coo, Kp_coo: coo,
     """
     Notes:
     ------
-        (1) If the load vector 'f' is dense, it must contain values for all
-            nodes, even the passive ones.
+    If the load vector 'f' is dense, it must contain values for all
+    nodes, even the passive ones.
+    
     """
     # boxing
     N = f.shape[0]

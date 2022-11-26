@@ -1,6 +1,9 @@
 import numpy as np
 from numpy import ndarray
 from numba import njit, prange
+
+from neumann.array import repeat_diagonal_2d
+
 __cache = True
 
 
@@ -29,12 +32,7 @@ def nodal_dcm(dcm: ndarray, N:int=2) -> ndarray:
     position vector in 3d Euclidean space.
     
     """
-    res = np.zeros((3 * N, 3 * N), dtype=dcm.dtype)
-    for i in prange(N):
-        _i = i * 3
-        i_ = _i + 3
-        res[_i:i_, _i:i_] = dcm
-    return res
+    return repeat_diagonal_2d(dcm, N)
 
 
 @njit(nogil=True, parallel=True, cache=__cache)

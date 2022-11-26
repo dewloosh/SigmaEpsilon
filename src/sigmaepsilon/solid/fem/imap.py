@@ -201,7 +201,3 @@ def invert_mapping(imap: nbDict):
     for i in imap:
         res[imap[i]] = i
     return res
-
-
-if __name__ == '__main__':
-    pass

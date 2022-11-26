@@ -4,6 +4,9 @@
 			"path": "."
 		},
 		{
+			"path": "../dewloosh-core"
+		},
+		{
 			"path": "../Neumann"
 		},
 		{
@@ -17,7 +20,8 @@
 		},
 		{
 			"path": "../3DBeam"
-		}
+		},
+		
 	],
 	"settings": {}
 }
