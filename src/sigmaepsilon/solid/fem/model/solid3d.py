@@ -50,6 +50,9 @@ def HMH(estrs: np.ndarray):
 
 
 class Solid3d(Solid):
+    """
+    A model for 3d solids.
+    """
     
     dofs = ('UX', 'UY', 'UZ')
     
@@ -57,7 +60,7 @@ class Solid3d(Solid):
     NSTRE = 6
 
     def strain_displacement_matrix(self, pcoords=None, *args, dshp=None, 
-                                   jac=None, **kwargs):
+                                   jac=None, **kwargs) -> ndarray:
         if dshp is None and pcoords is not None:
             dshp = self.shape_function_derivatives(pcoords)
         if jac is None:
@@ -65,5 +68,5 @@ class Solid3d(Solid):
         return strain_displacement_matrix(dshp, jac)
 
     @classmethod
-    def HMH(cls, data, *args, **kwargs):
-        return HMH(data)
+    def HMH(cls, stresses:ndarray, *args, **kwargs) -> ndarray:
+        return HMH(stresses)

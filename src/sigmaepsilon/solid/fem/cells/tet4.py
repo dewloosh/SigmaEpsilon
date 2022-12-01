@@ -6,7 +6,7 @@ from polymesh.cells import TET4 as Tetra
 from ..model.solid3d import Solid3d
 
 from .elem import FiniteElement
-from .meta import ABCFiniteElement as ABC
+from .metaelem import ABCFiniteElement as ABC
 
 
 

@@ -15,9 +15,9 @@ pythreejs
 
 sectionproperties
 pylatex
-randomdict
 pyvista
 dewloosh.mpl
 dewloosh.plotly
 pylatex
 latexdocs
+texttable

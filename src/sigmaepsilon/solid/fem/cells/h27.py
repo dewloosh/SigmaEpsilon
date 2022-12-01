@@ -6,7 +6,7 @@ from polymesh.cells import H27 as HexaHedron
 from ..model.solid3d import Solid3d
 
 from .elem import FiniteElement
-from .meta import ABCFiniteElement as ABC
+from .metaelem import ABCFiniteElement as ABC
 
 
 class H27(ABC, Solid3d, HexaHedron, FiniteElement):

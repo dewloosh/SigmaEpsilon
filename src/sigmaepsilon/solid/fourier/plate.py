@@ -1,90 +1,99 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from numpy import swapaxes as swap
-from time import time
+from typing import Tuple, Union, Iterable
 
-from .loads import LoadGroup
+from linkeddeepdict import LinkedDeepDict
+
+from .problem import NavierProblem
+from .loads import LoadGroup, NavierLoadError
 from .preproc import lhs_Navier
 from .postproc import postproc
 from .proc import linsolve
 
 
-class RectangularPlate:
+class RectangularPlate(NavierProblem):
+    """
+    A class to handle semi-analytic solutions of rectangular plates with
+    specific boudary conditions.
 
-    def __init__(self, size: tuple, shape: tuple, *args,
-                 D: np.ndarray = None, S: np.ndarray = None,
-                 Winkler=None, Pasternak=None, loads=None,
-                 Hetenyi=None, model='mindlin', mesh=None,
-                 Bernoulli: bool = None, Navier=True, **kwargs):
-        assert Navier is True, "Only Navier boundary conditions are covered at the moment."
+    Parameters
+    ----------
+    size : Tuple[float]
+        The size of the rectangle.
+
+    shape : Tuple[int]
+        Numbers of harmonic terms involved in both directions.
+
+    """
+
+    def __init__(self, size: Tuple[float], shape: Tuple[int], *,
+                 D11: float = None, D12: float = None, D22: float = None,
+                 D66: float = None, S44: float = None, S55: float = None):
+        super().__init__()
         self.size = np.array(size, dtype=float)
         self.shape = np.array(shape, dtype=int)
-        self.D = D
-        self.S = S
-        self.model = model.lower()
-        self.mesh = mesh
+        self.D11 = D11
+        self.D12 = D12
+        self.D22 = D22
+        self.D66 = D66
+        self.S44 = S44
+        self.S55 = S55
+
+    def solve(self, loads: Union[dict, LoadGroup], points: Iterable):
+        """
+        Solves the problem and calculates all entities at the specified points.
+
+        Parameters
+        ----------
+        loads : Union[dict, LoadGroup]
+            The loads.
+
+        points : Iterable
+            2d float array of coordinates, where the results are to be evaluated.
+
+        Returns
+        -------
+        dict
+            A dictionary with a same layout as the input.
+
+        """
+        # STIFFNESS
+        D = np.zeros((3, 3))
+        D[0, 0] = self.D11
+        D[0, 1] = self.D12
+        D[1, 0] = self.D12
+        D[1, 1] = self.D22
+        D[2, 2] = self.D66
+        if self.S44 is not None:
+            S = np.zeros((2, 2))
+            S[0, 0] = self.S44
+            S[1, 1] = self.S55
+        else:
+            S = None
+        LHS = lhs_Navier(self.size, self.shape, D, S, squeeze=False)
+
+        # LOADS
         if isinstance(loads, LoadGroup):
-            self.loads = loads
+            _loads = loads
         elif isinstance(loads, dict):
-            self.add_loads_from_dict(loads)
-        elif isinstance(loads, np.ndarray):
-            raise NotImplementedError
+            _loads = LoadGroup.from_dict(loads)
         else:
-            self.loads = LoadGroup(Navier=self)
-        self._summary = {}
-        self.Bernoulli = not self.model in [
-            'm', 'mindlin'] if Bernoulli is None else Bernoulli
-        assert isinstance(
-            self.Bernoulli, bool), "The keyword argument `Bernoulli` must be `True` or `False`."
-
-    def add_loads_from_dict(self, d: dict, *args, **kwargs):
-        self.loads = LoadGroup.from_dict(d)
-        self.loads._Navier = self
-        return self.loads
-
-    def solve(self, *args, key='_coeffs', postproc=False, **kwargs):
-        self._summary = {}
-        self._key_coeff = key
-        LC = list(self.loads.load_cases())
-        D = self.D
-        if self.Bernoulli and self.model in ['m', 'mindlin']:
-            D = np.full(self.D.shape, 1e12)
-        LHS = lhs_Navier(self.size, self.shape, D=D, S=self.S,
-                         model=self.model, squeeze=False)
-        RHS = list(lc.rhs() for lc in LC)
-        [setattr(lc, '_rhs', rhs) for lc, rhs in zip(LC, RHS)]
-        if self.model in ['k', 'kirchhoff']:
-            RHS = [np.sum(rhs, axis=-1) for rhs in RHS]
-        t0 = time()
-        coeffs = linsolve(LHS, np.stack(RHS), squeeze=False)
-        self._summary['dt'] = time() - t0
-        nRHS, nLHS, nMN = coeffs.shape[:3]
-        self._summary['nMN'] = nMN
-        self._summary['nRHS'] = nRHS
-        self._summary['nLHS'] = nLHS
-        [setattr(lc, self._key_coeff, c) for lc, c in zip(LC, coeffs)]
-
-    def postproc(self, points: np.ndarray, *args, cleanup=True,
-                 key='res2d', **kwargs):
-        self._key_res2d = key
-        size = self.size
-        shape = self.shape
-        LC = list(self.loads.load_cases())
-        RHS = np.stack(list(lc._rhs for lc in LC))
-        coeffs = np.stack([getattr(lc, self._key_coeff) for lc in LC])
-        ABDS = np.zeros((5, 5))
-        ABDS[:3, :3] = self.D
-        if self.S is not None:
-            ABDS[3:, 3:] = self.S
-        else:
-            ABDS[3:, 3:] = 1e12
-        res = postproc(ABDS, points, size=size, shape=shape, loads=RHS,
-                       solution=coeffs, model=self.model)
-        if len(LC) == 1:
-            setattr(LC[0], self._key_res2d, np.squeeze(swap(res, 0, 1)))
-        else:
-            [setattr(lc, self._key_res2d, np.squeeze(swap(r2d, 0, 1)))
-                for lc, r2d in zip(LC, res)]
-        res = np.squeeze(res)
-        if cleanup:
-            [delattr(lc, self._key_coeff) for lc in LC]
+            raise NavierLoadError()
+        _loads.problem = self
+        LC = list(_loads.cases())
+        RHS = np.stack(list(lc.rhs() for lc in LC))
+        
+        # SOLUTION
+        points = np.array(points)
+        coeffs = linsolve(LHS, RHS, squeeze=False)
+        res = postproc(self.size, self.shape, points, coeffs, 
+                       RHS, D, S, squeeze=False)
+        # (nRHS, nLHS, nP, nX)
+        res = swap(res, 1, 2)
+        # (nRHS, nP, nLHS, nX)
+        result = LinkedDeepDict()
+        for i, lc in enumerate(_loads.cases()):
+            result[lc.address] = np.squeeze(res[i, :, :])
+        result.lock()
+        return result

@@ -12,10 +12,8 @@ from time import time
 from linkeddeepdict import LinkedDeepDict
 from neumann.array import matrixform
 
-from .imap import index_mappers, box_spmatrix, box_rhs, unbox_lhs, \
-    box_dof_numbering
-from .preproc import fem_coeff_matrix_coo
-
+from .imap import unbox_lhs
+from .preproc import fem_coeff_matrix_coo, box_fem_data_sparse
 from ..config import __haspardiso__
 
 if __haspardiso__:
@@ -26,8 +24,8 @@ if __haspardiso__:
 arraylike = Union[ndarray, spmatrix]
 
 
-def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack=True, summary=False,
-                        permc_spec='COLAMD', solver=None, mtype=11, assume_regular=False,
+def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack:bool=True, summary:bool=False,
+                        permc_spec:str='COLAMD', solver:str=None, mtype:int=11, assume_regular:bool=False,
                         **kwargs):
     """
     Solves the discrete equilibrium equations :math:`\mathbf{K} \mathbf{u} = \mathbf{f}`
@@ -35,10 +33,10 @@ def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack=True, summary=
     
     Parameters
     ----------
-    K : :class:`scipy.sparse.spmatrix`
+    K : scipy.sparse.spmatrix
         The stiffness matrix in coo format.
         
-    f : :class:`numpy.ndarray`
+    f : numpy.ndarray
         The vector of nodal loads.
         
     use_umfpack : bool, Optional
@@ -63,7 +61,7 @@ def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack=True, summary=
     
     Returns
     -------
-    :class:`numpy.ndarray`
+    numpy.ndarray
         The solution as a numpy array. The returned array has the same shape as `f`.
         
     dict, Optional
@@ -148,46 +146,15 @@ def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack=True, summary=
         return u
 
 
-def box_fem_data_sparse(K_coo: coo, Kp_coo: coo, f: ndarray):
-    """
-    Notes:
-    ------
-        (1) If the load vector 'f' is dense, it must contain values for all
-            nodes, even the passive ones.
-    """
-    # data for boxing and unboxing
-    loc_to_glob, glob_to_loc = index_mappers(K_coo, return_inverse=True)
-    # boxing
-    K = box_spmatrix(K_coo, glob_to_loc) + box_spmatrix(Kp_coo, glob_to_loc)
-    f = box_rhs(matrixform(f), loc_to_glob)
-    return K, f, loc_to_glob
-
-
-def box_fem_data_bulk(Kp_coo: coo, gnum: ndarray, f: ndarray):
-    """
-    Notes:
-    ------
-        (1) If the load vector 'f' is dense, it must contain values for all
-            nodes, even the passive ones.
-    """
-    # data for boxing and unboxing
-    N = f.shape[0]
-    loc_to_glob, glob_to_loc = index_mappers(gnum, N=N, return_inverse=True)
-    # boxing
-    gnum = box_dof_numbering(gnum, glob_to_loc)
-    Kp_coo = box_spmatrix(Kp_coo, glob_to_loc)
-    f = box_rhs(matrixform(f), loc_to_glob)
-    return Kp_coo, gnum, f, loc_to_glob
-
-
 def linsolve_sparse(K_coo: coo, Kp_coo: coo,
                     f: np.ndarray, *args, use_umfpack=True,
                     sparsify=False, summary=True, **kwargs):
     """
     Notes:
     ------
-        (1) If the load vector 'f' is dense, it must contain values for all
-            nodes, even the passive ones.
+    If the load vector 'f' is dense, it must contain values for all
+    nodes, even the passive ones.
+    
     """
     # boxing
     N = f.shape[0]

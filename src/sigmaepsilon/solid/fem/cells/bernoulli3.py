@@ -3,11 +3,11 @@ from neumann.numint import GaussPoints as Gauss
 from polymesh.cells import QuadraticLine as Line
 
 from .bernoulli import BernoulliBase as Bernoulli
-from .gen.b3 import shape_function_values_bulk as shpB3, \
-    shape_function_derivatives_bulk as dshpB3
+from .gen.b3 import (shape_function_values_bulk, 
+                     shape_function_derivatives_bulk)
     
 from .elem import FiniteElement
-from .meta import ABCFiniteElement as ABC
+from .metaelem import ABCFiniteElement as ABC
     
     
 __all__ = ['Bernoulli3']
@@ -23,5 +23,5 @@ class Bernoulli3(ABC, Bernoulli, Line, FiniteElement):
         'full': Gauss(6),
         'mass' : Gauss(8)
     }
-    shpfnc = shpB3
-    dshpfnc = dshpB3
+    shpfnc = shape_function_values_bulk
+    dshpfnc = shape_function_derivatives_bulk

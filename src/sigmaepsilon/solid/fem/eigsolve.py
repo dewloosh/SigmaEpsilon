@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from numpy.linalg import norm
-from scipy.sparse import isspmatrix as isspmatrix_np
+from scipy.sparse import isspmatrix as isspmatrix_np, spmatrix
 from scipy.sparse.linalg import eigsh
 from scipy.linalg import eigh
 
@@ -28,9 +28,9 @@ def calc_eig_res(A, M, eigvals, eigvecs) -> list:
         
     Parameters
     ----------
-    A : :class:`scipy.linalg.sparse.spmatrix`
+    A : numpy.ndarray or scipy.linalg.sparse.spmatrix
             
-    M : :class:`scipy.linalg.sparse.spmatrix`
+    M : numpy.ndarray or scipy.linalg.sparse.spmatrix
     
     Returns
     -------
@@ -49,16 +49,16 @@ def normalize_eigenvectors(vecs, A):
     
     Parameters
     ----------
-    vecs : :class:`numpy.ndarray`
+    vecs : numpy.ndarray
         The eigenvectors as a 2d array, where each column is
         an eigenvector.
             
-    A : :class:`scipy.linalg.sparse.spmatrix` or :class:`numpy.ndarray`
+    A : scipy.linalg.sparse.spmatrix or numpy.ndarray
         A 2d array.
     
     Returns
     -------
-    :class:`numpy.ndarray`
+    numpy.ndarray
         The normalized eigenvectors.
         
     """
@@ -68,8 +68,8 @@ def normalize_eigenvectors(vecs, A):
     return np.stack(list(map(foo, rng))).T
 
 
-def eig_dense(A, *args, M=None, normalize=False, nmode='A',
-              return_residuals=False, **kwargs):
+def eig_dense(A, *args, M:np.ndarray=None, normalize:bool=False, nmode:str='A',
+              return_residuals:bool=False, **kwargs):
     """
     Returns all eigenvectors end eigenvalues for a dense square 
     matrix, for the standard eigenvalue problem
@@ -95,9 +95,9 @@ def eig_dense(A, *args, M=None, normalize=False, nmode='A',
 
     Parameters
     ----------
-    A : :class:`numpy.ndarray` or :class:`scipy.linalg.sparse.spmatrix`
+    A : numpy.ndarray or scipy.linalg.sparse.spmatrix
             
-    M : :class:`numpy.ndarray` or :class:`scipy.linalg.sparse.spmatrix`, Optional
+    M : numpy.ndarray or scipy.linalg.sparse.spmatrix, Optional
     
     nmode : str, ['A' | 'M'], Optional
         Contrtols the normalization of the eigenvectors. Default is 'A'.
@@ -108,7 +108,7 @@ def eig_dense(A, *args, M=None, normalize=False, nmode='A',
     
     See also
     --------
-    :func:`scipy.linalg.eigs`
+    scipy.linalg.eigs
 
     """
     A_ = A.todense() if isspmatrix_np(A) else A
@@ -130,8 +130,8 @@ def eig_dense(A, *args, M=None, normalize=False, nmode='A',
     return vals, vecs
 
 
-def eig_sparse(A, *args, k=10, M=None, normalize=False, which='SM',
-               maxiter=None, nmode='A', return_residuals=False, **kwargs):
+def eig_sparse(A, *args, k:int=10, M:spmatrix=None, normalize:bool=False, which:str='SM',
+               maxiter:int=None, nmode:str='A', return_residuals:bool=False, **kwargs):
     """
     Returns all eigenvectors end eigenvalues for a sparse square matrix,
     for the standard eigenvalue problem
@@ -153,14 +153,14 @@ def eig_sparse(A, *args, k=10, M=None, normalize=False, which='SM',
         \\end{equation}
 
     The values are calculated by calling :func:`scipy.sparse.linalg.eigsh`, 
-    which uses Arnoldi itrations. See references [1, 2] for more details. 
+    which uses Arnoldi itrations. See references [1]_ and [2]_ for more details. 
     Extra keyword arguments are forwarded.
 
     Parameters
     ----------
-    A : :class:`scipy.linalg.sparse.spmatrix`
+    A : scipy.linalg.sparse.spmatrix
             
-    M : :class:`scipy.linalg.sparse.spmatrix`, Optional
+    M : scipy.linalg.sparse.spmatrix, Optional
     
     k : int or str, Optional
         Number of eigendata to calculate. If `k` is a string, it must be 'all'. 
@@ -190,9 +190,10 @@ def eig_sparse(A, *args, k=10, M=None, normalize=False, which='SM',
     References
     ----------
     .. [1] ARPACK Software, http://www.caam.rice.edu/software/ARPACK/
+    
     .. [2] R. B. Lehoucq, D. C. Sorensen, and C. Yang, ARPACK USERS GUIDE:
-        Solution of Large Scale Eigenvalue Problems by Implicitly Restarted
-        Arnoldi Methods. SIAM, Philadelphia, PA, 1998.
+           Solution of Large Scale Eigenvalue Problems by Implicitly Restarted
+           Arnoldi Methods. SIAM, Philadelphia, PA, 1998.
 
     """
     vals, vecs = eigsh(A=A, k=k, M=M, which=which, maxiter=maxiter, **kwargs)

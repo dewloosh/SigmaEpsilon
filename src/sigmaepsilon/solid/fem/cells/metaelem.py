@@ -1,18 +1,10 @@
 # -*- coding: utf-8 -*-
-from abc import abstractmethod
-from inspect import signature, Parameter
 import numpy as np
 
 from polymesh.abc import ABCMeta_MeshData
 from polymesh.cell import PolyCell
 
-from copy import deepcopy
-from functools import partial
-from typing import Callable, Any
-
-
-dofs = ('UX', 'UY', 'UZ', 'ROTX', 'ROTY', 'ROTZ')
-dofmap = {d : i for i, d in enumerate(dofs)}
+from ..dofmap import DOF
 
 
 class FemMixin:
@@ -136,7 +128,7 @@ class FemMixin:
     def weights(self, *args, **kwargs):
         raise NotImplementedError
     
-    def _postproc_local_internal_forces(self, forces, *args, points, rng, cells, **kwargs):
+    def _postproc_local_internal_forces_(self, forces, *args, points, rng, cells, **kwargs):
         """
         The aim of this function os to guarantee a standard shape of output, that contains
         values for each of the 6 internal force compoents, irrespective of the kinematical
@@ -197,7 +189,7 @@ class MetaFiniteElement(ABCMeta_MeshData):
                     cls.Model = base
                     cls.dofs = base.dofs
                     cls.NDOFN = len(cls.dofs)
-                    cls.dofmap = np.array([dofmap[d] for d in cls.dofs], dtype=int)
+                    cls.dofmap = np.array(DOF.dofmap(cls.dofs), dtype=int)
         return cls
     
 

@@ -4,19 +4,25 @@
 			"path": "."
 		},
 		{
-			"path": "../dewloosh/PolyMesh"
+			"path": "../dewloosh-core"
 		},
 		{
-			"path": "../dewloosh/latexdocs"
+			"path": "../Neumann"
 		},
 		{
-			"path": "../dewloosh/Neumann"
+			"path": "../PolyMesh"
 		},
 		{
-			"path": "../../Google Drive/dewloosh/working"
+			"path": "../latexdocs"
 		},
 		{
-			"path": "../dewloosh/dewloosh-plotly"
+			"path": "F:/My Drive/dewloosh/working"
+		},
+		{
+			"path": "../3DBeam"
+		},
+		{
+			"path": "../LinkedDeepDict"
 		}
 	],
 	"settings": {}

@@ -2,35 +2,36 @@
 from numba import njit, prange
 import numpy as np
 from numpy import ndarray
-from typing import Union
+from typing import Union, Iterable
 
 from .solid import Solid
 
 __cache = True
-
-ArrayOrFloat = Union[ndarray, float]
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
 def strain_displacement_matrix(gdshp: ndarray):
     """
     Returns the matrix expressing the relationship of generalized strains
+    and generalized displacements of a Bernoulli beam element. The order
+    of strain components is
         0 : strain along x
         1 : curvature around x
         2 : curvature around y
-        3 : curvature around z
-    and generalized displacements of a Bernoulli beam element.
+        3 : curvature around z 
 
     Parameters
     ----------
-    gdshp : numpy float array of shape (N, 6, 3)  
-        First, second and third derivatives for every dof(6) of every node(N).
+    gdshp : numpy.ndarray  
+        First, second and third derivatives for every dof(6) of every node(nNE)
+        as a 3d float array of shape (nNE, nDOF=6, 3).
 
     Returns
     -------
-    numpy array of shape (4, N * 6) 
+    numpy.ndarray  
         Apprpximation coefficients for every generalized strain and every 
-        shape function.
+        shape function as a 2d float array of shape (nSTRE=4, nNE * 6).
+    
     """
     nNE = gdshp.shape[0]
     B = np.zeros((4, nNE * 6), dtype=gdshp.dtype)
@@ -52,15 +53,17 @@ def strain_displacement_matrix(gdshp: ndarray):
 @njit(nogil=True, parallel=True, cache=__cache)
 def strain_displacement_matrix_bulk(gdshp: ndarray):
     """
+    Calculates the strain-displacement matrix for several elements.
+    
     Parameters
     ----------
     gdshp : numpy.ndarray
-        Numpy float array of shape (nE, nP, nNE, nDOF=6, 3)
+        5d float array of shape (nE, nP, nNE, nDOF=6, 3).
 
     Returns
     -------
     numpy.ndarray
-        NumPy float array of shape (nE, nP, 4, nNODE * 6)
+        4d float array of shape (nE, nP, nSTRE=4, nNODE * nDOF=6).
 
     """
     nE, nP, nNE = gdshp.shape[:3]
@@ -89,11 +92,11 @@ def calculate_shear_forces(dofsol: ndarray, forces: ndarray,
             for k in prange(nRHS):
                 for m in range(nNE):
                     # Vy
-                    res[i, j, 1, k] += - D[i, 3, 3] * (
+                    res[i, j, 1, k] -= D[i, 3, 3] * (
                         gdshp[i, j, m, 1, 2] * dofsol[i, m, 1, k] +
                         gdshp[i, j, m, 5, 2] * dofsol[i, m, 5, k])
                     # Vz
-                    res[i, j, 2, k] += - D[i, 2, 2] * (
+                    res[i, j, 2, k] -= D[i, 2, 2] * (
                         gdshp[i, j, m, 2, 2] * dofsol[i, m, 2, k] +
                         gdshp[i, j, m, 4, 2] * dofsol[i, m, 4, k])
     return res
@@ -106,17 +109,54 @@ class BernoulliBeam(Solid):
     NDOFN = 6
     NSTRE = 4
 
-    def model_stiffness_matrix(self, *args, **kwargs):
+    def model_stiffness_matrix(self, *args, **kwargs) -> ndarray:
+        """
+        Returns the model stiffness matrix for all elements in the block.
+                
+        Returns
+        -------
+        numpy.ndarray
+            3d float array of shape (nE, nSTRE, nSTRE), where nE and nSTRE
+            are the number of cells and stress/strain components.
+            
+        """
         return self.material_stiffness_matrix()
 
-    def strain_displacement_matrix(self, pcoords: ArrayOrFloat = None, *args,
-                                   jac=None, rng=None, dshp=None, **kwargs):
+    def strain_displacement_matrix(self, pcoords:Union[float, Iterable[float]]=None, *args, 
+                                   rng:Iterable=None, jac: ndarray = None, dshp: ndarray = None,
+                                   **kwargs) -> ndarray:
+        """
+        Calculates the strain displacement matrix.
+        
+        Parameters
+        ----------
+        pcoords : float or Iterable, Optional
+            Locations of the evaluation points. Default is None.
+
+        rng : Iterable, Optional
+            The range in which the locations ought to be understood, 
+            typically [0, 1] or [-1, 1]. Only if 'pcoords' is provided.
+            Default is [0, 1].
+
+        jac : Iterable, Optional
+            The jacobian matrix as a float array of shape (nE, nP, 1, 1), evaluated for 
+            each point in each cell. Default is None.
+
+        dshp : Iterable, Optional
+            The shape function derivatives of the master element as a float array of 
+            shape (nP, nNE, nDOF=6, 3), evaluated at a 'nP' number of points. 
+            Default is None.
+            
+        """
         rng = np.array([-1, 1]) if rng is None else np.array(rng)
         gdshp = self.shape_function_derivatives(
             pcoords, rng=rng, jac=jac, dshp=dshp)
         return strain_displacement_matrix_bulk(gdshp)
 
-    def masses(self, *args, values=None, **kwargs):
+    def masses(self, *args, values=None, **kwargs) -> ndarray:
+        """
+        Returns the masses of the cells in the block.
+        """
         if isinstance(values, np.ndarray):
             dens = values
         else:
@@ -128,5 +168,8 @@ class BernoulliBeam(Solid):
         lengths = self.lengths()
         return areas * dens * lengths
 
-    def mass(self, *args, **kwargs):
+    def mass(self, *args, **kwargs) -> float:
+        """
+        Returns the total mass of the block.
+        """
         return np.sum(self.masses(*args, **kwargs))

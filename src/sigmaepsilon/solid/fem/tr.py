@@ -1,10 +1,13 @@
 import numpy as np
 from numpy import ndarray
 from numba import njit, prange
+
+from neumann.array import repeat_diagonal_2d, ascont
+
 __cache = True
 
 
-@njit(nogil=True, parallel=True, cache=__cache)
+@njit(nogil=True, cache=__cache)
 def nodal_dcm(dcm: ndarray, N:int=2) -> ndarray:
     """
     Assembles the nodal direction cosine matrix of a single node.
@@ -29,12 +32,7 @@ def nodal_dcm(dcm: ndarray, N:int=2) -> ndarray:
     position vector in 3d Euclidean space.
     
     """
-    res = np.zeros((3 * N, 3 * N), dtype=dcm.dtype)
-    for i in prange(N):
-        _i = i * 3
-        i_ = _i + 3
-        res[_i:i_, _i:i_] = dcm
-    return res
+    return repeat_diagonal_2d(dcm, N)
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
@@ -134,7 +132,7 @@ def tr_element_vectors_bulk_multi(values: ndarray, dcm: ndarray,
 @njit(nogil=True, parallel=True, cache=__cache)
 def tr_element_matrices_bulk(K: ndarray, dcm: ndarray, invert:bool=False):
     """
-    Transforms element stiffness matrices from local to global.
+    Transforms element stiffness matrices.
     """
     res = np.zeros_like(K)
     if not invert:
@@ -144,3 +142,27 @@ def tr_element_matrices_bulk(K: ndarray, dcm: ndarray, invert:bool=False):
         for iE in prange(res.shape[0]):
             res[iE] = dcm[iE].T @ K[iE] @ dcm[iE]
     return res
+
+
+def tr_nodal_loads_bulk(nodal_loads: ndarray, dcm: ndarray) -> ndarray:
+    """
+    Transforms discrete nodal loads to the global frame.
+
+    Parameters
+    ----------
+    nodal_loads : numpy.ndarray
+        A 3d array of shape (nE, nEVAB, nRHS).
+
+    Returns
+    -------
+    numpy.ndarray
+        A numpy array of shape (nE, nEVAB, nRHS).
+
+    """
+    nodal_loads = np.swapaxes(nodal_loads, 1, 2)
+    # (nE, nNE * nDOF, nRHS) -> (nE, nRHS, nNE * nDOF)
+    nodal_loads = ascont(nodal_loads)
+    nodal_loads = tr_element_vectors_bulk_multi(nodal_loads, dcm)
+    nodal_loads = np.swapaxes(nodal_loads, 1, 2)
+    # (nE, nRHS, nNE * nDOF) -> (nE, nNE * nDOF, nRHS)
+    return nodal_loads

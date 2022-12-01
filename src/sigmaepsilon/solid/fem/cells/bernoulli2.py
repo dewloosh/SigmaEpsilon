@@ -3,10 +3,10 @@ from neumann.numint import GaussPoints as Gauss
 from polymesh.cells import L2 as Line
 
 from .bernoulli import BernoulliBase as Bernoulli
-from .gen.b2 import shape_function_values_bulk as shpB2, \
-    shape_function_derivatives_bulk as dshpB2
+from .gen.b2 import (shape_function_values_bulk, 
+                     shape_function_derivatives_bulk)
 from .elem import FiniteElement
-from .meta import ABCFiniteElement as ABC
+from .metaelem import ABCFiniteElement as ABC
 
 __all__ = ['Bernoulli2']
 
@@ -26,5 +26,5 @@ class Bernoulli2(ABC, Bernoulli, Line, FiniteElement):
         'reduced': Gauss(1),
         'mass' : Gauss(4)
     }
-    shpfnc = shpB2
-    dshpfnc = dshpB2
+    shpfnc = shape_function_values_bulk
+    dshpfnc = shape_function_derivatives_bulk

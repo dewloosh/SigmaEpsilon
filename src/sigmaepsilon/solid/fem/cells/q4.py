@@ -12,7 +12,7 @@ from ..model.membrane import Membrane
 from ..model.plate import Plate
 
 from .elem import FiniteElement
-from .meta import ABCFiniteElement as ABC
+from .metaelem import ABCFiniteElement as ABC
 
 __cache = True
 

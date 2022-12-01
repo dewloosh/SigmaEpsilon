@@ -9,7 +9,7 @@ from polymesh.tri.triutils import lcoords_tri, shp_tri_loc
 from ..model.membrane import Membrane
 
 from .elem import FiniteElement
-from .meta import ABCFiniteElement as ABC
+from .metaelem import ABCFiniteElement as ABC
 
 __cache = True
 

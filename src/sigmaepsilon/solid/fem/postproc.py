@@ -6,8 +6,66 @@ from scipy.interpolate import interp1d
 __cache = True
 
 
-@njit(nogil=True, parallel=True, cache=__cache)
 def approx_element_solution_bulk(v: ndarray, A: ndarray):
+    """
+    Approximates discrete solution over several elements.
+    
+    Parameters
+    ----------
+    v : numpy.ndarray
+        The discrete values to interpolate as an array of shape 
+        (nE, nRHS, nDOF * nNE).
+        
+    A : numpy.ndarray
+        The interpolation matrix of shape (nP, nX, nDOF * nNE) for 
+        constant metrics, or (nE, nP, nX, nDOF * nNE) for variable
+        matrics.
+    
+    Returns
+    -------
+    numpy.ndarray
+        An array of shape (nE, nRHS, nP, nX).
+        
+    """
+    if len(A.shape) == 4:
+        res = _approx_element_solution_bulk_vm_(v, A)
+    else:
+        res = _approx_element_solution_bulk_cm_(v, A)
+    return res
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def _approx_element_solution_bulk_cm_(v: ndarray, A: ndarray):
+    """
+    Approximates discrete solution over several elements.
+    
+    Parameters
+    ----------
+    v : numpy.ndarray
+        The discrete values to interpolate as an array of shape 
+        (nE, nRHS, nDOF * nNE).
+        
+    A : numpy.ndarray
+        The interpolation matrix of shape (nP, nX, nDOF * nNE).
+    
+    Returns
+    -------
+    numpy.ndarray
+        An array of shape (nE, nRHS, nP, nX).
+        
+    """
+    nP, nX = A.shape[:2]
+    nE, nRHS = v.shape[:2]
+    res = np.zeros((nE, nRHS, nP, nX), dtype=v.dtype)
+    for i in prange(nE):
+        for j in prange(nP):
+            for k in prange(nRHS):
+                res[i, k, j, :] = A[j] @ v[i, k]
+    return res
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def _approx_element_solution_bulk_vm_(v: ndarray, A: ndarray):
     """
     Approximates discrete solution over several elements.
     
@@ -112,6 +170,33 @@ def extrapolate_gauss_data_1d(gpos: ndarray, gdata: ndarray):
     return inner
 
 
-def extrapolate_gauss_data(data, x_in, x_out):
-    pass
+@njit(nogil=True, parallel=True, cache=__cache)
+def element_dof_solution_bulk(dofsol1d: ndarray, gnum: ndarray):
+    """
+    Returns an array that contains degree of freedom solution for
+    every node of every element.
 
+    Parameters
+    ---------- 
+    dofsol : numpy.ndarray 
+        A 2d float array of shape (nX, nRHS), where nX and nRHS are
+        the number of total variables and right hand sides.
+
+    gnum : numpy.ndarray
+        2d integer array of (nE, nEVAB) of global dof numbering 
+        for several elements, where nE and nEVAB is the number of
+        elements and total variables per element. 
+
+    Returns
+    -------
+    numpy.ndarray
+        3d float array of shape (nE, nEVAB, nRHS).
+
+    """
+    nRHS = dofsol1d.shape[1]
+    nE, nEVAB = gnum.shape
+    res = np.zeros((nE, nEVAB, nRHS), dtype=dofsol1d.dtype)
+    for i in prange(nE):
+        for j in prange(nRHS):
+            res[i, :, j] = dofsol1d[gnum[i, :], j]
+    return res

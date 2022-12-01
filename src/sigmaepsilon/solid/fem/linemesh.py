@@ -1,25 +1,28 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Iterable, Tuple
+from typing import Any, Iterable
 
 import numpy as np
+from numpy import ndarray
 from sectionproperties.analysis.section import Section
 
 from polymesh.config import __hasplotly__, __hasmatplotlib__
-from polymesh.space import StandardFrame
 if __hasplotly__:
     from dewloosh.plotly import plot_lines_3d
 
 from ..model.bernoulli.section import BeamSection
-from .pointdata import PointData
 from .mesh import FemMesh
 from .cells import B2, B3
-from .io import _get_bernoulli_metadata_
 
 
 class LineMesh(FemMesh):
     """
     A data class dedicated to 1d cells. It handles sections and other line 
-    related information, plotting, etc.    
+    related information, plotting, etc.
+    
+    See Also
+    --------
+    :class:`sigmaepsilon.solid.fem.mesh.FemMesh`
+        
     """
 
     _cell_classes_ = {
@@ -27,15 +30,8 @@ class LineMesh(FemMesh):
         3: B3,
     }
 
-    def __init__(self, *args, areas=None, connectivity=None, model=None,
-                 section=None, **kwargs):
-
-        if connectivity is not None:
-            if isinstance(connectivity, np.ndarray):
-                assert len(connectivity.shape) == 3
-                assert connectivity.shape[0] == nE
-                assert connectivity.shape[1] == 2
-                assert connectivity.shape[2] == self.__class__.NDOFN
+    def __init__(self, *args, areas:ndarray=None, model:ndarray=None, 
+                 section:BeamSection=None, **kwargs):
 
         if section is None:
             if isinstance(model, Section):
@@ -45,7 +41,7 @@ class LineMesh(FemMesh):
             model = section.model_stiffness_matrix()
         self._section = section
 
-        super().__init__(*args, connectivity=connectivity, model=model, **kwargs)
+        super().__init__(*args, model=model, **kwargs)
 
         if self.celldata is not None:
             nE = len(self.celldata)
@@ -57,7 +53,7 @@ class LineMesh(FemMesh):
             else:
                 assert len(areas.shape) == 1, \
                     "'areas' must be a 1d float or integer numpy array!"
-            dbkey = self.celldata.__class__._attr_map_['areas']
+            dbkey = self.celldata._dbkey_areas_
             self.celldata.db[dbkey] = areas
 
     def simplify(self, inplace=True) -> 'LineMesh':
@@ -187,47 +183,3 @@ class BernoulliFrame(LineMesh):
         2: B2,
         3: B3,
     }
-
-    @classmethod
-    def from_dict(cls, d_in: dict) -> Tuple[dict, 'BernoulliFrame']:
-        """
-        Reads a mesh form a dictionary. Returns a decorated version
-        of the input dictionary and a `BernoulliFrame` instance.
-
-        """
-        d_out, data = _get_bernoulli_metadata_(d_in)
-
-        # space
-        GlobalFrame = StandardFrame(dim=3)
-
-        nP = len(d_in['points'])
-        nC = len(d_in['cells'])
-        f = filter(lambda k : isinstance(data[k], np.ndarray), data.keys())
-        pkeys = filter(lambda k : data[k].shape[0] == nP, f)
-        pdata = {k:data[k] for k in pkeys}
-        f = filter(lambda k : isinstance(data[k], np.ndarray), data.keys())
-        ckeys = filter(lambda k : data[k].shape[0] == nC, f)
-        cdata = {k:data[k] for k in ckeys}
-            
-        # pointdata
-        pd = PointData(frame=GlobalFrame, **pdata)
-        
-        # celldata
-        topo = cdata['topo']
-        if isinstance(topo, np.ndarray):
-            nNE = topo.shape[-1]
-            if nNE == 2:
-                ctype=B2
-            elif nNE == 2:
-                ctype=B3
-            else:
-                raise NotImplementedError
-            cd = ctype(**cdata)
-        else:
-            raise NotImplementedError
-
-        # set up mesh
-        mesh = LineMesh(pd, cd, model=data['model'], frame=GlobalFrame)
-
-        # return decorated input dictionary and the mesh object
-        return d_out, mesh
