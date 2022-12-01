@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from collections import namedtuple, Iterable
+from collections import namedtuple
 from typing import Iterable, Union
 from functools import partial
 
