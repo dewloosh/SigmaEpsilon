@@ -7,10 +7,9 @@ numba
 sympy
 awkward
 sectionproperties
-randomdict
 
-linkeddeepdict
-dewloosh.core
+linkeddeepdict==0.0.1
+dewloosh.core==1.0.13
+neumann==0.0.6
+polymesh==0.0.9
 latexdocs
-neumann
-polymesh>=0.0.8

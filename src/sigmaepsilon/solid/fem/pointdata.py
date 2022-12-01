@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
+from typing import Callable
+
 import numpy as np
 from numpy import ndarray
 
 from neumann.array import atleastnd
-
 from polymesh.pointdata import PointData as MeshPointData
 
 
@@ -84,6 +85,7 @@ class PointData(MeshPointData):
         'mass': 'mass',
         'fixity': 'fixity',
         'dofsol' : 'dofsol',
+        'shapes' : '_shapes_',
         'reactions' : 'reactions',
         'forces' : 'forces',
     }
@@ -176,7 +178,17 @@ class PointData(MeshPointData):
     @dofsol.setter
     def dofsol(self, value: ndarray):
         assert isinstance(value, ndarray)
-        self._wrapped[self.__class__._attr_map_['dofsol']] = value 
+        self._wrapped[self.__class__._attr_map_['dofsol']] = value
+        
+    @property
+    def vshapes(self) -> ndarray:
+        """Returns the modal shapes."""
+        return self._wrapped[self.__class__._attr_map_['shapes']].to_numpy()
+
+    @vshapes.setter
+    def vshapes(self, value: ndarray):
+        assert isinstance(value, ndarray)
+        self._wrapped[self.__class__._attr_map_['shapes']] = value  
         
     @property
     def reactions(self) -> ndarray:
@@ -196,4 +208,20 @@ class PointData(MeshPointData):
     def forces(self, value: ndarray):
         assert isinstance(value, ndarray)
         self._wrapped[self.__class__._attr_map_['forces']] = value    
-    
+
+
+def flatten_pd(default=True):
+    def decorator(fnc: Callable):
+        def inner(*args, flatten: bool = default, **kwargs):
+            if flatten:
+                x = fnc(*args, **kwargs)
+                if len(x.shape) == 2:
+                    return x.flatten()
+                else:
+                    nN, nDOFN, nRHS = x.shape
+                    return x.reshape((nN * nDOFN, nRHS))
+            else:
+                return fnc(*args, **kwargs)
+        inner.__doc__ = fnc.__doc__
+        return inner
+    return decorator

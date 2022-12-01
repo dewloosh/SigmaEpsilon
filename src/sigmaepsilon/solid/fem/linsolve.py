@@ -12,10 +12,8 @@ from time import time
 from linkeddeepdict import LinkedDeepDict
 from neumann.array import matrixform
 
-from .imap import index_mappers, box_spmatrix, box_rhs, unbox_lhs, \
-    box_dof_numbering
-from .preproc import fem_coeff_matrix_coo
-
+from .imap import unbox_lhs
+from .preproc import fem_coeff_matrix_coo, box_fem_data_sparse
 from ..config import __haspardiso__
 
 if __haspardiso__:
@@ -146,40 +144,6 @@ def solve_standard_form(K: coo, f: np.ndarray, *args, use_umfpack:bool=True, sum
         return u, d
     else:
         return u
-
-
-def box_fem_data_sparse(K_coo: coo, Kp_coo: coo, f: ndarray):
-    """
-    Notes:
-    ------
-    If the load vector 'f' is dense, it must contain values for all
-    nodes, even the passive ones.
-    
-    """
-    # data for boxing and unboxing
-    loc_to_glob, glob_to_loc = index_mappers(K_coo, return_inverse=True)
-    # boxing
-    K = box_spmatrix(K_coo, glob_to_loc) + box_spmatrix(Kp_coo, glob_to_loc)
-    f = box_rhs(matrixform(f), loc_to_glob)
-    return K, f, loc_to_glob
-
-
-def box_fem_data_bulk(Kp_coo: coo, gnum: ndarray, f: ndarray):
-    """
-    Notes:
-    ------
-    If the load vector 'f' is dense, it must contain values for all
-    nodes, even the passive ones.
-    
-    """
-    # data for boxing and unboxing
-    N = f.shape[0]
-    loc_to_glob, glob_to_loc = index_mappers(gnum, N=N, return_inverse=True)
-    # boxing
-    gnum = box_dof_numbering(gnum, glob_to_loc)
-    Kp_coo = box_spmatrix(Kp_coo, glob_to_loc)
-    f = box_rhs(matrixform(f), loc_to_glob)
-    return Kp_coo, gnum, f, loc_to_glob
 
 
 def linsolve_sparse(K_coo: coo, Kp_coo: coo,

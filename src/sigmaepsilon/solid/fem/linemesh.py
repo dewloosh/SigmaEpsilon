@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
-from typing import Any, Iterable, Tuple
+from typing import Any, Iterable
 
 import numpy as np
+from numpy import ndarray
 from sectionproperties.analysis.section import Section
 
 from polymesh.config import __hasplotly__, __hasmatplotlib__
-from polymesh.space import StandardFrame
 if __hasplotly__:
     from dewloosh.plotly import plot_lines_3d
 
 from ..model.bernoulli.section import BeamSection
-from .pointdata import PointData
 from .mesh import FemMesh
 from .cells import B2, B3
 
@@ -18,7 +17,12 @@ from .cells import B2, B3
 class LineMesh(FemMesh):
     """
     A data class dedicated to 1d cells. It handles sections and other line 
-    related information, plotting, etc.    
+    related information, plotting, etc.
+    
+    See Also
+    --------
+    :class:`sigmaepsilon.solid.fem.mesh.FemMesh`
+        
     """
 
     _cell_classes_ = {
@@ -26,15 +30,8 @@ class LineMesh(FemMesh):
         3: B3,
     }
 
-    def __init__(self, *args, areas=None, connectivity=None, model=None,
-                 section=None, **kwargs):
-
-        if connectivity is not None:
-            if isinstance(connectivity, np.ndarray):
-                assert len(connectivity.shape) == 3
-                assert connectivity.shape[0] == nE
-                assert connectivity.shape[1] == 2
-                assert connectivity.shape[2] == self.__class__.NDOFN
+    def __init__(self, *args, areas:ndarray=None, model:ndarray=None, 
+                 section:BeamSection=None, **kwargs):
 
         if section is None:
             if isinstance(model, Section):
@@ -44,7 +41,7 @@ class LineMesh(FemMesh):
             model = section.model_stiffness_matrix()
         self._section = section
 
-        super().__init__(*args, connectivity=connectivity, model=model, **kwargs)
+        super().__init__(*args, model=model, **kwargs)
 
         if self.celldata is not None:
             nE = len(self.celldata)
@@ -56,7 +53,7 @@ class LineMesh(FemMesh):
             else:
                 assert len(areas.shape) == 1, \
                     "'areas' must be a 1d float or integer numpy array!"
-            dbkey = self.celldata.__class__._attr_map_['areas']
+            dbkey = self.celldata._dbkey_areas_
             self.celldata.db[dbkey] = areas
 
     def simplify(self, inplace=True) -> 'LineMesh':

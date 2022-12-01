@@ -14,18 +14,20 @@ from neumann.utils import to_range_1d
 from neumann.linalg.sparse.jaggedarray import JaggedArray
 from polymesh.topo import TopologyArray
 
-from ..preproc import fem_coeff_matrix_coo
+from ..preproc import (fem_coeff_matrix_coo, assert_min_diagonals_bulk,
+                       assemble_load_vector, condensate_Kf_bulk, condensate_M_bulk)
 from ..postproc import (approx_element_solution_bulk, calculate_external_forces_bulk,
-                        calculate_internal_forces_bulk, explode_kinetic_strains)
-from ..utils import (topo_to_gnum, assemble_load_vector, element_dof_solution_bulk, 
-                     constrain_local_stiffness_bulk, assert_min_stiffness_bulk, 
-                     expand_stiffness_bulk, element_dofmap_bulk, topo_to_gnum_jagged)
+                        calculate_internal_forces_bulk, explode_kinetic_strains,
+                        element_dof_solution_bulk)
+from ..utils import (topo_to_gnum, expand_coeff_matrix_bulk, element_dofmap_bulk,
+                     topo_to_gnum_jagged)
 from ..tr import (nodal_dcm, nodal_dcm_bulk, element_dcm, element_dcm_bulk,
                   tr_element_vectors_bulk_multi as tr1d, tr_element_matrices_bulk as tr2d)
 from .utils import (stiffness_matrix_bulk2, strain_displacement_matrix_bulk2,
                     unit_strain_load_vector_bulk, strain_load_vector_bulk, mass_matrix_bulk)
 from .metaelem import FemMixin
 from .celldata import CellData
+
 
 Quadrature = namedtuple('QuadratureRule', ['inds', 'pos', 'weight'])
 
@@ -114,41 +116,9 @@ class FiniteElement(CellData, FemMixin):
                 raise NotImplementedError
         raise NotImplementedError
 
-    def transform_coeff_matrix(self, A: ndarray, *args, invert: bool = False, 
-                               **kwargs) -> ndarray:
-        """
-        Transforms element coefficient matrices (eg. the stiffness or the 
-        mass matrix) from local to global.
-
-        Parameters
-        ----------
-        *args
-            Forwarded to :func:`direction_cosine_matrix`
-
-        **kwargs
-            Forwarded to :func:`direction_cosine_matrix`
-
-        A : numpy.ndarray
-            The coefficient matrix in the source frame.
-
-        invert : bool, Optional
-            If True, the DCM matrices are transposed before transformation.
-            This makes this function usable in both directions.
-            Default is False.
-
-        Returns
-        -------
-        numpy.ndarray
-            The coefficient matrix in the target frame.
-
-        """
-        # DCM from local to global
-        dcm = self.direction_cosine_matrix(*args, **kwargs)
-        return A if dcm is None else tr2d(A, dcm, invert)
-
     @squeeze(True)
     def dof_solution(self, *args, target: Union[str, ReferenceFrame] = 'local',
-                     cells: Union[int, Iterable[int]] = None, 
+                     cells: Union[int, Iterable[int]] = None,
                      points: Union[float, Iterable] = None,
                      rng: Iterable = None, flatten: bool = True, **kwargs) -> ndarray:
         """
@@ -270,7 +240,7 @@ class FiniteElement(CellData, FemMixin):
         """
         dofsol = self.dof_solution(squeeze=False, flatten=True, cells=cells)
         # (nE, nEVAB, nRHS)
-        
+
         if cells is not None:
             cells = atleast1d(cells)
             conds = np.isin(cells, self.id)
@@ -286,7 +256,7 @@ class FiniteElement(CellData, FemMixin):
             rng = np.array([0, 1]) if rng is None else np.array(rng)
         points, rng = to_range_1d(
             points, source=rng, target=[-1, 1]).flatten(), [-1, 1]
-        
+
         dshp = self.shape_function_derivatives(points, rng=rng)[cells]
         ecoords = self.local_coordinates()[cells]
         jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)
@@ -294,12 +264,13 @@ class FiniteElement(CellData, FemMixin):
         B = self.strain_displacement_matrix(dshp=dshp, jac=jac)
         # (nE, nP, nSTRE, nEVAB)
         dofsol = ascont(np.swapaxes(dofsol, 1, 2))  # (nE, nRHS, nEVAB)
-        strains = approx_element_solution_bulk(dofsol, B)  # (nE, nRHS, nP, nSTRE)
+        strains = approx_element_solution_bulk(
+            dofsol, B)  # (nE, nRHS, nP, nSTRE)
         strains = ascont(np.moveaxis(strains, 1, -1))   # (nE, nP, nSTRE, nRHS)
         return strains
 
     @squeeze(True)
-    def kinetic_strains(self, *args, cells: Union[int, Iterable[int]] = None, 
+    def kinetic_strains(self, *args, cells: Union[int, Iterable[int]] = None,
                         points: Union[float, Iterable] = None, **kwargs) -> ndarray:
         """
         Returns kinetic strains for one or more cells.
@@ -327,8 +298,7 @@ class FiniteElement(CellData, FemMixin):
             load cases.
 
         """
-        key = self.__class__._attr_map_['strain-loads']
-
+        key = self._dbkey_strain_loads_
         try:
             sloads = self.db[key].to_numpy()
         except Exception as e:
@@ -362,12 +332,12 @@ class FiniteElement(CellData, FemMixin):
             return sloads[cells]
 
     @squeeze(True)
-    def external_forces(self, *args, cells: Union[int, Iterable[int]] = None, 
-                        flatten: bool = True, target: Union[str, ReferenceFrame] = 'local', 
-                        **kwargs) -> ndarray:
+    def external_forces(self, *args, cells: Union[int, Iterable[int]] = None,
+                        target: Union[str, ReferenceFrame] = 'local',
+                        flatten: bool = True, **kwargs) -> ndarray:
         """
-        Evaluates :math:`\mathbf{f}_e = \mathbf{K}_e @ \mathbf{u}_e` for one or several 
-        cells and load cases.
+        Evaluates :math:`\mathbf{f}_e = \mathbf{K}_e @ \mathbf{u}_e` for one 
+        or several cells and load cases.
 
         Parameters
         ----------
@@ -376,9 +346,9 @@ class FiniteElement(CellData, FemMixin):
             Default is None.
 
         target : Union[str, ReferenceFrame], Optional
-            The target frame. Default is 'local', which means that the returned forces 
-            should be understood as coordinates of generalized vectors in the local 
-            frames of the cells.
+            The target frame. Default is 'local', which means that the returned 
+            forces should be understood as coordinates of generalized vectors in 
+            the local frames of the cells.
 
         flatten: bool, Optional
             Determines the shape of the resulting array. Default is True.
@@ -392,7 +362,7 @@ class FiniteElement(CellData, FemMixin):
         """
         dofsol = self.dof_solution(squeeze=False, flatten=True, cells=cells)
         # (nE, nNE * nDOF, nRHS)
-        
+
         if cells is not None:
             cells = atleast1d(cells)
             conds = np.isin(cells, self.id)
@@ -443,9 +413,9 @@ class FiniteElement(CellData, FemMixin):
         return values
 
     @squeeze(True)
-    def internal_forces(self, *args, cells: Union[int, Iterable[int]] = None, 
-                        rng: Iterable = None, points: Union[float, Iterable] = None, 
-                        flatten: bool = True, target: Union[str, ReferenceFrame] = 'local', 
+    def internal_forces(self, *args, cells: Union[int, Iterable[int]] = None,
+                        rng: Iterable = None, points: Union[float, Iterable] = None,
+                        flatten: bool = True, target: Union[str, ReferenceFrame] = 'local',
                         **kwargs) -> ndarray:
         """
         Returns internal forces for many cells and evaluation points.
@@ -468,8 +438,8 @@ class FiniteElement(CellData, FemMixin):
 
         target : Union[str, ReferenceFrame], Optional
             The target frame. Default is 'local', which means that the returned forces 
-            should be understood as coordinates of generalized vectors in the local frames 
-            of the cells.
+            should be understood as coordinates of generalized vectors in the local 
+            frames of the cells.
 
         flatten: bool, Optional
             Determines the shape of the resulting array. Default is True.
@@ -483,7 +453,7 @@ class FiniteElement(CellData, FemMixin):
         """
         dofsol = self.dof_solution(squeeze=False, flatten=True, cells=cells)
         # (nE, nNE * nDOF, nRHS)
-        
+
         if cells is not None:
             cells = atleast1d(cells)
             conds = np.isin(cells, self.id)
@@ -504,7 +474,7 @@ class FiniteElement(CellData, FemMixin):
         # values : (nE, nEVAB, nRHS)
         points, rng = to_range_1d(
             points, source=rng, target=[-1, 1]).flatten(), [-1, 1]
-                
+
         dshp = self.shape_function_derivatives(points, rng=rng)[cells]
         ecoords = self.local_coordinates()[cells]
         jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)
@@ -570,8 +540,9 @@ class FiniteElement(CellData, FemMixin):
             return topo_to_gnum(topo, nDOFN)
 
     @squeeze(True)
-    def elastic_stiffness_matrix(self, *args, transform:bool=True,
-                                 minval: float = 1e-12, **kwargs) -> ndarray:
+    def elastic_stiffness_matrix(self, *, transform: bool = True,
+                                 minval: float = 1e-12, sparse: bool = False,
+                                 **kwargs) -> Union[ndarray, coo_matrix]:
         """
         Returns the elastic stiffness matrix of the cells.
 
@@ -585,23 +556,24 @@ class FiniteElement(CellData, FemMixin):
             A minimal value for the entries in the main diagonal. Set it to a negative
             value to diable its effect. Default is 1e-12.
 
+        sparse : bool, Optional
+            If True, the returned object is a sparse COO matrix. Default is False.
+
         Returns
         -------
-        numpy.ndarray
-            The stiffness matrices as a 3d numpy array, where the elements run along
-            the first axis.
+        numpy.ndarray or scipy.sparse.coo_matrix
+            A sparse SciPy matrix if 'sparse' is True, or a 3d numpy array, where the 
+            elements run along the first axis.
 
         """
-        # build
-        K = self._elastic_stiffness_matrix_(*args, transform=False, **kwargs)
-        K = self._constrain_elastic_stiffness_matrix_(K)
-        assert_min_stiffness_bulk(K, minval)
-
-        # store
         dbkey = self._dbkey_stiffness_matrix_
-        self.db[dbkey] = K
-
-        # expand, transform, return
+        if dbkey not in self.db.fields:
+            K = self._elastic_stiffness_matrix_(transform=False, **kwargs)
+            assert_min_diagonals_bulk(K, minval)
+            self.db[dbkey] = K
+        else:
+            K = self.db[dbkey].to_numpy()
+        # if the model has more dofs than the element
         nDOFN = self.container.NDOFN
         dofmap = self.__class__.dofmap
         if len(dofmap) < nDOFN:
@@ -609,42 +581,44 @@ class FiniteElement(CellData, FemMixin):
             nX = nDOFN * self.NNODE
             K_ = np.zeros((nE, nX, nX), dtype=float)
             dofmap = element_dofmap_bulk(dofmap, nDOFN, self.NNODE)
-            K = expand_stiffness_bulk(K, K_, dofmap)
-            assert_min_stiffness_bulk(K)
-
-        return self.transform_coeff_matrix(K) if transform else K
+            K = expand_coeff_matrix_bulk(K, K_, dofmap)
+            assert_min_diagonals_bulk(K, minval)
+        if transform:
+            K = self._transform_coeff_matrix_(K)
+        if sparse:
+            assert transform, "Must be transformed for a sparse result."
+            nP = len(self.pointdata)
+            N = nP * self.NDOFN
+            topo = self.topology().to_numpy()
+            gnum = self.global_dof_numbering(topo=topo)
+            K = fem_coeff_matrix_coo(K, inds=gnum, N=N, **kwargs)
+        return K
 
     @config(store_strains=False)
     def _elastic_stiffness_matrix_(self, *args, transform: bool = True, **kwargs):
-
         ec = kwargs.get('_ec', None)
         if ec is None:
             nSTRE = self.__class__.NSTRE
             nDOF = self.__class__.NDOFN
             nNE = self.__class__.NNODE
             nE = len(self)
-
             _topo = kwargs.get('_topo', self.topology().to_numpy())
             _frames = kwargs.get('_frames', self.frames)
             if _frames is not None:
                 ec = self.local_coordinates(_topo=_topo, frames=_frames)
             else:
                 ec = self.points_of_cells(topo=_topo)
-
-            if kwargs.get('store_strains', False):
-                dbkey = self._dbkey_strain_displacement_matrix_
-                self.db[dbkey] = np.zeros((nE, nSTRE, nDOF * nNE))
+            dbkey = self._dbkey_strain_displacement_matrix_
+            self.db[dbkey] = np.zeros((nE, nSTRE, nDOF * nNE))
 
         q = kwargs.get('_q', None)
         if q is None:
-            # main loop
             D = self.model_stiffness_matrix()
             func = partial(self._elastic_stiffness_matrix_, _D=D, **kwargs)
             q = self.quadrature[self.qrule]
             N = nDOF * nNE
             K = np.zeros((len(self), N, N))
             if isinstance(q, dict):
-                # many side loops
                 for qinds, qvalue in q.items():
                     if isinstance(qvalue, str):
                         qpos, qweight = self.quadrature[qvalue]
@@ -653,14 +627,12 @@ class FiniteElement(CellData, FemMixin):
                     q = Quadrature(qinds, qpos, qweight)
                     K += func(_q=q, _ec=ec)
             else:
-                # one side loop
                 qpos, qweight = self.quadrature[self.qrule]
                 q = Quadrature(None, qpos, qweight)
                 K = func(_q=q, _ec=ec)
-            # end of main cycle
             dbkey = self._dbkey_stiffness_matrix_
             self.db[dbkey] = K
-            return self.transform_coeff_matrix(K) if transform else K
+            return self._transform_coeff_matrix_(K) if transform else K
 
         # in side loop
         dshp = self.shape_function_derivatives(q.pos)
@@ -671,77 +643,74 @@ class FiniteElement(CellData, FemMixin):
             inds = np.where(~np.in1d(np.arange(self.NSTRE), q.inds))[0]
             B[:, :, inds, :] = 0.
         djac = self.jacobian(jac=jac)
-        if kwargs.get('store_strains', False):
-            # B (nE, nG, nSTRE=4, nNODE * nDOF=6)
-            dbkey = self._dbkey_strain_displacement_matrix_
-            _B = self.db[dbkey].to_numpy()
-            _B += strain_displacement_matrix_bulk2(B, djac, q.weight)
-            self.db[dbkey] = _B
+        # B (nE, nG, nSTRE=4, nNODE * nDOF=6)
+        dbkey = self._dbkey_strain_displacement_matrix_
+        _B = self.db[dbkey].to_numpy()
+        _B += strain_displacement_matrix_bulk2(B, djac, q.weight)
+        self.db[dbkey] = _B
         D = kwargs.get('_D', self.model_stiffness_matrix())
         return stiffness_matrix_bulk2(D, B, djac, q.weight)
 
-    def _constrain_elastic_stiffness_matrix_(self, K: ndarray):
-        """
-        References
-        ----------
-        .. [1] Duan Jin, Li-Yun-gui "About the Finite Element 
-           Analysis for Beam-Hinged Frame," Advances in Engineering 
-           Research, vol. 143, pp. 231-235, 2017.
-
-        """
-        # FIXME only for line meshes at the moment
-        nNE = self.__class__.NNODE
-        if self.has_connectivity:
-            conn = self.connectivity
-            if isinstance(conn, ndarray):
-                if len(conn.shape) == 3 and conn.shape[1] == 2:  # nE, 2, nDOF
-                    nE, _, nDOF = conn.shape
-                    factors = np.ones((nE, K.shape[-1]))
-                    factors[:, :nDOF] = conn[:, 0, :]
-                    factors[:, -nDOF:] = conn[:, -1, :]
-                    nEVAB2 = nNE * nDOF - 0.5
-                    cond = np.sum(factors, axis=1) < nEVAB2
-                    i = np.where(cond)[0]
-                    K[i] = constrain_local_stiffness_bulk(K[i], factors[i])
-                else:
-                    msg = "Unknown shape of <{}> for 'connectivity'.".format(
-                        conn.shape)
-                    raise NotImplementedError(msg)
-        return K
-
-    def elastic_stiffness_matrix_coo(self, *args, **kwargs) -> coo_matrix:
-        """
-        Returns the elastic stiffness matrix of the cells in sparse COO format.
-
-        Returns
-        -------
-        scipy.sparse.coo_matrix
-
-        """
-        nP = len(self.pointdata)
-        N = nP * self.NDOFN
-        topo = self.topology().to_numpy()
-        K_bulk = self.elastic_stiffness_matrix(*args, _topo=topo, **kwargs)
-        gnum = self.global_dof_numbering(topo=topo)
-        return fem_coeff_matrix_coo(K_bulk, *args, inds=gnum, N=N, **kwargs)
-
     @squeeze(True)
-    def consistent_mass_matrix(self, *args, **kwargs) -> ndarray:
+    def consistent_mass_matrix(self, *args, sparse: bool = False,
+                               transform: bool = True, minval: float = 1e-12,
+                               **kwargs) -> Union[ndarray, coo_matrix]:
         """
-        Returns the mass matrix of the cells.
+        Returns the stiffness-consistent mass matrix of the cells.
+
+        Parameters
+        ----------
+        transform : bool, Optional
+            If True, local matrices are transformed to the global frame.
+            Default is True.
+
+        minval : float, Optional
+            A minimal value for the entries in the main diagonal. Set it to a 
+            negative value to diable its effect. Default is 1e-12.
+
+        sparse : bool, Optional
+            If True, the returned object is a sparse COO matrix. 
+            Default is False.
 
         Returns
         -------
-        numpy.ndarray
-            A 3d numpy array, where the elements run along the first axis.
+        numpy.ndarray or scipy.sparse.coo_matrix
+            A sparse SciPy matrix if 'sparse' is True, or a 3d numpy array, 
+            where the elements run along the first axis.
 
         """
-        return self._consistent_mass_matrix_(*args, **kwargs)
+        dbkey = self._dbkey_mass_matrix_
+        if dbkey not in self.db.fields:
+            M = self._consistent_mass_matrix_(transform=False, **kwargs)
+            assert_min_diagonals_bulk(M, minval)
+            self.db[dbkey] = M
+        else:
+            M = self.db[dbkey].to_numpy()
+        # if the model has more dofs than the element
+        nDOFN = self.container.NDOFN
+        dofmap = self.__class__.dofmap
+        if len(dofmap) < nDOFN:
+            nE = M.shape[0]
+            nX = nDOFN * self.NNODE
+            M_ = np.zeros((nE, nX, nX), dtype=float)
+            dofmap = element_dofmap_bulk(dofmap, nDOFN, self.NNODE)
+            M = expand_coeff_matrix_bulk(M, M_, dofmap)
+            assert_min_diagonals_bulk(M, minval)
+        if transform:
+            M = self._transform_coeff_matrix_(M)
+        if sparse:
+            nP = len(self.pointdata)
+            N = nP * self.NDOFN
+            topo = self.topology().to_numpy()
+            gnum = self.global_dof_numbering(topo=topo)
+            M = fem_coeff_matrix_coo(M, *args, inds=gnum, N=N, **kwargs)
+        return M
 
-    def _consistent_mass_matrix_(self, *args, values=None, **kwargs):
+    def _consistent_mass_matrix_(self, *args, values=None,
+                                 transform: bool = True, **kwargs):
         _topo = kwargs.get('_topo', self.topology().to_numpy())
         if 'frames' not in kwargs:
-            key = self.__class__._attr_map_['frames']
+            key = self._dbkey_frames_
             if key in self.db.fields:
                 frames = self.frames
             else:
@@ -765,6 +734,7 @@ class FiniteElement(CellData, FemMixin):
         q = kwargs.get('_q', None)
         if q is None:
             q = self.quadrature['mass']
+            func = partial(self._consistent_mass_matrix_, **kwargs)
             if isinstance(q, dict):
                 N = self.NNODE * self.NDOFN
                 nE = len(self)
@@ -775,23 +745,16 @@ class FiniteElement(CellData, FemMixin):
                     else:
                         qpos, qweight = qvalue
                     q = Quadrature(qinds, qpos, qweight)
-                    res += self._consistent_mass_matrix_(*args, _topo=_topo,
-                                                         frames=frames, _q=q,
-                                                         values=_dens,
-                                                         _ecoords=_ecoords,
-                                                         **kwargs)
+                    res += func(*args, _topo=_topo, frames=frames, _q=q,
+                                values=_dens, _ecoords=_ecoords)
             else:
                 qpos, qweight = self.quadrature['mass']
                 q = Quadrature(None, qpos, qweight)
-                res = self._consistent_mass_matrix_(*args, _topo=_topo,
-                                                    frames=frames, _q=q,
-                                                    values=_dens,
-                                                    _ecoords=_ecoords,
-                                                    **kwargs)
-
-            key = self.__class__._attr_map_['M']
+                res = func(*args, _topo=_topo, frames=frames, _q=q,
+                           values=_dens, _ecoords=_ecoords)
+            key = self._dbkey_mass_matrix_
             self.db[key] = res
-            return self.transform_coeff_matrix(res)
+            return self._transform_coeff_matrix_(res) if transform else res
 
         rng = np.array([-1., 1.])
         dshp = self.shape_function_derivatives(q.pos)
@@ -800,25 +763,58 @@ class FiniteElement(CellData, FemMixin):
         N = self.shape_function_matrix(q.pos, rng=rng)
         return mass_matrix_bulk(N, _dens, _areas, djac, q.weight)
 
-    def consistent_mass_matrix_coo(self, *args, **kwargs) -> coo_matrix:
+    @squeeze(True)
+    def load_vector(self, transform: bool = True, assemble: bool = False,
+                    **kwargs) -> ndarray:
         """
-        Returns the consistent mass matrix of the cells in COO format.
+        Builds the equivalent nodal load vector from all sources
+        and returns it in either the global frame or cell-local frames.
+
+        Parameters
+        ----------
+        assemble : bool, Optional
+            If True, the values are returned with a matching shape to the total
+            system. Default is False.
+
+        transform : bool, Optional
+            If True, local matrices are transformed to the global frame.
+            Default is True.
+
+        See Also
+        --------
+        :func:`body_load_vector`
+        :func:`strain_load_vector`
 
         Returns
         -------
-        scipy.sparse.coo_matrix
+        numpy.ndarray
+            The nodal load vector for all load cases as a 2d numpy array
+            of shape (nX, nRHS), where nX and nRHS are the total number of 
+            unknowns of the structure and the number of load cases.
 
         """
-        nP = len(self.pointdata)
-        N = nP * self.NDOFN
-        topo = self.topology().to_numpy()
-        M_bulk = self.consistent_mass_matrix(*args, **kwargs)
-        gnum = self.global_dof_numbering(topo=topo)
-        return fem_coeff_matrix_coo(M_bulk, *args, inds=gnum, N=N, **kwargs)
+        dbkey = self._dbkey_nodal_load_vector_
+        if dbkey not in self.db.fields:
+            options = dict(transform=False, assemble=False,
+                           squeeze=False, return_zeroes=True)
+            f = self.body_load_vector(**options)
+            f += self.strain_load_vector(**options)
+            self.db[dbkey] = f
+        else:
+            f = self.db[dbkey].to_numpy()
+        if transform:
+            nodal_loads = self._transform_nodal_loads_(nodal_loads)
+            # (nE, nRHS, nNE * nDOF) -> (nE, nNE * nDOF, nRHS)
+        if assemble:
+            assert transform, "Must transform before assembly."
+            nodal_loads = self._assemble_nodal_loads_(nodal_loads)
+            # (nX, nRHS)
+        return f
 
     @squeeze(True)
-    def strain_load_vector(self, values:ndarray=None, *args, squeeze: bool,
-                           return_zeroes:bool=False, **kwargs) -> ndarray:
+    def strain_load_vector(self, values: ndarray = None, *,
+                           return_zeroes: bool = False, transform: bool = True,
+                           assemble: bool = False, **kwargs) -> ndarray:
         """
         Generates a load vector from strain loads specified for all cells.
 
@@ -834,15 +830,26 @@ class FiniteElement(CellData, FemMixin):
             If True, a zero array is retured with correct shape, otherwise None. 
             Default is False.
 
+        transform : bool, Optional
+            If True, local matrices are transformed to the global frame.
+            Default is True.
+
+        assemble : bool, Optional
+            If True, the values are returned with a matching shape to the total
+            system. Default is False.
+
+        See Also
+        --------
+        :func:`load_vector`
+        :func:`body_load_vector`
+
         Returns
         -------
         numpy.ndarray
             The equivalent load vector.
 
         """
-        nRHS = self.pointdata.loads.shape[-1]
-        nSTRE = self.__class__.NSTRE
-        dbkey = self.__class__._attr_map_['strain-loads']
+        dbkey = self._dbkey_strain_loads_
         try:
             if values is None:
                 values = self.db[dbkey].to_numpy()
@@ -850,29 +857,42 @@ class FiniteElement(CellData, FemMixin):
             if dbkey not in self.db.fields:
                 if not return_zeroes:
                     return None
+                if len(self.pointdata.loads.shape) == 2:
+                    nRHS = 1
+                else:
+                    nRHS = self.pointdata.loads.shape[-1]
                 nE = len(self)
+                nSTRE = self.__class__.NSTRE
                 values = np.zeros((nE, nSTRE, nRHS))
             else:
                 raise e
         finally:
             values = atleastnd(values, 3, back=True)  # (nE, nSTRE=4, nRHS)
 
-        dbkey = self.__class__._attr_map_['B']
+        dbkey = self._dbkey_strain_displacement_matrix_
         if dbkey not in self.db.fields:
-            self.elastic_stiffness_matrix(*args, squeeze=False,
-                                          store_strains=True, **kwargs)
-
+            self.elastic_stiffness_matrix(squeeze=False, transform=False)
         B = self.db[dbkey].to_numpy()  # (nE, nSTRE=4, nNODE * nDOF=6)
         D = self.model_stiffness_matrix()  # (nE, nSTRE=4, nSTRE=4)
         BTD = unit_strain_load_vector_bulk(D, B)
         values = np.swapaxes(values, 1, 2)  # (nE, nRHS, nSTRE=4)
         nodal_loads = strain_load_vector_bulk(BTD, ascont(values))
-        return self._transform_local_nodal_loads_(nodal_loads)
+
+        if transform:
+            nodal_loads = self._transform_nodal_loads_(nodal_loads)
+            # (nE, nRHS, nNE * nDOF) -> (nE, nNE * nDOF, nRHS)
+
+        if assemble:
+            assert transform, "Must transform before assembly."
+            nodal_loads = self._assemble_nodal_loads_(nodal_loads)
+            # (nX, nRHS)
+
+        return nodal_loads
 
     @squeeze(True)
     def body_load_vector(self, values: ndarray = None, *, constant: bool = False,
-                         source: Union[str, ReferenceFrame] = 'local',
-                         return_zeroes: bool = False, **kwargs) -> ndarray:
+                         return_zeroes: bool = False, transform: bool = True,
+                         assemble: bool = False, **kwargs) -> ndarray:
         """
         Builds the equivalent discrete representation of body loads
         and returns it in either the global frame or cell-local frames.
@@ -882,34 +902,38 @@ class FiniteElement(CellData, FemMixin):
         values : numpy.ndarray, Optional
             Body load values for all cells. Default is None.
 
-        source : numpy.ndarray, Optional
-            The frame in which the provided values are to be understood.
-            Default is None.
-
         constant : bool, Optional
             Set this True if the input represents a constant load.
             Default is False.
 
         assemble : bool, Optional
-            If True, the returned values are in the global frame, otherwise
-            they are returned in cell-local frames. Default is True.
+            If True, the values are returned with a matching shape to the total
+            system. Default is False.
 
         return_zeroes : bool, Optional
             Controls what happends if there are no strain loads provided.
             If True, a zero array is retured with correct shape, otherwise None. 
             Default is False.
 
+        transform : bool, Optional
+            If True, local matrices are transformed to the global frame.
+            Default is True.
+
+        See Also
+        --------
+        :func:`load_vector`
+        :func:`strain_load_vector`
+
         Returns
         -------
         numpy.ndarray
             The nodal load vector for all load cases as a 2d numpy array
-            of shape (nX, nRHS), where nX and nRHS are the total number of unknowns 
-            of the structure and the number of load cases.
+            of shape (nX, nRHS), where nX and nRHS are the total number of 
+            unknowns of the structure and the number of load cases.
 
         """
-        nRHS = self.pointdata.loads.shape[-1]
         nNE = self.__class__.NNODE
-        dbkey = self.__class__._attr_map_['loads']
+        dbkey = self._dbkey_body_loads_
         try:
             if values is None:
                 values = self.db[dbkey].to_numpy()
@@ -917,7 +941,12 @@ class FiniteElement(CellData, FemMixin):
             if dbkey not in self.db.fields:
                 if not return_zeroes:
                     return None
+                if len(self.pointdata.loads.shape) == 2:
+                    nRHS = 1
+                else:
+                    nRHS = self.pointdata.loads.shape[-1]
                 nE = len(self)
+                nDOF = self.__class__.NDOFN
                 values = np.zeros((nE, nNE, nDOF, nRHS))
             else:
                 raise e
@@ -938,30 +967,112 @@ class FiniteElement(CellData, FemMixin):
         # (nE, nNE, nDOF, nRHS) -> (nE, nNE * nDOF, nRHS)
         values = values.reshape(nE, nNE * nDOF, nRHS)
         values = ascont(values)
-
-        if source is not None:
-            if isinstance(source, str) and source == 'local':
-                pass
-            else:
-                raise NotImplementedError
-                nE, nNE, nDOF, nRHS = values.shape
-                dcm = self.direction_cosine_matrix(source=source)
-                # (nE, nNE * nDOF, nRHS) -> (nE, nRHS, nNE * nDOF)
-                values = np.swapaxes(values, 1, 2)
-                values = ascont(values)
-                values = tr_cells_1d_in_multi(values, dcm)
-                # (nE, nRHS, nNE * nDOF) -> (nE, nNE * nDOF, nRHS)
-                values = np.swapaxes(values, 1, 2)
-                values = ascont(values)
-
         nodal_loads = self.integrate_body_loads(values)
         # (nE, nNE * nDOF, nRHS)
-        return self._transform_local_nodal_loads_(nodal_loads)
 
-    def _transform_local_nodal_loads_(self, nodal_loads: ndarray) -> ndarray:
+        if transform:
+            nodal_loads = self._transform_nodal_loads_(nodal_loads)
+            # (nE, nRHS, nNE * nDOF) -> (nE, nNE * nDOF, nRHS)
+
+        if assemble:
+            assert transform, "Must transform before assembly."
+            nodal_loads = self._assemble_nodal_loads_(nodal_loads)
+            # (nX, nRHS)
+
+        return nodal_loads
+
+    def condensate(self):
         """
-        Transforms discrete nodal loads to the global frame and 
-        assembles the nodal load vector for multiple load cases.
+        Applies static condensation to account for cell fixity.
+
+        References
+        ----------
+        .. [1] Duan Jin, Li-Yun-gui "About the Finite Element 
+           Analysis for Beam-Hinged Frame," Advances in Engineering 
+           Research, vol. 143, pp. 231-235, 2017.
+
+        """
+        if not self.has_fixity:
+            return
+        else:
+            fixity = self.fixity
+            nE, nNE, nDOF = fixity.shape
+            fixity = fixity.reshape(nE, nNE * nDOF)
+        dbkey_K = self._dbkey_stiffness_matrix_
+        dbkey_M = self._dbkey_mass_matrix_
+        dbkey_f = self._dbkey_nodal_load_vector_
+        K = self.db[dbkey_K].to_numpy()
+        f = self.db[dbkey_f].to_numpy()
+        nEVAB_full = nNE * nDOF - 0.001
+        cond = np.sum(fixity, axis=1) < nEVAB_full
+        i = np.where(cond)[0]
+        K[i], f[i] = condensate_Kf_bulk(K[i], f[i], fixity[i])
+        self.db[dbkey_K] = K
+        self.db[dbkey_f] = f
+        if dbkey_M in self.db.fields:
+            M = self.db[dbkey_M].to_numpy()
+            M[i] = condensate_M_bulk(M[i], fixity[i])
+            self.db[dbkey_M] = M
+
+    def _transform_coeff_matrix_(self, A: ndarray, *args, invert: bool = False,
+                                 **kwargs) -> ndarray:
+        """
+        Transforms element coefficient matrices (eg. the stiffness or the 
+        mass matrix) from local to global.
+
+        Parameters
+        ----------
+        *args
+            Forwarded to :func:`direction_cosine_matrix`
+
+        **kwargs
+            Forwarded to :func:`direction_cosine_matrix`
+
+        A : numpy.ndarray
+            The coefficient matrix in the source frame.
+
+        invert : bool, Optional
+            If True, the DCM matrices are transposed before transformation.
+            This makes this function usable in both directions.
+            Default is False.
+
+        Returns
+        -------
+        numpy.ndarray
+            The coefficient matrix in the target frame.
+
+        """
+        # DCM from local to global
+        dcm = self.direction_cosine_matrix(*args, **kwargs)
+        return A if dcm is None else tr2d(A, dcm, invert)
+
+    def _transform_nodal_loads_(self, nodal_loads: ndarray) -> ndarray:
+        """
+        Transforms discrete nodal loads to the global frame.
+
+        Parameters
+        ----------
+        nodal_loads : numpy.ndarray
+            A 3d array of shape (nE, nEVAB, nRHS).
+
+        Returns
+        -------
+        numpy.ndarray
+            A numpy array of shape (nE, nEVAB, nRHS).
+
+        """
+        dcm = self.direction_cosine_matrix(target='global')
+        # (nE, nNE * nDOF, nRHS) -> (nE, nRHS, nNE * nDOF)
+        nodal_loads = np.swapaxes(nodal_loads, 1, 2)
+        nodal_loads = ascont(nodal_loads)
+        nodal_loads = tr1d(nodal_loads, dcm)
+        nodal_loads = np.swapaxes(nodal_loads, 1, 2)
+        # (nE, nRHS, nNE * nDOF) -> (nE, nNE * nDOF, nRHS)
+        return nodal_loads
+
+    def _assemble_nodal_loads_(self, nodal_loads: ndarray) -> ndarray:
+        """ 
+        Assembles the nodal load vector for multiple load cases.
 
         Parameters
         ----------
@@ -975,14 +1086,6 @@ class FiniteElement(CellData, FemMixin):
             number of unknowns in the total structure.
 
         """
-        dcm = self.direction_cosine_matrix(target='global')
-        # (nE, nNE * nDOF, nRHS) -> (nE, nRHS, nNE * nDOF)
-        nodal_loads = np.swapaxes(nodal_loads, 1, 2)
-        nodal_loads = ascont(nodal_loads)
-        nodal_loads = tr1d(nodal_loads, dcm)
-        # (nE, nRHS, nNE * nDOF) -> (nE, nNE * nDOF, nRHS)
-        nodal_loads = np.swapaxes(nodal_loads, 1, 2)
-        # assemble
         topo = self.topology().to_numpy()
         gnum = self.global_dof_numbering(topo=topo)
         nX = len(self.pointdata) * self.container.NDOFN

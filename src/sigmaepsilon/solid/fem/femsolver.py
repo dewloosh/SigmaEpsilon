@@ -7,56 +7,24 @@ import time
 from typing import Union
 
 from linkeddeepdict import LinkedDeepDict
-from neumann.array import atleast2d
+from neumann.array import atleast2d, matrixform
 
 from .mesh import FemMesh
 from .utils import irows_icols_bulk
-from .linsolve import (box_fem_data_bulk, solve_standard_form, 
-                       unbox_lhs)
-from .dyn import (effective_modal_masses, Rayleigh_quotient, 
+from .linsolve import solve_standard_form, unbox_lhs
+from .imap import index_mappers, box_spmatrix, box_rhs, box_dof_numbering
+from .dyn import (effective_modal_masses, Rayleigh_quotient,
                   natural_circular_frequencies)
-from .constants import DEFAULT_PENALTY_RATIO
+from .constants import DEFAULT_MASS_PENALTY_RATIO
 
-"""
-PARDISO MATRIX TYPES
-
-1
-real and structurally symmetric
-
-2
-real and symmetric positive definite
-
--2
-real and symmetric indefinite
-
-3
-complex and structurally symmetric
-
-4
-complex and Hermitian positive definite
-
--4
-complex and Hermitian indefinite
-
-6
-complex and symmetric
-
-11
-real and nonsymmetric
-
-13
-complex and nonsymmetric
-
-"""
 
 class Solver:
     """ 
-    Base Class for Solvers. This is only a placeholder at the moment 
-    for future work to be done.
+    Base Class for solvers for the Finite Element Method.
     """
 
 
-class FemSolver(Solver):
+class StaticSolver(Solver):
     """
     A class to perform solutions for linear elastostatics
     and dynamics.
@@ -65,135 +33,74 @@ class FemSolver(Solver):
     ----------
     K : numpy.ndarray
         The stiffness matrix in in dense format.
-    
-    Kp : scipy.sparse.spmatrix
+
+    P : scipy.sparse.spmatrix
         The penalty stiffness matrix of the essential boundary conditions.
-    
+
     f : numpy.ndarray
         The load vector as an 1d or 2d numpy array.
-        
+
     gnum : numpy.ndarray
         Global dof numbering as 2d integer array.
-    
+
     imap : Union[dict, numpy.ndarray], Optional
         Index mapper. Default is None.
-        
+
     regular : bool, Optional
         If True it is assumed that the structure is regular. Default is True.
-        
-    M : scipy.sparse.spmatrix, Optional
-        The mass matrix. Default is None.
-        
+
     mesh : FemMesh, Optional
         The mesh the input data belongs to. Only necessary for
         nonlinear calculations. Default is None.
-        
+
     """
 
-    def __init__(self, K : ndarray, Kp : spmatrix, f : ndarray, gnum: ndarray, 
-                 imap : Union[dict, ndarray]=None, regular:bool=True, 
-                 M:Union[spmatrix, ndarray]=None, mesh:FemMesh=None, **config):
-        self.K = K
-        self.M = M
-        self.Kp = Kp
+    def __init__(self, K: ndarray, P: spmatrix, f: ndarray, gnum: ndarray,
+                 regular: bool = False, M: ndarray = None, mesh: FemMesh = None, **config):
+        self.K_dense = K
+        self.M_dense = M
+        self.P_sparse = P
         self.gnum = gnum
         self.f = f
-        self.vmodes = None  # vibration modes : Tuple(vals, vecs)
+        self.u = None  # this is filled up during solution
         self.config = config
         self.regular = regular
-        self.imap = imap
+        self.imap = None
         self.mesh = mesh
-        if imap is not None:
-            # Ff imap.shape[0] > f.shape[0] it means that the inverse of
-            # the mapping is given. It would require to store more data, but
-            # it would enable to tell the total size of the equation system, that the
-            # input is a representation of.
-            assert imap.shape[0] == f.shape[0]
-        self.regular = False if imap is not None else regular
-        self.core = self.box()
+        self.regular = regular
         self.READY = False
         self.summary = []
         self._summary = LinkedDeepDict()
-    
-    def elastic_stiffness_matrix(self, sparse:bool=True, 
-                                 penalize:bool=True) -> Union[ndarray, spmatrix]:
-        """
-        Returns the stiffness matrix.
-        
-        Parameters
-        ----------
-        sparse : bool, Optional
-            Set this true to get the result as a sparse 2d matrix, otherwise
-            a 3d dense matrix is retured with matrices for all the individual elements.
-            Default is True.
-            
-        penalize: bool, Optional
-            If this is True, what is returendd is the sum of the elastic stiffness matrix
-            and the penalty stiffness matrix of the essential boundary conditions.
-            Default is True.
-        
-        Returns
-        -------
-        Union[numpy.ndarray, scipy.linalg.spmatrix]
-            The stiffness matrix.
-            
-        """
-        if not sparse:
-            assert not penalize, "The penalty matrix is only available in sparse format."
-            return self.K
-        else:
-            if penalize:
-                return self.Ke + self.Kp
-            else:
-                return self.Ke
-            
-    def mass_matrix(self, penalize:bool=True, DEFAULT_PENALTY_RATIO:float=DEFAULT_PENALTY_RATIO) -> spmatrix:
-        """
-        Returns the consistent mass matrix of the solver.
-        
-        Parameters
-        ----------            
-        penalize: bool, Optional
-            If this is True, what is returend is the sum of the stiffness matrix
-            and the Courant-type penalty stiffness matrix of the essential boundary 
-            conditions. Default is True.
-        
-        DEFAULT_PENALTY_RATIO : float, Optional
-            The penalty ratio. Only if 'penalize' is True. 
-            Default is `sigmaepsilon.solid.fem.config.DEFAULT_PENALTY_RATIO`.
-        
-        Returns
-        -------
-        scipy.linalg.spmatrix
-            The mass matrix.
-            
-        """
-        if penalize:
-            return self.M + self.Kp * DEFAULT_PENALTY_RATIO
-        else:
-            return self.M
+        self.core = self._box_()
 
-    def box(self) -> 'FemSolver':
+    def update_stiffness(self, K_dense: ndarray):
+        self.K_dense = K_dense
+        self._preproc_(force=True)
+
+    def _box_(self) -> 'StaticSolver':
         if self.imap is None and not self.regular:
-            Kp, gnum, f, imap = box_fem_data_bulk(self.Kp, self.gnum, self.f)
-            self.imap = imap
-            return FemSolver(self.K, Kp, f, gnum, regular=True)
+            loc_to_glob, glob_to_loc = index_mappers(self.gnum,
+                                                     return_inverse=True)
+            gnum = box_dof_numbering(self.gnum, glob_to_loc)
+            P_sparse = box_spmatrix(self.P_sparse, glob_to_loc)
+            f = box_rhs(matrixform(self.f), loc_to_glob)
+            #Kp, gnum, f, imap = box_fem_data_bulk(self.Kp, self.gnum, self.f)
+            self.imap = glob_to_loc
+            return StaticSolver(self.K_dense, P_sparse, f, gnum, regular=True)
         else:
             return self
-        
-    def __setattr__(self, name, value):
-        self.__dict__[name] = value
-        
-    def unbox(self):
+
+    def _unbox_(self):
         assert not self.regular
         N = self.gnum.max() + 1
         self.u = unbox_lhs(self.core.u, self.imap, N=N)
         self.r = unbox_lhs(self.core.r, self.imap, N=N)
 
-    def preproc(self, force:bool=False):
-        _t0 = time.time()
+    def _preproc_(self, force: bool = False):
         if self.READY and not force:
             return
+        _t0 = time.time()
+        self.u = None
         self.N = self.gnum.max() + 1
         if self.config.get('sparsify', False):
             if not isinstance(self.f, npcsc):
@@ -203,162 +110,216 @@ class FemSolver(Solver):
         self.kcols = self.kcols.flatten()
 
         if not self.regular:
-            self.core.preproc()
-            self.Ke = self.core.Ke
+            self.core._preproc_()
+            self.K_sparse = self.core.K_sparse
         else:
-            self.Ke = npcoo((self.K.flatten(), (self.krows, self.kcols)),
-                            shape=(self.N, self.N), dtype=self.K.dtype)
-        self.READY = True
+            self.K_sparse = npcoo((self.K_dense.flatten(), (self.krows, self.kcols)),
+                            shape=(self.N, self.N), dtype=self.K_dense.dtype)
         _dt = time.time() - _t0
+        self.READY = True
         self._summary['preproc', 'regular'] = self.regular
         self._summary['preproc', 'time'] = _dt
         self._summary['preproc', 'N'] = self.N
 
-    def update_stiffness(self, K:ndarray):
-        self.K = K
-        self.preproc(force=True)
-
-    def proc(self, preproc:bool=False, solver:str=None):
+    def _proc_(self, preproc: bool = False, solver: str = None):
         if preproc:
-            self.preproc(force=True)
+            self._preproc_(force=True)
         _t0 = time.time()
         if not self.regular:
-            self.core.proc()
+            self.core._proc_()
             _dt = time.time() - _t0
             self._summary['proc']['time'] = _dt
             return self
-        Kcoo = self.Ke + self.Kp
-        Kcoo.eliminate_zeros()
-        Kcoo.sum_duplicates()
+        K_sparse = self.K_sparse + self.P_sparse
+        K_sparse.eliminate_zeros()
+        K_sparse.sum_duplicates()
         self.u, summary = solve_standard_form(
-            Kcoo, self.f, summary=True, solver=solver)
+            K_sparse, self.f, summary=True, solver=solver)
         self._summary['proc'] = summary
 
-    def postproc(self):
+    def _postproc_(self):
         _t0 = time.time()
         if not self.regular:
-            self.core.postproc()
+            self.core._postproc_()
             self._summary['core'] = self.core._summary
-            return self.unbox()
-        self.r = np.reshape(self.Ke.dot(self.u), self.f.shape) - self.f
+            return self._unbox_()
+        self.r = np.reshape(self.K_sparse.dot(self.u), self.f.shape) - self.f
         _dt = time.time() - _t0
         self._summary['postproc', 'time'] = _dt
 
-    def linsolve(self, *, solver:str=None) -> ndarray:
+    def solve(self, *, solver: str = None) -> ndarray:
         """
         Performs a linear elastostatic analysis and returns the unknown
         coefficients as a numpy array.
-        
+
         Parameters
         ----------
         solver : str, Optional
-            The solver to use. Currently supported options are 'scipy' and 'pardiso'. 
-            If nothing is specified, we prefer 'pardiso' if it is around, otherwise the 
-            solver falls back to SciPy.
-        
+            The solver to use. Currently supported options are 'scipy' 
+            and 'pardiso'. If nothing is specified, we prefer 'pardiso' if 
+            it is around, otherwise the solver falls back to SciPy.
+
         Returns
         -------
         numpy.ndarray
             The vector of nodal displacements as a numpy array.
-            
+
         """
         self._summary = LinkedDeepDict()
-        self.preproc()
-        self.proc(solver=solver)
-        self.postproc()
+        self._preproc_()
+        self._proc_(solver=solver)
+        self._postproc_()
         self.summary.append(self._summary)
         return self.u
+
+
+class DynamicSolver(Solver):
+    """
+    A class to perform solutions for linear elastostatics
+    and dynamics.
+
+    Parameters
+    ----------
+    K : numpy.ndarray
+        The stiffness matrix indense format.
+
+    P : scipy.sparse.spmatrix
+        The penalty stiffness matrix of the essential boundary conditions.
+
+    gnum : numpy.ndarray
+        Global dof numbering as 2d integer array.
+
+    M : scipy.sparse.spmatrix, Optional
+        The mass matrix. Default is None.
+
+    regular : bool, Optional
+        If True it is assumed that the structure is regular. Default is True.
+
+    mesh : FemMesh, Optional
+        The mesh the input data belongs to. Only necessary for
+        nonlinear calculations. Default is None.
+
+    """
+
+    def __init__(self, K: ndarray, P: spmatrix, M: spmatrix, gnum: ndarray,
+                 regular: bool = False, mesh: FemMesh = None,
+                 penalty_ratio:float=DEFAULT_MASS_PENALTY_RATIO, **config):
+        self.K_dense = K
+        self.K_sparse = None
+        self.M_sparse = M
+        self.P_sparse = P
+        self.gnum = gnum
+        self.frequencies = None
+        self.modal_shapes = None
+        self.config = config
+        self.regular = regular
+        self.imap = None
+        self.mesh = mesh
+        self.regular = regular
+        self.READY = False
+        self.summary = []
+        self._summary = LinkedDeepDict()
+        self.penalty_ratio = penalty_ratio
+        self.core = self._box_()
+
+    def _box_(self) -> 'DynamicSolver':
+        if self.imap is None and not self.regular:
+            _, glob_to_loc = index_mappers(self.gnum, return_inverse=True)
+            gnum = box_dof_numbering(self.gnum, glob_to_loc)
+            P_sparse = box_spmatrix(self.P_sparse, glob_to_loc)
+            M_sparse = box_spmatrix(self.M_sparse, glob_to_loc)
+            self.imap = glob_to_loc
+            return DynamicSolver(self.K_dense, P_sparse, M_sparse,
+                                 gnum, regular=True, 
+                                 penalty_ratio=self.penalty_ratio)
+        else:
+            return self
+
+    def _unbox_(self):
+        assert not self.regular
+        N = self.gnum.max() + 1
+        self.modal_shapes = unbox_lhs(self.core.modal_shapes, self.imap, N=N)
+        self.frequencies = self.core.frequencies
+
+    def _preproc_(self, force: bool = False):
+        if self.READY and not force:
+            return
+        _t0 = time.time()
+        self.N = self.gnum.max() + 1
+        self.krows, self.kcols = irows_icols_bulk(self.gnum)
+        self.krows = self.krows.flatten()
+        self.kcols = self.kcols.flatten()
+
+        if not self.regular:
+            self.core._preproc_()
+            self.K_sparse = self.core.K_sparse
+        else:
+            self.K_sparse = npcoo((self.K_dense.flatten(), (self.krows, self.kcols)),
+                                  shape=(self.N, self.N), dtype=self.K_dense.dtype)
+        _dt = time.time() - _t0
+        self.READY = True
+        self._summary['preproc', 'regular'] = self.regular
+        self._summary['preproc', 'time'] = _dt
+        self._summary['preproc', 'N'] = self.N
+
+    def _proc_free_(self, preproc: bool = False, **kwargs):
+        if preproc:
+            self._preproc_(force=True)
+        _t0 = time.time()
+        if not self.regular:
+            self.core._proc_free_(**kwargs)
+            _dt = time.time() - _t0
+            self._summary['proc-free']['time'] = _dt
+            return self
+        K_sparse = self.K_sparse + self.P_sparse
+        M_sparse = self.M_sparse + self.P_sparse * self.penalty_ratio
+        K_sparse.eliminate_zeros()
+        K_sparse.sum_duplicates()
+        freqs, shapes = natural_circular_frequencies(
+            K_sparse, M_sparse, return_vectors=True, **kwargs)
+        self.frequencies = freqs
+        self.modal_shapes = shapes
         
-    def natural_circular_frequencies(self, *args, return_vectors:bool=False, 
-                                     DEFAULT_PENALTY_RATIO:float=DEFAULT_PENALTY_RATIO, **kwargs):
+    def _postproc_(self):
+        _t0 = time.time()
+        if not self.regular:
+            self.core._postproc_()
+            self._summary['core'] = self.core._summary
+            return self._unbox_()
+        _dt = time.time() - _t0
+        self._summary['postproc', 'time'] = _dt
+
+    def natural_circular_frequencies(self, *, return_vectors: bool = False, 
+                                     **kwargs):
         """
         Returns natural circular frequencies. The call forwards all parameters
         to :func:`sigmaepslion.solid.fem.dyn.natural_circular_frequencies`, 
         see the docs there for the details. 
-        
+
         Parameters
         ----------
         return_vectors : bool, Optional
             To return eigenvectors or not. Default is False.
-            
-        DEFAULT_PENALTY_RATIO : float, Optional
+        penalty_ratio : float, Optional
             The penalty ratio. Only if 'penalize' is True. 
             Default is `sigmaepsilon.solid.fem.config.DEFAULT_PENALTY_RATIO`.
-                
+
         See also
         --------
         :func:`sigmaepslion.solid.fem.dyn.natural_circular_frequencies`
-        
+
         Returns
         -------
         numpy.ndarray
             The natural circular frequencies.
-
         numpy.ndarray
             The eigenvectors, only if 'return_vectors' is True.
-            
-        """
-        K = self.elastic_stiffness_matrix(penalize=True)
-        M = self.mass_matrix(penalize=True, DEFAULT_PENALTY_RATIO=DEFAULT_PENALTY_RATIO)
-        self.vmodes = natural_circular_frequencies(K, M, *args, return_vectors=True, **kwargs)
-        if return_vectors:
-            return self.vmodes
-        else:
-            return self.vmodes[0] 
 
-    def effective_modal_masses(self, *, action:ndarray=None, modes:ndarray=None) -> ndarray:
         """
-        Returns effective modal masses of several modes of vibration. 
-        The call forwards all parameters to 
-        :func:`sigmaepslion.solid.fem.dyn.effective_modal_masses`, see the 
-        docs there for the details.
-        
-        See also
-        --------
-        :func:`sigmaepslion.solid.fem.dyn.effective_modal_masses`
-        
-        Returns
-        -------
-        numpy.ndarray
-            An array of effective mass values.
-            
-        """
-        if action is None:
-            raise TypeError("No action is provided!")
-        vecs = self.vmodes[1] if modes is None else modes
-        return effective_modal_masses(self.M, action, vecs)
-    
-    def Rayleigh_quotient(self, u:ndarray=None, f:ndarray=None) -> ndarray:
-        """
-        Returns Rayleigh's quotient. The call forwards all parameters
-        to :func:`sigmaepslion.solid.fem.dyn.Rayleigh_quotient`, see the 
-        docs there for the details. If there are no actions specified, 
-        the function feeds it with the results from a linear elastic solution.
-        
-        See also
-        --------
-        :func:`sigmaepslion.solid.fem.dyn.Rayleigh_quotient`
-        
-        Returns
-        -------
-        float or numpy.ndarray
-            One or more floats.
-            
-        """
-        M = self.mass_matrix(penalize=True)
-        if isinstance(f, ndarray) and u is None:
-            K = self.elastic_stiffness_matrix(penalize=True)
-            K.eliminate_zeros()
-            K.sum_duplicates()
-            u = atleast2d(solve_standard_form(K, f), back=True)
-        elif isinstance(u, ndarray) and f is None:
-            K = self.elastic_stiffness_matrix(penalize=True)
-            K.eliminate_zeros()
-            K.sum_duplicates()
-            f = K @ u
-        elif f is None and u is None:
-            assert self.u is not None, "A linear solution must be calculated prior to this."
-            u = self.u
-            return self.Rayleigh_quotient(u=u)    
-        return Rayleigh_quotient(M, u, f=f)
-                
+        if self.frequencies is None:
+            self._preproc_()
+            self._proc_free_(**kwargs)
+            self._postproc_()
+        if return_vectors:
+            return self.frequencies, self.modal_shapes
+        return self.frequencies

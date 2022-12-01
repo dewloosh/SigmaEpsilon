@@ -24,10 +24,8 @@ def effective_modal_mass(M: ArrayLike, action: ndarray,
     ----------
     M : numpy.ndarray
         2d mass matrix as a NumPy or SciPy 2d float array.
-
     action : Iterable
         1d iterable, with a length matching the dof layout of the structure. 
-
     mode : numpy.ndarray
         1d array representing a modal shape.
 
@@ -51,10 +49,8 @@ def effective_modal_masses(M: ArrayLike, action: ndarray,
     ----------
     M : numpy.ndarray
         Mass matrix as a NumPy or SciPy 2d float array.
-
     action : numpy.ndarray
         1d iterable, with a length matching the dof layout of the structure. 
-
     modes : numpy.ndarray
         A matrix, whose columns are eigenmodes of interest.
 
@@ -94,13 +90,10 @@ def Rayleigh_quotient(M: spmatrix, *, K: spmatrix = None, u: ndarray = None,
     ----------
     M : scipy.linalg.sparse.spmatrix
         The mass matrix.
-
     u : numpy.ndarray, Optional
         The vector of nodal displacements (1d or 2d).
-
     K : scipy.linalg.sparse.spmatrix, Optional
         The stiffness matrix. It can be omitted, if 'f' is provided.
-
     f : numpy.ndarray, Optional
         The vector of nodal forces (1d or 2d). It can be omitted, 
         if 'K' is provided.
@@ -133,7 +126,7 @@ def Rayleigh_quotient(M: spmatrix, *, K: spmatrix = None, u: ndarray = None,
     return np.array(res)
 
 
-def natural_circular_frequencies(K: spmatrix, M: spmatrix, *args, k: int = 10,
+def natural_circular_frequencies(K: spmatrix, M: spmatrix, *, k: int = 10,
                                  return_vectors: bool = False,  maxiter: int = 5000,
                                  normalize: bool = True, as_dense: bool = False,
                                  around: float = None, nmode: str = 'M', 
@@ -154,34 +147,26 @@ def natural_circular_frequencies(K: spmatrix, M: spmatrix, *args, k: int = 10,
     ----------
     K : scipy.linalg.sparse.spmatrix
         The stiffness matrix in sparse format. 
-
     M : scipy.linalg.sparse.spmatrix
         The mass matrix in sparse format.
-
     k : int, Optional
         The number of solutions to return. Only if 'as_dense' is False. 
         Default is 10.
-
     return_vectors : bool, Optional
         To return eigenvectors or not. Default is False.
-
     maxiter : int, Optional
         Maximum number of iterations, if solved using sparse matrices.
         Only if 'as_dense' is False. Default is 5000.
-
     normalize : bool, Optional
         If True, the returned eigenvectors are normalized to the mass matrix.
         Only if 'return_vectors' is True. Default is True.
-
     as_dense : bool, Optional
         If True, the stiffness and mass matrices are handled as dense arrays.
         In this case, if 'return_vectors' is True, all eigenvalues and vectors 
         are returned, regardless of other parameters.
-
     around : float, Optional
         A target (possibly an approximation) value around which eigenvalues
         are searched. Default is None.
-
     which : str, ['LM' | 'SM' | 'LA' | 'SA' | 'BE' | 'LR' | 'SR' 
                  | 'LI' | 'SI'], Optional
         Which `k` eigenvectors and eigenvalues to find:
@@ -205,7 +190,6 @@ def natural_circular_frequencies(K: spmatrix, M: spmatrix, *args, k: int = 10,
             'SI' : smallest imaginary part
 
         Only if 'as_dense' is False. Default is 'LM'.
-
     **kwargs : dict, Optional
         Keyword arguments are forwarded to the appropriate routine of SciPy.
 
@@ -223,7 +207,6 @@ def natural_circular_frequencies(K: spmatrix, M: spmatrix, *args, k: int = 10,
     -------
     numpy.ndarray
         The natural circular frequencies.
-
     numpy.ndarray
         The eigenvectors, only if 'return_vectors' is True.
 
@@ -232,11 +215,10 @@ def natural_circular_frequencies(K: spmatrix, M: spmatrix, *args, k: int = 10,
         kwargs['sigma'] = around**2
 
     if as_dense:
-        vals, vecs = eig_dense(K, *args, M=M, nmode=nmode,
-                               normalize=normalize,
+        vals, vecs = eig_dense(K, M=M, nmode=nmode, normalize=normalize,
                                return_residuals=False, **kwargs)
     else:
-        vals, vecs = eig_sparse(K, *args, k=k, M=M, which=which,
+        vals, vecs = eig_sparse(K, k=k, M=M, which=which,
                                 normalize=normalize, maxiter=maxiter,
                                 return_residuals=False, nmode=nmode,
                                 **kwargs)

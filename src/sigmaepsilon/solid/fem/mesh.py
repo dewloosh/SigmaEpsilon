@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from typing import Union, List, Iterable
+from typing import Union, List, Iterable, Collection
 import logging
 
 from scipy.sparse import coo_matrix
@@ -14,7 +14,7 @@ from polymesh import PolyData
 from .pointdata import PointData
 from .preproc import (nodal_load_vector, essential_penalty_matrix,
                       nodal_mass_matrix)
-from .cells import TET4, TET10, H8, H27, CellData
+from .cells import TET4, TET10, H8, H27, FiniteElement
 from .metamesh import ABC_FemMesh
 from .constants import DEFAULT_DIRICHLET_PENALTY
 
@@ -28,7 +28,6 @@ class FemMesh(PolyData, ABC_FemMesh):
     ----------
     pd : polymesh.PolyData or polymesh.CellData, Optional
         A PolyData or a CellData instance. Dafault is None.
-
     cd : polymesh.CellData, Optional
         A CellData instance, if the first argument is provided. Dafault is None.
 
@@ -82,18 +81,27 @@ class FemMesh(PolyData, ABC_FemMesh):
         return self.pointdata
 
     @property
-    def cd(self) -> CellData:
+    def cd(self) -> FiniteElement:
         """
         Returns the attached celldata.
         
         See Also
         --------
+        class:`sigmaepsilon.solid.fem.cells.elem.FiniteElement`
         class:`sigmaepsilon.solid.fem.cells.celldata.CellData`
         
         """
         return self.celldata
-
-    def cells_coords(self, *args, points: Iterable = None, cells: Iterable = None,
+    
+    def cellblocks(self, *args, **kwargs) -> Collection['FemMesh']:
+        """
+        Returns an iterable over blocks with cell data.
+        """
+        return filter(lambda i: i.celldata is not None, 
+                      self.blocks(*args, **kwargs))
+                    
+    def cells_coords(self, *args, points: Iterable = None, 
+                     cells: Iterable = None,
                      **kwargs) -> Union[ndarray, List[ndarray]]:
         """
         Returns the coordinates of the cells as a 3d numpy array if the 
@@ -107,23 +115,48 @@ class FemMesh(PolyData, ABC_FemMesh):
             if cells is not None:
                 kwargs.update(cells=cells)
                 res = {}
-                def foo(b): return b.celldata.coords(*args, **kwargs)
+                def foo(b:FemMesh): 
+                    return b.cd.coords(*args, **kwargs)
                 [res.update(d) for d in map(foo, blocks)]
                 return res
             else:
-                def foo(b): return b.celldata.coords(*args, **kwargs)
+                def foo(b:FemMesh): 
+                    return b.cd.coords(*args, **kwargs)
                 return np.vstack(list(map(foo, blocks)))
 
-    def element_dof_numbering(self, *args, **kwargs) -> ndarray:
+    def element_dof_numbering(self) -> ndarray:
         """
         Returns global ids of the local degrees of freedoms for each cell.
         """
         blocks = self.cellblocks(inclusive=True)
-        def foo(b): return b.celldata.global_dof_numbering()
+        def foo(b:FemMesh): 
+            return b.cd.global_dof_numbering()
+        return np.vstack(list(map(foo, blocks)))
+    
+    def element_fixity(self) -> ndarray:
+        """
+        Returns element fixity data.
+        """
+        fixity = []
+        for b in self.cellblocks(inclusive=True):
+            if b.has_fixity:
+                fixity.append(b.cd.fixity.astype(float))
+            else:
+                nE, nNE, nDOF = len(b.cd), b.cd.NNODE, self.NDOFN
+                fixity.append(np.ones(nE, nNE, nDOF))
+        return np.vstack(fixity)
+    
+    def direction_cosine_matrix(self, target:str='global'):
+        blocks = self.cellblocks(inclusive=True)
+        def foo(b:FemMesh): 
+            return b.cd.direction_cosine_matrix(target=target)
         return np.vstack(list(map(foo, blocks)))
 
-    def elastic_stiffness_matrix(self, *, eliminate_zeros: bool = True,
-                                 sum_duplicates: bool = True, sparse: bool = False,
+    def elastic_stiffness_matrix(self, *, 
+                                 eliminate_zeros: bool = True,
+                                 sum_duplicates: bool = True, 
+                                 sparse: bool = False,
+                                 transform:bool = True,
                                  **kwargs) -> Union[ndarray, coo_matrix]:
         """
         Returns the elastic stiffness matrix in dense or sparse format.
@@ -132,13 +165,14 @@ class FemMesh(PolyData, ABC_FemMesh):
         ----------
         sparse : bool, Optional
             If True, the result is a sparse matrix. Default is False.
-
         eliminate_zeros : bool, Optional
             Eliminates zero entries. Only if 'sparse' is True. Default is True.
-
         sum_duplicates : bool, Optional
             Sums duplicate entries. Only if 'sparse' is True. Default is True.
-
+        transform : bool, Optional
+            If True, local matrices are transformed to the global frame.
+            Default is True.
+            
         Returns
         -------
         numpy.ndarray or scipy.sparse.coo_matrix
@@ -146,7 +180,9 @@ class FemMesh(PolyData, ABC_FemMesh):
         """
         blocks = self.cellblocks(inclusive=True)
         if sparse:
-            def foo(b): return b.celldata.elastic_stiffness_matrix_coo()
+            assert transform, "Must transform for sparse layout."
+            def foo(b:FemMesh): 
+                return b.cd.elastic_stiffness_matrix(sparse=True, transform=True)
             K = np.sum(list(map(foo, blocks))).tocoo()
             if eliminate_zeros:
                 K.eliminate_zeros()
@@ -154,7 +190,8 @@ class FemMesh(PolyData, ABC_FemMesh):
                 K.sum_duplicates()
             return K
         else:
-            def foo(b): return b.celldata.elastic_stiffness_matrix()
+            def foo(b:FemMesh): 
+                return b.cd.elastic_stiffness_matrix(transform=transform)
             return np.vstack(list(map(foo, blocks)))
 
     def masses(self, *args, **kwargs) -> ndarray:
@@ -162,7 +199,9 @@ class FemMesh(PolyData, ABC_FemMesh):
         Returns masses of the cells as a 1d numpy array.
         """
         blocks = self.cellblocks(*args, inclusive=True, **kwargs)
-        vmap = map(lambda b: b.celldata.masses(), blocks)
+        def foo(b:FemMesh): 
+            return b.cd.masses()
+        vmap = map(foo, blocks)
         return np.concatenate(list(vmap))
 
     def mass(self, *args, **kwargs) -> float:
@@ -173,21 +212,24 @@ class FemMesh(PolyData, ABC_FemMesh):
 
     def consistent_mass_matrix(self, *, eliminate_zeros: bool = True,
                                sum_duplicates: bool = True, sparse: bool = False,
-                               **kwargs) -> Union[ndarray, coo_matrix]:
+                               transform:bool = True,**kwargs) \
+                                   -> Union[ndarray, coo_matrix]:
         """
-        Returns the stiffness-consistent mass matrix as a dense or a sparse matrix.
+        Returns the stiffness-consistent mass matrix as a dense or a sparse 
+        matrix.
 
         Parameters
         ----------
         sparse : bool, Optional
             If True, the result is a sparse matrix. Default is False.
-
         eliminate_zeros : bool, Optional
             Eliminates zero entries. Only if 'sparse' is True. Default is True.
-
         sum_duplicates : bool, Optional
             Sums duplicate entries. Only if 'sparse' is True. Default is True.
-
+        transform : bool, Optional
+            If True, local matrices are transformed to the global frame.
+            Default is True.
+            
         Returns
         -------
         numpy.ndarray or scipy.sparse.coo_matrix
@@ -197,7 +239,8 @@ class FemMesh(PolyData, ABC_FemMesh):
         # distributed masses (cells)
         blocks = self.cellblocks(inclusive=True)
         if sparse:
-            def foo(b): return b.celldata.consistent_mass_matrix_coo()
+            def foo(b:FemMesh): 
+                return b.cd.consistent_mass_matrix(sparse=True, transform=True)
             M = np.sum(list(map(foo, blocks))).tocoo()
             if eliminate_zeros:
                 M.eliminate_zeros()
@@ -205,11 +248,12 @@ class FemMesh(PolyData, ABC_FemMesh):
                 M.sum_duplicates()
             return M
         else:
-            def foo(b): return b.celldata.consistent_mass_matrix()
+            def foo(b:FemMesh): 
+                return b.cd.consistent_mass_matrix(transform=transform)
             return np.vstack(list(map(foo, blocks)))
 
     def mass_matrix(self, *, eliminate_zeros: bool = True,
-                    sum_duplicates: bool = True, **kwargs):
+                    sum_duplicates: bool = True, **kwargs) -> coo_matrix:
         """
         Returns the mass matrix in coo format.The resulting matrix is the 
         sum of the consistent mass matrix and the nodal mass matrix.
@@ -218,7 +262,6 @@ class FemMesh(PolyData, ABC_FemMesh):
         ----------
         eliminate_zeros : bool, Optional
             Eliminates zero entries. Default is True.
-
         sum_duplicates : bool, Optional
             Sums duplicate entries. Default is True.
 
@@ -230,6 +273,7 @@ class FemMesh(PolyData, ABC_FemMesh):
         """
         # distributed masses (cells)
         M = self.consistent_mass_matrix(sparse=True,
+                                        transform=True,
                                         eliminate_zeros=False,
                                         sum_duplicates=False)
         # nodal masses
@@ -239,7 +283,7 @@ class FemMesh(PolyData, ABC_FemMesh):
             M.eliminate_zeros()
         if sum_duplicates:
             M.sum_duplicates()
-        return M
+        return M.tocoo()
 
     def nodal_mass_matrix(self, *, eliminate_zeros: bool = False,
                           sum_duplicates: bool = False, **kw):
@@ -250,7 +294,6 @@ class FemMesh(PolyData, ABC_FemMesh):
         ----------
         eliminate_zeros : bool, Optional
             Eliminates zero entries. Default is True.
-
         sum_duplicates : bool, Optional
             Sums duplicate entries. Default is True.
 
@@ -275,7 +318,7 @@ class FemMesh(PolyData, ABC_FemMesh):
     def essential_penalty_matrix(self, fixity: ndarray = None, *,
                                  eliminate_zeros: bool = True,
                                  sum_duplicates: bool = True,
-                                 penalty: float = None,
+                                 penalty: float = DEFAULT_DIRICHLET_PENALTY,
                                  **kwargs) -> coo_matrix:
         """
         A penalty matrix that enforces Dirichlet boundary conditions. 
@@ -284,18 +327,15 @@ class FemMesh(PolyData, ABC_FemMesh):
         Parameters
         ----------
         fixity : numpy.ndarray, Optional
-            The fixity values as a 2d array. The length of the first axis must equal
-            the number of nodes, the second the number of DOFs of the model.
-            If not specified, the data is assumed to be stored in the attached pointdata
-            with the same key. Default is None.
-
+            The fixity values as a 2d array. The length of the first axis must 
+            equal the number of nodes, the second the number of DOFs of the model.
+            If not specified, the data is assumed to be stored in the attached 
+            pointdata with the same key. Default is None.
         penalty : float, Optional
             The Courant-type penalty value.
             Default is `sigmaepsilon.solid.fem.constants.DEFAULT_DIRICHLET_PENALTY`.
-
         eliminate_zeros : bool, Optional
             Eliminates zeros from the matrix. Default is True.
-
         eliminate_zeros : bool, Optional
             Summs duplicate entries in the matrix. Default is True.
 
@@ -310,8 +350,6 @@ class FemMesh(PolyData, ABC_FemMesh):
         K_coo = coo_matrix(([0.], ([0], [0])), shape=(N, N))
         try:
             fixity = pd.fixity
-            if penalty is None:
-                penalty = DEFAULT_DIRICHLET_PENALTY
             K_coo += essential_penalty_matrix(fixity=fixity, pfix=penalty,
                                               eliminate_zeros=eliminate_zeros,
                                               sum_duplicates=sum_duplicates)
@@ -333,25 +371,44 @@ class FemMesh(PolyData, ABC_FemMesh):
         """
         # concentrated nodal loads
         nodal_data = self.root().pointdata.loads
-        nodal_data = atleast3d(nodal_data, back=True)  # (nP, nDOF, nRHS)
+        nodal_data = atleast3d(nodal_data, back=True)
+        # (nP, nDOF, nRHS)
         res = nodal_load_vector(nodal_data, squeeze=False)
-        # cells
-        blocks = list(self.cellblocks(inclusive=True))
-        # body loads
-        def foo(b): return b.celldata.body_load_vector(squeeze=False)
-        try:
-            m = filter(lambda i: i is not None, map(foo, blocks))
-            res += np.sum(list(m), axis=0)
-        except Exception:
-            pass
-        # strain loads
-        def foo(b): return b.celldata.strain_load_vector(squeeze=False)
-        try:
-            m = filter(lambda i: i is not None, map(foo, blocks))
-            res += np.sum(list(m), axis=0)
-        except Exception:
-            pass
         return res
+    
+    @squeeze(True)
+    def cell_load_vector(self, *, transform: bool = True, 
+                         assemble: bool = False, **kwargs) -> ndarray:
+        """
+        Returns the nodal load vector from body and strain loads.
+        
+        Parameters
+        ----------
+        assemble : bool, Optional
+            If True, the values are returned with a matching shape to 
+            the total system. Default is False.
+        transform : bool, Optional
+            If True, local matrices are transformed to the global frame.
+            Default is False.       
+
+        Returns
+        -------
+        numpy.ndarray
+            The shape depends on the arguments.
+            
+        """
+        if assemble:
+            assert transform, "Must transform before assembly."
+        blocks = list(self.cellblocks(inclusive=True))
+        params = dict(
+            squeeze=False,
+            transform=transform,
+            assemble=assemble
+        )
+        params.update(**kwargs)
+        def foo(b:FemMesh): 
+            return b.cd.load_vector(**params)
+        return np.vstack(list(map(foo, blocks)))
 
     def prostproc_dof_solution(self, *args, **kwargs):
         """
@@ -360,8 +417,17 @@ class FemMesh(PolyData, ABC_FemMesh):
         """
         blocks = self.cellblocks(inclusive=True)
         dofsol = self.root().pointdata.dofsol
-        def foo(b): return b.celldata.prostproc_dof_solution(dofsol=dofsol)
+        def foo(b:FemMesh): 
+            return b.cd.prostproc_dof_solution(dofsol=dofsol)
         list(map(foo, blocks))
+        
+    def condensate_cell_fixity(self) -> 'FemMesh':
+        """
+        Performs static condensation of the system equations to account for
+        cell fixity. Returns the mesh object for continuation.
+        """
+        [b.cd.condensate() for b in self.cellblocks(inclusive=True)]
+        return self
 
     @squeeze(True)
     def nodal_dof_solution(self, *, flatten: bool = False, **kw) -> ndarray:
@@ -400,11 +466,13 @@ class FemMesh(PolyData, ABC_FemMesh):
         if cells is not None:
             kwargs.update(cells=cells)
             res = {}
-            def foo(b): return b.celldata.dof_solution(*args, **kwargs)
+            def foo(b:FemMesh): 
+                return b.cd.dof_solution(*args, **kwargs)
             [res.update(d) for d in map(foo, blocks)]
             return res
         else:
-            def foo(b): return b.celldata.dof_solution(*args, **kwargs)
+            def foo(b:FemMesh): 
+                return b.cd.dof_solution(*args, **kwargs)
             return np.vstack(list(map(foo, blocks)))
 
     @squeeze(True)
@@ -423,11 +491,13 @@ class FemMesh(PolyData, ABC_FemMesh):
         if cells is not None:
             kwargs.update(cells=cells)
             res = {}
-            def foo(b): return b.celldata.strains(*args, **kwargs)
+            def foo(b:FemMesh): 
+                return b.cd.strains(*args, **kwargs)
             [res.update(d) for d in map(foo, blocks)]
             return res
         else:
-            def foo(b): return b.celldata.strains(*args, **kwargs)
+            def foo(b:FemMesh): 
+                return b.cd.strains(*args, **kwargs)
             return np.vstack(list(map(foo, blocks)))
 
     @squeeze(True)
@@ -447,11 +517,13 @@ class FemMesh(PolyData, ABC_FemMesh):
         if cells is not None:
             kwargs.update(cells=cells)
             res = {}
-            def foo(b): return b.celldata.external_forces(*args, **kwargs)
+            def foo(b:FemMesh): 
+                return b.cd.external_forces(*args, **kwargs)
             [res.update(d) for d in map(foo, blocks)]
             return res
         else:
-            def foo(b): return b.celldata.external_forces(*args, **kwargs)
+            def foo(b:FemMesh): 
+                return b.cd.external_forces(*args, **kwargs)
             return np.vstack(list(map(foo, blocks)))
 
     @squeeze(True)
@@ -470,11 +542,13 @@ class FemMesh(PolyData, ABC_FemMesh):
         if cells is not None:
             kwargs.update(cells=cells)
             res = {}
-            def foo(b): return b.celldata.internal_forces(*args, **kwargs)
+            def foo(b:FemMesh): 
+                return b.cd.internal_forces(*args, **kwargs)
             [res.update(d) for d in map(foo, blocks)]
             return res
         else:
-            def foo(b): return b.celldata.internal_forces(*args, **kwargs)
+            def foo(b:FemMesh): 
+                return b.cd.internal_forces(*args, **kwargs)
             return np.vstack(list(map(foo, blocks)))
 
     def stresses_at_cells_nodes(self, *args, **kwargs) -> ndarray:
@@ -482,7 +556,8 @@ class FemMesh(PolyData, ABC_FemMesh):
         Returns stresses at all nodes of all cells.
         """
         blocks = self.cellblocks(inclusive=True)
-        def foo(b): return b.celldata.stresses_at_nodes(*args, **kwargs)
+        def foo(b:FemMesh): 
+            return b.cd.stresses_at_nodes(*args, **kwargs)
         return np.vstack(list(map(foo, blocks)))
 
     def stresses_at_centers(self, *args, **kwargs) -> ndarray:
@@ -495,7 +570,8 @@ class FemMesh(PolyData, ABC_FemMesh):
 
         """
         blocks = self.cellblocks(inclusive=True)
-        def foo(b): return b.celldata.stresses_at_centers(*args, **kwargs)
+        def foo(b:FemMesh): 
+            return b.cd.stresses_at_centers(*args, **kwargs)
         return np.squeeze(np.vstack(list(map(foo, blocks))))
 
     @property

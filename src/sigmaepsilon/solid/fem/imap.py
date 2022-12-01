@@ -15,6 +15,7 @@ from neumann.array import minmax
 __cache = True
 
 nbint64 = nbtypes.int64
+nbuint64 = nbtypes.uint64
 
 
 def index_mappers(*args, **kwargs):
@@ -153,7 +154,7 @@ def unbox_lhs(u: np.ndarray, loc_to_glob: nbDict = None, N: int = None):
 def _unbox(a: np.ndarray, loc_to_glob: nbDict, N: int):
     res = np.zeros((N, a.shape[1]), dtype=a.dtype)
     for i in prange(len(loc_to_glob)):
-        res[loc_to_glob[i], :] = a[i, :]
+        res[loc_to_glob[nbuint64(i)], :] = a[i, :]  
     return res
 
 
@@ -162,7 +163,7 @@ def _box(a: np.ndarray, loc_to_glob: nbDict):
     N = len(loc_to_glob)
     res = np.zeros((N, a.shape[1]), dtype=a.dtype)
     for i in prange(N):
-        res[i, :] = a[loc_to_glob[i], :]
+        res[i, :] = a[loc_to_glob[nbuint64(i)], :]
     return res
 
 
@@ -174,7 +175,7 @@ def box_indices1d(indices: np.ndarray, glob_to_loc: nbDict):
     """
     res = np.zeros_like(indices)
     for i in prange(res.shape[0]):
-        res[i] = glob_to_loc[indices[i]]
+        res[i] = glob_to_loc[nbuint64(indices[i])]
     return res
 
 
@@ -183,21 +184,23 @@ def box_indices2d(indices: np.ndarray, glob_to_loc: nbDict):
     res = np.zeros_like(indices)
     for i in prange(res.shape[0]):
         for j in prange(res.shape[1]):
-            res[i, j] = glob_to_loc[indices[i, j]]
+            res[i, j] = glob_to_loc[nbuint64(indices[i, j])]
     return res
 
 
 @njit(nogil=True, cache=__cache)
 def array_to_dict(a: np.ndarray, firstindex: int = 0):
-    res = nbDict.empty(key_type=nbint64, value_type=nbint64)
+    res = nbDict.empty(key_type=nbuint64, value_type=nbuint64)
     for i in range(len(a)):
-        res[firstindex + i] = a[i]
+        ui = nbuint64(firstindex + i)
+        res[ui] = nbuint64(a[i])
     return res
 
 
 @njit(nogil=True, cache=__cache)
 def invert_mapping(imap: nbDict):
-    res = nbDict.empty(key_type=nbint64, value_type=nbint64)
+    res = nbDict.empty(key_type=nbuint64, value_type=nbuint64)
     for i in imap:
-        res[imap[i]] = i
+        ui = nbuint64(imap[i])
+        res[ui] = nbuint64(i)
     return res

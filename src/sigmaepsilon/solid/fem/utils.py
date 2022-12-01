@@ -266,46 +266,6 @@ def topo_to_gnum_jagged(topo, gnum, ndofn: int):
     return gnum
 
 
-@njit(nogil=True, parallel=True, fastmath=True, cache=__cache)
-def assemble_load_vector(values: ndarray, gnum: ndarray, N: int = -1):
-    """
-    Returns global dof numbering based on element 
-    topology data.
-
-    Parameters
-    ----------
-    values : numpy.ndarray 
-        3d numpy float array of shape (nE, nEVAB, nRHS), representing 
-        element data. The length of the second axis matches the the number of
-        degrees of freedom per cell.
-
-    gnum : int
-        Global indices of local degrees of freedoms of elements.
-
-    N : int, Optional
-        The number of total unknowns in the system. Must be specified correcly,
-        to get a vector the same size of the global system. If not specified, it is
-        inherited from 'gnum' (as 'gnum.max() + 1'), but this can lead to a chopped 
-        array.
-
-    Returns
-    -------
-    numpy.ndarray
-        2d numpy array of integers with a shape of (N, nRHS), where nRHS is the number
-        if right hand sizes (load cases).
-
-    """
-    nE, nEVAB, nRHS = values.shape
-    if N < 0:
-        N = gnum.max() + 1
-    res = np.zeros((N, nRHS), dtype=values.dtype)
-    for i in range(nE):
-        for j in range(nEVAB):
-            for k in prange(nRHS):
-                res[gnum[i, j], k] += values[i, j, k]
-    return res
-
-
 @njit(nogil=True, parallel=False, fastmath=True, cache=__cache)
 def penalty_factor_matrix(cellfixity: ndarray, shp: ndarray):
     nE, nNE, nDOF = cellfixity.shape
@@ -450,38 +410,6 @@ def compatibility_factors(ncf: dict, nreg: dict, NDOFN: int):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def element_dof_solution_bulk(dofsol1d: ndarray, gnum: ndarray):
-    """
-    Returns an array that contains degree of freedom solution for
-    every node of every element.
-
-    Parameters
-    ---------- 
-    dofsol : numpy.ndarray 
-        A 2d float array of shape (nX, nRHS), where nX and nRHS are
-        the number of total variables and right hand sides.
-
-    gnum : numpy.ndarray
-        2d integer array of (nE, nEVAB) of global dof numbering 
-        for several elements, where nE and nEVAB is the number of
-        elements and total variables per element. 
-
-    Returns
-    -------
-    numpy.ndarray
-        3d float array of shape (nE, nEVAB, nRHS).
-
-    """
-    nRHS = dofsol1d.shape[1]
-    nE, nEVAB = gnum.shape
-    res = np.zeros((nE, nEVAB, nRHS), dtype=dofsol1d.dtype)
-    for i in prange(nE):
-        for j in prange(nRHS):
-            res[i, :, j] = dofsol1d[gnum[i, :], j]
-    return res
-
-
-@njit(nogil=True, parallel=True, cache=__cache)
 def element_dofmap_bulk(dofmap: ndarray, nDOF: int, nNODE: int):
     nDOF_ = dofmap.shape[0]
     res = np.zeros(nNODE * nDOF_, dtype=dofmap.dtype)
@@ -492,114 +420,17 @@ def element_dofmap_bulk(dofmap: ndarray, nDOF: int, nNODE: int):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def expand_stiffness_bulk(K_in: ndarray, K_out: ndarray, dofmap: ndarray):
+def expand_coeff_matrix_bulk(A_in: ndarray, A_out: ndarray, dofmap: ndarray):
     """
-    Expands the local stiffness matrix into a standard form. It is used
+    Expands the local coefficient matrices into a standard form. It is used
     for instance when the total matrix is built up of smaller parts.
 
     """
     nDOF = dofmap.shape[0]
     for i in prange(nDOF):
         for j in prange(nDOF):
-            K_out[:, dofmap[i], dofmap[j]] = K_in[:, i, j]
-    return K_out
-
-
-@njit(nogil=True, parallel=True, cache=__cache)
-def _pull_submatrix(A, r, c):
-    nR = r.shape[0]
-    nC = c.shape[0]
-    res = np.zeros((nR, nC), dtype=A.dtype)
-    for i in prange(nR):
-        for j in prange(nC):
-            res[i, j] = A[r[i], c[j]]
-    return res
-
-
-@njit(nogil=True, parallel=True, cache=__cache)
-def _push_submatrix(A, Asub, r, c, new=True):
-    nR = r.shape[0]
-    nC = c.shape[0]
-    res = np.zeros_like(A)
-    if not new:
-        res[:, :] = A
-    for i in prange(nR):
-        for j in prange(nC):
-            res[r[i], c[j]] = Asub[i, j]
-    return res
-
-
-@njit(nogil=True, parallel=True, cache=__cache)
-def constrain_local_stiffness_bulk(K: ndarray, factors: ndarray):
-    """
-    Returns the condensed stiffness matrices representing constraints
-    on the internal forces of the elements (eg. hinges).
-
-    Currently this solution is only able to handle two states, being totally free 
-    and being fully constrained. The factors are expected to be numbers between
-    0 and 1, where dofs with a factor > 0.5 are assumed to be the constrained ones.
-
-    Note
-    ----
-    numba-jitted in nopython mode
-
-    Parameters
-    ----------
-    K : numpy.ndarray
-        3d float array, the stiffness matrices of several elements of the same kind.
-
-    factors: numpy.ndarray
-        2d float array of connectivity facotors for each dof of every element.
-
-    Note
-    ----
-    This solution applies the idea of static condensation.
-
-    Returns
-    -------
-    numpy.ndarray
-        The constrained stiffness matrices with the same shape as `K`.
-
-    """
-    nE, _, _ = K.shape
-    res = np.zeros_like(K)
-    for iE in prange(nE):
-        b = np.where(factors[iE] > 0.5)[0]
-        i = np.where(factors[iE] <= 0.5)[0]
-        Kbb = _pull_submatrix(K[iE], b, b)
-        Kii = _pull_submatrix(K[iE], i, i)
-        Kib = _pull_submatrix(K[iE], i, b)
-        Kbi = _pull_submatrix(K[iE], b, i)
-        Kbb -= Kbi @ np.linalg.inv(Kii) @ Kib
-        res[iE] = _push_submatrix(K[iE], Kbb, b, b, True)
-    return res
-
-
-def assert_min_stiffness_bulk(K: ndarray, minval: float = 1e-12):
-    """
-    Guarantees, that the values in the diagonal are larger
-    a prescribed minimum value.
-
-    Parameters
-    ----------
-    K : numpy.ndarray
-        The stiffness matrix of several elements as a 3d
-        array, where elements run along the first axis.
-
-    minval : float, Optional
-        The minimum value. Default is 1e-12.
-
-    Returns
-    -------
-    numpy.ndarray
-        The modified stiffness matrix, with the same shape as 'K'. 
-
-    """
-    inds = np.arange(K.shape[-1])
-    d = K[:, inds, inds]
-    eid, vid = np.where(d < minval)
-    K[eid, vid, vid] = minval
-    return K
+            A_out[:, dofmap[i], dofmap[j]] = A_in[:, i, j]
+    return A_out
 
 
 @njit(nogil=True, parallel=True, cache=__cache)

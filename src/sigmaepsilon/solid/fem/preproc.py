@@ -1,19 +1,23 @@
 # -*- coding: utf-8 -*-
-from typing import Union
+from typing import Union, Tuple
 
 from scipy.sparse import coo_matrix
 from scipy.sparse import spmatrix
 import numpy as np
 from numpy import ndarray
+from numba import njit, prange
 
 from neumann import squeeze
-from neumann.array import (isintegerarray, isfloatarray,
-                           isboolarray, bool_to_float, atleastnd)
+from neumann.logical import isintegerarray, isfloatarray, isboolarray
+from neumann.array import bool_to_float, atleastnd, matrixform
 from neumann.linalg.sparse.utils import lower_spdata, upper_spdata
 
 from .utils import (nodes2d_to_dofs1d, irows_icols_bulk,
                     nodal_mass_matrix_data, min_stiffness_diagonal)
+from .imap import index_mappers, box_spmatrix, box_rhs, box_dof_numbering
 from .constants import DEFAULT_DIRICHLET_PENALTY
+
+__cache = True
 
 
 def fem_coeff_matrix_coo(A: ndarray, *args, inds: ndarray = None,
@@ -159,6 +163,46 @@ def nodal_load_vector(values: ndarray, **kwargs) -> ndarray:
     f = np.zeros((N, nRHS))
     f[inds] = values
     return f
+
+
+@njit(nogil=True, parallel=True, fastmath=True, cache=__cache)
+def assemble_load_vector(values: ndarray, gnum: ndarray, N: int = -1):
+    """
+    Returns global dof numbering based on element 
+    topology data.
+
+    Parameters
+    ----------
+    values : numpy.ndarray 
+        3d numpy float array of shape (nE, nEVAB, nRHS), representing 
+        element data. The length of the second axis matches the the number of
+        degrees of freedom per cell.
+
+    gnum : int
+        Global indices of local degrees of freedoms of elements.
+
+    N : int, Optional
+        The number of total unknowns in the system. Must be specified correcly,
+        to get a vector the same size of the global system. If not specified, it is
+        inherited from 'gnum' (as 'gnum.max() + 1'), but this can lead to a chopped 
+        array.
+
+    Returns
+    -------
+    numpy.ndarray
+        2d numpy array of integers with a shape of (N, nRHS), where nRHS is the number
+        if right hand sizes (load cases).
+
+    """
+    nE, nEVAB, nRHS = values.shape
+    if N < 0:
+        N = gnum.max() + 1
+    res = np.zeros((N, nRHS), dtype=values.dtype)
+    for i in range(nE):
+        for j in range(nEVAB):
+            for k in prange(nRHS):
+                res[gnum[i, j], k] += values[i, j, k]
+    return res
 
 
 def essential_penalty_factor_matrix(fixity: ndarray = None, *, inds: ndarray = None,
@@ -320,3 +364,184 @@ def estimate_stiffness_penalty(K:Union[ndarray, spmatrix], fixity:ndarray, N:int
     eps = np.finfo(float).eps
     kmin = min_stiffness_diagonal(K)
     return kmin / np.sqrt(N * eps)
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def _pull_submatrix(A: ndarray, r: ndarray, c: ndarray) -> ndarray:
+    nR = r.shape[0]
+    nC = c.shape[0]
+    res = np.zeros((nR, nC), dtype=A.dtype)
+    for i in prange(nR):
+        for j in prange(nC):
+            res[i, j] = A[r[i], c[j]]
+    return res
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def _pull_subvector(v: ndarray, i: ndarray) -> ndarray:
+    nI = i.shape[0]
+    res = np.zeros((nI, v.shape[-1]), dtype=v.dtype)
+    for j in prange(nI):
+        res[j, :] = v[i[j], :]
+    return res
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def _push_submatrix(A: ndarray, Asub: ndarray, r: ndarray, c: ndarray):
+    nR = r.shape[0]
+    nC = c.shape[0]
+    for i in prange(nR):
+        for j in prange(nC):
+            A[r[i], c[j]] = Asub[i, j]
+            
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def _push_subvector(v: ndarray, vsub: ndarray, i: ndarray):
+    nI = i.shape[0]
+    for j in prange(nI):
+        v[i[j], :] = vsub[j, :]
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def condensate_Kf_bulk(K: ndarray, f: ndarray, 
+                       fixity: ndarray) -> Tuple[ndarray, ndarray]:
+    """
+    Returns the condensed coefficient matrices representing constraints
+    on the internal forces of the elements (eg. hinges).
+
+    Currently this solution is only able to handle two states, being totally free 
+    and being fully constrained. The fixity values are expected to be numbers between
+    0 and 1, where dofs with a factor > 0.5 are assumed to be the constrained ones.
+
+    Parameters
+    ----------
+    K : numpy.ndarray
+        3d float array, the stiffness matrices of several elements of the same kind.
+
+    factors: numpy.ndarray
+        2d boolean array of connectivity factors for each dof of several elements.
+
+    Returns
+    -------
+    numpy.ndarray
+        The condensed stiffness matrices with the same shape as `K`.
+        
+    numpy.ndarray
+        The condensed load vectors with the same shape as `f`.
+
+    """
+    nE = K.shape[0]
+    K_out = np.zeros_like(K)
+    f_out = np.zeros_like(f)
+    for iE in prange(nE):
+        b = np.where(fixity[iE])[0]
+        i = np.where(~fixity[iE])[0]
+        # stiffness matrix
+        Kbb = _pull_submatrix(K[iE], b, b)
+        Kbi = _pull_submatrix(K[iE], b, i)
+        Kib = _pull_submatrix(K[iE], i, b)
+        Kii = _pull_submatrix(K[iE], i, i)
+        Kii_inv = np.linalg.inv(Kii)
+        Kbb -= Kbi @ Kii_inv @ Kib
+        _push_submatrix(K_out[iE], Kbb, b, b)
+        # load vector
+        fb = _pull_subvector(f[iE], b)
+        fi = _pull_subvector(f[iE], i)
+        fb -= Kbi @ Kii_inv @ fi
+        _push_subvector(f_out[iE], fb, b)
+    return K_out, f_out
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def condensate_M_bulk(M: ndarray, fixity: ndarray) -> ndarray:
+    """
+    Returns the condensed coefficient matrices representing constraints
+    on the internal forces of the elements (eg. hinges).
+
+    Parameters
+    ----------
+    M : numpy.ndarray
+        3d float array, the mass matrices of several elements of the same kind.
+
+    fixity: numpy.ndarray
+        2d float boolean of connectivity factors for each dof of several elements.
+
+    Returns
+    -------
+    numpy.ndarray
+        The condensed mass matrices with the same shape as `M`.
+        
+    """
+    nE = M.shape[0]
+    M_out = np.zeros_like(M)
+    for iE in prange(nE):
+        b = np.where(fixity[iE])[0]
+        i = np.where(~fixity[iE])[0]
+        Mbb = _pull_submatrix(M[iE], b, b)
+        Mbi = _pull_submatrix(M[iE], b, i)
+        Mib = _pull_submatrix(M[iE], i, b)
+        Mii = _pull_submatrix(M[iE], i, i)
+        Mbb -= Mbi @ np.linalg.inv(Mii) @ Mib
+        _push_submatrix(M_out[iE], Mbb, b, b)
+    return M_out
+
+
+def assert_min_diagonals_bulk(K: ndarray, minval: float = 1e-12):
+    """
+    Guarantees, that the values in the diagonal are larger
+    a prescribed minimum value.
+
+    Parameters
+    ----------
+    A : numpy.ndarray
+        The coefficient matrix of several elements as a 3d
+        array, where elements run along the first axis.
+
+    minval : float, Optional
+        The minimum value. Default is 1e-12.
+
+    Returns
+    -------
+    numpy.ndarray
+        The modified coefficient matrix, with the same shape as 'K'. 
+
+    """
+    inds = np.arange(K.shape[-1])
+    d = K[:, inds, inds]
+    eid, vid = np.where(d < minval)
+    K[eid, vid, vid] = minval
+    return K
+
+
+def box_fem_data_sparse(K_coo: coo_matrix, Kp_coo: coo_matrix, f: ndarray):
+    """
+    Notes:
+    ------
+    If the load vector 'f' is dense, it must contain values for all
+    nodes, even the passive ones.
+    
+    """
+    # data for boxing and unboxing
+    loc_to_glob, glob_to_loc = index_mappers(K_coo, return_inverse=True)
+    # boxing
+    K = box_spmatrix(K_coo, glob_to_loc) + box_spmatrix(Kp_coo, glob_to_loc)
+    f = box_rhs(matrixform(f), loc_to_glob)
+    return K, f, loc_to_glob
+
+
+def box_fem_data_bulk(Kp_coo: coo_matrix, gnum: ndarray, f: ndarray):
+    """
+    Notes:
+    ------
+    If the load vector 'f' is dense, it must contain values for all
+    nodes, even the passive ones.
+    
+    """
+    # data for boxing and unboxing
+    N = f.shape[0]
+    loc_to_glob, glob_to_loc = index_mappers(gnum, N=N, return_inverse=True)
+    # boxing
+    gnum = box_dof_numbering(gnum, glob_to_loc)
+    Kp_coo = box_spmatrix(Kp_coo, glob_to_loc)
+    f = box_rhs(matrixform(f), loc_to_glob)
+    return Kp_coo, gnum, f, loc_to_glob

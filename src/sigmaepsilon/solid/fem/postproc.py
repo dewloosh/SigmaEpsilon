@@ -168,3 +168,35 @@ def extrapolate_gauss_data_1d(gpos: ndarray, gdata: ndarray):
         res = approx(*args, **kwargs)
         return swap(res, 0, 2)  # (nP, nE, nDOFN) --> (nDOFN, nE, nP)
     return inner
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def element_dof_solution_bulk(dofsol1d: ndarray, gnum: ndarray):
+    """
+    Returns an array that contains degree of freedom solution for
+    every node of every element.
+
+    Parameters
+    ---------- 
+    dofsol : numpy.ndarray 
+        A 2d float array of shape (nX, nRHS), where nX and nRHS are
+        the number of total variables and right hand sides.
+
+    gnum : numpy.ndarray
+        2d integer array of (nE, nEVAB) of global dof numbering 
+        for several elements, where nE and nEVAB is the number of
+        elements and total variables per element. 
+
+    Returns
+    -------
+    numpy.ndarray
+        3d float array of shape (nE, nEVAB, nRHS).
+
+    """
+    nRHS = dofsol1d.shape[1]
+    nE, nEVAB = gnum.shape
+    res = np.zeros((nE, nEVAB, nRHS), dtype=dofsol1d.dtype)
+    for i in prange(nE):
+        for j in prange(nRHS):
+            res[i, :, j] = dofsol1d[gnum[i, :], j]
+    return res

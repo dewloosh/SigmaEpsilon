@@ -21,7 +21,9 @@
 		{
 			"path": "../3DBeam"
 		},
-		
+		{
+			"path": "../LinkedDeepDict"
+		}
 	],
 	"settings": {}
 }
