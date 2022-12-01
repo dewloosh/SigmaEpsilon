@@ -15,7 +15,9 @@ from .preproc import assemble_load_vector
 from .tr import tr_element_matrices_bulk, tr_nodal_loads_bulk
 from .dyn import effective_modal_masses, Rayleigh_quotient
 from .pointdata import flatten_pd
-from .constants import DEFAULT_DIRICHLET_PENALTY, DEFAULT_MASS_PENALTY_RATIO
+from .constants import (DEFAULT_DIRICHLET_PENALTY, 
+                        DEFAULT_MASS_PENALTY_RATIO)
+
 
 __all__ = ['Structure']
 
@@ -31,11 +33,13 @@ class Structure(Wrapper):
     essential_penalty : float, Optional
         Penalty parameter for the Courant penalty function used to enforce
         Dirichlet (essential) boundary conditions. If not provided, a default
-        value of `sigmaepsilon.solid.fem.constants.DEFAULT_DIRICHLET_PENALTY` is used.
+        value of `sigmaepsilon.solid.fem.constants.DEFAULT_DIRICHLET_PENALTY` 
+        is used.
     mass_penalty_ratio : float, Optional
         Ratio of the penalty factors applied to the stiffness matrix (pK) and
         the mass matrix (pM) as pM/pK. If not provided, a default
-        value of `sigmaepsilon.solid.fem.constants.DEFAULT_MASS_PENALTY_RATIO` is used.
+        value of `sigmaepsilon.solid.fem.constants.DEFAULT_MASS_PENALTY_RATIO` 
+        is used.
 
     """
 
@@ -484,7 +488,8 @@ class Structure(Wrapper):
         f_bulk = assemble_load_vector(f_bulk, gnum, nX)
         f = f_nodal + f_bulk
         # penalize essential boundary conditions
-        Kp = mesh.essential_penalty_matrix()
+        penalty = self._essential_penalty
+        Kp = mesh.essential_penalty_matrix(penalty=penalty)
         fp = np.zeros(f.shape[0], dtype=float)
         for c in self.constraints:
             Kpc, fpc = c.assemble(mesh)
@@ -517,13 +522,16 @@ class Structure(Wrapper):
         dcm = mesh.direction_cosine_matrix(target='global')
         K_bulk = tr_element_matrices_bulk(K_bulk, dcm)
         # penalize essential boundary conditions
-        Kp = mesh.essential_penalty_matrix()
+        penalty = self._essential_penalty
+        Kp = mesh.essential_penalty_matrix(penalty=penalty)
         for c in self.constraints:
             Kpc, _ = c.assemble(mesh)
             Kp += Kpc
         # create solver
+        penalty_ratio = self._mass_penalty_ratio
         self._dynamic_solver_ = DynamicSolver(K_bulk, Kp.tocoo(), M_sparse, gnum,
-                                              regular=False, mesh=mesh)
+                                              regular=False, mesh=mesh,
+                                              penalty_ratio=penalty_ratio)
         return self
 
     def _preproc_linstat_(self, *args, **kwargs) -> 'Structure':

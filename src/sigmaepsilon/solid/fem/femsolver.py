@@ -181,16 +181,16 @@ class DynamicSolver(Solver):
     Parameters
     ----------
     K : numpy.ndarray
-        The stiffness matrix indense format.
+        The stiffness matrix in dense format.
 
     P : scipy.sparse.spmatrix
         The penalty stiffness matrix of the essential boundary conditions.
 
+    M : scipy.sparse.spmatrix
+        The mass matrix. Default is None.
+
     gnum : numpy.ndarray
         Global dof numbering as 2d integer array.
-
-    M : scipy.sparse.spmatrix, Optional
-        The mass matrix. Default is None.
 
     regular : bool, Optional
         If True it is assumed that the structure is regular. Default is True.
@@ -198,6 +198,12 @@ class DynamicSolver(Solver):
     mesh : FemMesh, Optional
         The mesh the input data belongs to. Only necessary for
         nonlinear calculations. Default is None.
+        
+    penalty_ratio : float, Optional
+        Ratio of the penalty factors applied to the stiffness matrix (pK) and
+        the mass matrix (pM) as pM/pK. If not provided, a default
+        value of `sigmaepsilon.solid.fem.constants.DEFAULT_MASS_PENALTY_RATIO` 
+        is used.
 
     """
 
