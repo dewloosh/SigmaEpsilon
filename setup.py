@@ -55,8 +55,8 @@ setup(
     download_url = _download_url,
 	packages=find_packages(where='src'),
 	classifiers=[
-        'Development Status :: 4 - Beta',     
-        'License :: OSI Approved :: MIT License',   
+        'Development Status :: 4 - Beta',
+        'License :: Free for non-commercial use',   
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
