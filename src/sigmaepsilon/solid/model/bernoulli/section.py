@@ -224,6 +224,16 @@ class BeamSection(Wrapper):
     else with keyword arguments:
 
     >>> section = BeamSection('CHS', d=1.0, t=0.1, n=64)
+    
+    Plot a section with Matplotlib using 6-noded triangles:
+    
+    >>> import matplotlib.pyplot as plt
+    >>> from dewloosh.mpl import triplot
+    >>> section = BeamSection('CHS', d=1.0, t=0.3, n=32, 
+    >>>                       mesh_params=dict(n_max=20))
+    >>> triobj = section.trimesh(T6=True).to_triobj()
+    >>> fig, ax = plt.subplots(figsize=(4, 2))
+    >>> triplot(triobj, fig=fig, ax=ax, lw=0.1)
 
     """
 
