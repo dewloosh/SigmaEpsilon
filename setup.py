@@ -62,7 +62,10 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",   
         'Programming Language :: Python :: 3 :: Only',
-		'Operating System :: OS Independent'
+		'Operating System :: OS Independent',
+        "Topic :: Scientific/Engineering",
+        "Topic :: Scientific/Engineering :: Mathematics",
+        "Topic :: Scientific/Engineering :: Physics"
     ],                                      
     python_requires='>=3.6, <3.11',                             
     package_dir={'':'src'},     
