@@ -20,11 +20,12 @@ from ..postproc import (approx_element_solution_bulk, calculate_external_forces_
                         calculate_internal_forces_bulk, explode_kinetic_strains,
                         element_dof_solution_bulk)
 from ..utils import (topo_to_gnum, expand_coeff_matrix_bulk, element_dofmap_bulk,
-                     topo_to_gnum_jagged)
+                     topo_to_gnum_jagged, expand_load_vector_bulk)
 from ..tr import (nodal_dcm, nodal_dcm_bulk, element_dcm, element_dcm_bulk,
                   tr_element_vectors_bulk_multi as tr1d, tr_element_matrices_bulk as tr2d)
 from .utils import (stiffness_matrix_bulk2, strain_displacement_matrix_bulk2,
-                    unit_strain_load_vector_bulk, strain_load_vector_bulk, mass_matrix_bulk)
+                    unit_strain_load_vector_bulk, strain_load_vector_bulk, 
+                    mass_matrix_bulk, body_load_vector_bulk)
 from .metaelem import FemMixin
 from .celldata import CellData
 
@@ -183,8 +184,9 @@ class FiniteElement(CellData, FemMixin):
         points, rng = to_range_1d(
             points, source=rng, target=[-1, 1]).flatten(), [-1, 1]
 
-        N = self.shape_function_matrix(points, rng=rng)
-        # N -> (nP, nDOF, nDOF * nNODE)
+        N = self.shape_function_matrix(points, rng=rng)[cells]
+        # N -> (nP, nDOF, nDOF * nNODE) for constant metric
+        # N -> (nE, nP, nDOF, nDOF * nNODE) for variable metric
         values = ascont(np.swapaxes(values, 1, 2))  # (nE, nRHS, nEVAB)
         values = approx_element_solution_bulk(values, N)
         # values -> (nE, nRHS, nP, nDOF)
@@ -867,17 +869,27 @@ class FiniteElement(CellData, FemMixin):
             else:
                 raise e
         finally:
-            values = atleastnd(values, 3, back=True)  # (nE, nSTRE=4, nRHS)
+            values = atleastnd(values, 3, back=True)  # (nE, nSTRE, nRHS)
 
         dbkey = self._dbkey_strain_displacement_matrix_
         if dbkey not in self.db.fields:
             self.elastic_stiffness_matrix(squeeze=False, transform=False)
-        B = self.db[dbkey].to_numpy()  # (nE, nSTRE=4, nNODE * nDOF=6)
-        D = self.model_stiffness_matrix()  # (nE, nSTRE=4, nSTRE=4)
+        B = self.db[dbkey].to_numpy()  # (nE, nSTRE, nNODE * nDOF)
+        D = self.model_stiffness_matrix()  # (nE, nSTRE, nSTRE)
         BTD = unit_strain_load_vector_bulk(D, B)
-        values = np.swapaxes(values, 1, 2)  # (nE, nRHS, nSTRE=4)
+        values = np.swapaxes(values, 1, 2)  # (nE, nRHS, nSTRE)
         nodal_loads = strain_load_vector_bulk(BTD, ascont(values))
 
+        # if the model has more dofs than the element
+        nDOFN = self.container.NDOFN
+        dofmap = self.__class__.dofmap
+        if len(dofmap) < nDOFN:
+            nE, _, nRHS = nodal_loads.shape
+            nX = nDOFN * self.NNODE
+            f_ = np.zeros((nE, nX, nRHS), dtype=float)
+            dofmap = element_dofmap_bulk(dofmap, nDOFN, self.NNODE)
+            nodal_loads = expand_load_vector_bulk(nodal_loads, f_, dofmap)
+        
         if transform:
             nodal_loads = self._transform_nodal_loads_(nodal_loads)
             # (nE, nRHS, nNE * nDOF) -> (nE, nNE * nDOF, nRHS)
@@ -969,6 +981,16 @@ class FiniteElement(CellData, FemMixin):
         values = ascont(values)
         nodal_loads = self.integrate_body_loads(values)
         # (nE, nNE * nDOF, nRHS)
+        
+        # if the model has more dofs than the element
+        nDOFN = self.container.NDOFN
+        dofmap = self.__class__.dofmap
+        if len(dofmap) < nDOFN:
+            nE, _, nRHS = nodal_loads.shape
+            nX = nDOFN * self.NNODE
+            f_ = np.zeros((nE, nX, nRHS), dtype=float)
+            dofmap = element_dofmap_bulk(dofmap, nDOFN, self.NNODE)
+            nodal_loads = expand_load_vector_bulk(nodal_loads, f_, dofmap)
 
         if transform:
             nodal_loads = self._transform_nodal_loads_(nodal_loads)
@@ -980,6 +1002,54 @@ class FiniteElement(CellData, FemMixin):
             # (nX, nRHS)
 
         return nodal_loads
+    
+    def integrate_body_loads(self, values: ndarray) -> ndarray:
+        """
+        Returns nodal representation of body loads.
+
+        Parameters
+        ----------
+        values : numpy.ndarray
+            2d or 3d numpy float array of material densities of shape
+            (nE, nNE * nDOF, nRHS) or (nE, nNE * nDOF), where nE, nNE, 
+            nDOF and nRHS stand for the number of elements, nodes per 
+            element, number of degrees of freedom and number of load cases 
+            respectively.
+
+        Returns
+        -------
+        numpy.ndarray
+            An array of shape (nE, nNE * 6, nRHS).
+
+        Notes
+        -----
+        1) The returned array is always 3 dimensional, even if there is only one 
+        load case.
+        2) Reimplemented for elements with Hermite basis functions.
+
+        See Also
+        --------
+        :func:`~body_load_vector_bulk`
+
+        """
+        values = atleastnd(values, 3, back=True)
+        # (nE, nNE * nDOF, nRHS) -> (nE, nRHS, nNE * nDOF)
+        values = np.swapaxes(values, 1, 2)
+        values = ascont(values)
+        qpos, qweights = self.quadrature['full']
+        N = self.shape_function_matrix(qpos)
+        # (nP, nDOF, nDOF * nNE)
+        dshp = self.shape_function_derivatives(qpos)  
+        # (nP, nNE==nSHP, nD)
+        ecoords = self.local_coordinates()
+        # (nE, nNE, nD)
+        jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)  
+        # (nE, nP, nD, nD)
+        djac = self.jacobian(jac=jac)  
+        # (nE, nG)  
+        f = body_load_vector_bulk(values, N, djac, qweights)
+        # (nE, nEVAB, nRHS)
+        return f
 
     def condensate(self):
         """

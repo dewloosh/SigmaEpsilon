@@ -26,12 +26,12 @@ class OptRes(NamedTuple):
 
 
 def maximize_stiffness(structure: Structure, *args,
-                       miniter:int=50, maxiter:int=100, 
-                       p_start:float=1.0, p_stop:float=3.0, p_inc:float=0.2, p_step:int=5, 
-                       q:float=0.5, vfrac:float=0.6, dtol:float=0.1, r_max:float=None, 
-                       penalty:float=None, nostop:bool=True, 
-                       neighbours:Iterable=None, guess:Iterable=None, i_start:int=0, 
-                       **kwargs) -> OptRes:
+                       miniter:int=50, maxiter:int=100, p_start:float=1.0, 
+                       p_stop:float=3.0, p_inc:float=0.2, p_step:int=5, 
+                       q:float=0.5, vfrac:float=0.6, dtol:float=0.1, 
+                       r_max:float=None, penalty:float=None, nostop:bool=True, 
+                       neighbours:Iterable=None, guess:Iterable=None, 
+                       i_start:int=0, **kwargs) -> OptRes:
     """
     Performs topology optimization using an Optimality Criteria Method to
     maximize the stiffness of a structure, given a design space and a certain 
@@ -54,57 +54,43 @@ def maximize_stiffness(structure: Structure, *args,
     ----------
     structure : Structure
         An instance of sigmaepsilon.solid.fem.Structure.
-        
     miniter : int, Optional
         The minimum number of iterations to perform. Default is 50.
-        
     maxiter : int, Optional
         The maximum number of iterations to perform. Default is 100.
-    
     p_start : float, Optional
         Initial value of the penalty on intermediate densities. Default is 1.
-        
     p_stop : float, Optional
         Final value of the penalty on intermediate densities. Default is 3.
-        
     p_inc : float, Optional
         Increment of the penalty on intermediate densities. Default is 0.2
-        
     p_step : int, Optional
         The number of interations it takes to increment the penalty on intermediate
         density values. Default is 5.
-        
     q : float, Optional
-        Smoothing factor. Defaul is 0.5.
-        
+        Smoothing factor. Defaul is 0.5. 
     vfrac : float, Optional
         The fraction of available volume and the volume of the virgin structure.
-        Default is 0.6.
-        
+        Default is 0.6. 
     dtol : float, Optional
         This controls the maximum change in the value of a design variable. 
-        Default is 0.1.
-        
+        Default is 0.1. 
     r_max : float, Optional
         Radius for filtering. Default is None.
-        
     neighbours : float, Optional
         The neighbours of the cells for filtering. Default is None.
-    
     guess : numpy.ndarray, Optional
         A guess on the solution. This parameter can be used to contiue
-        a workflow. Default is None.
-        
+        a workflow. Default is None.  
     i_start : int, Optional
         Starting index for iterations. This parameter can be used to contiue
         a workflow. Default is 0.
-        
     summary : bool, Optional
         If True, a short summary about execution time and the number of iterations
         is available after execution as `structure.summary['topopt']`. Default is False.
-        
     nostop : bool, Optional
-        If True, iterations neglect all stopping criteria, those govern by mniniter and maxiter included.
+        If True, iterations neglect all stopping criteria, those govern by 
+        mniniter and maxiter included.
         Default is False.
     
     Yields

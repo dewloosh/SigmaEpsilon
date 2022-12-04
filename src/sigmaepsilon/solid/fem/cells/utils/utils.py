@@ -537,3 +537,50 @@ def stresses_at_cells_nodes(C: np.ndarray, dofsol1d: np.ndarray,
         res[:, i, :] = stresses_at_point_bulk(C, dofsol1d, ecoords, gnum,
                                               dshp[i], sdmfnc)
     return res
+
+
+@njit(nogil=True, parallel=True, fastmath=True, cache=__cache)
+def body_load_vector_bulk(values: ndarray, N: ndarray, djac: ndarray, 
+                          w: ndarray) -> ndarray:
+    """
+    Integrates the body loads to give an equivalent nodal load vector.
+    This implementation is general in the context of Lagrange elements.
+    
+    Input values are assumed to be evaluated at multiple (nG) Gauss points of
+    multiple (nE) cells.
+    
+    Parameters
+    ----------
+    values: numpy.ndarray
+        A 3d float array of body loads of shape (nE, nRHS, nNE * nDOF)
+        for several elements and load cases.
+    
+    N: numpy.ndarray
+        A float array of shape (nG, nDOF, nDOF * nNODE), being the shape 
+        function matrix evaluated at a nG number of Gauss points of several 
+        cells.
+
+    djac: numpy.ndarray
+        A float array of shape (nE, nG), being jacobian determinants
+        evaluated at the Gauss points of several cells.
+        
+    w: numpy.ndarray
+        1d float array of weights for an nG number of Gauss points,
+        with a shape of (nG,).
+
+    Returns
+    -------
+    numpy.ndarray
+        3d float array of shape (nE, nNE * nDOF, nRHS).
+
+    """
+    nE, nRHS, nEVAB = values.shape
+    nG = N.shape[0]
+    res = np.zeros((nE, nEVAB, nRHS), dtype=values.dtype)
+    for iG in range(nG):
+        NTN = N[iG].T @ N[iG]
+        for iRHS in prange(nRHS):
+            for iE in prange(nE):
+                res[iE, :, iRHS] += NTN @ values[iE, iRHS, :] * \
+                    djac[iE, iG] * w[iG]
+    return res

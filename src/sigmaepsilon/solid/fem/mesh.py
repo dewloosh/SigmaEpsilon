@@ -433,6 +433,11 @@ class FemMesh(PolyData, ABC_FemMesh):
     def nodal_dof_solution(self, *, flatten: bool = False, **kw) -> ndarray:
         """
         Returns nodal degree of freedom solution.
+        
+        Parameters
+        ----------
+        flatten: bool, Optional
+            If True, nodal results are flattened. Default is False.
 
         Returns
         -------
@@ -451,102 +456,147 @@ class FemMesh(PolyData, ABC_FemMesh):
 
     @squeeze(True)
     def cell_dof_solution(self, *args, cells:Iterable=None, 
-                          flatten: bool = True, squeeze: bool = True, 
-                          **kwargs) -> ndarray:
+                          flatten: bool = True, **kwargs) -> ndarray:
         """
-        Returns degree of freedom solution for each cell.
+        Returns degree of freedom solution for each cell or just some.
+
+        Parameters
+        ----------
+        cells : Iterable, Optional
+            Indices of cells for which data is requested.
+            If specified, the result is a dictionary with the indices
+            being the keys. Default is None.
+        flatten: bool, Optional
+            If True, nodal results are flattened. Default is True.
+        squeeze : bool, Optional
+            If True, dummy axes are removed. This may be relevant if you
+            only have one load case or element, but still want to have
+            results with predictable shape. Default is True.
 
         Returns
         -------
-        numpy.ndarray
+        numpy.ndarray or dict
+            A dictionary if cell indices are specified, or a NumPy array.
 
         """
-        blocks = self.cellblocks(inclusive=True)
         kwargs.update(flatten=flatten, squeeze=False)
         if cells is not None:
-            kwargs.update(cells=cells)
-            res = {}
-            def foo(b:FemMesh): 
-                return b.cd.dof_solution(*args, **kwargs)
-            [res.update(d) for d in map(foo, blocks)]
-            return res
+            def f(b:FemMesh, cid:int): 
+                return b.cd.dof_solution(*args, cells=[cid], **kwargs)[0]
+            boc = self.blocks_of_cells(i=cells)
+            return {cid : f(boc[cid], cid) for cid in cells}
         else:
+            blocks = self.cellblocks(inclusive=True)
             def foo(b:FemMesh): 
                 return b.cd.dof_solution(*args, **kwargs)
             return np.vstack(list(map(foo, blocks)))
 
     @squeeze(True)
-    def strains(self, *args, cells:Iterable=None, squeeze: bool = True,
-                **kwargs) -> ndarray:
+    def strains(self, *args, cells:Iterable=None, **kwargs) -> ndarray:
         """
-        Returns strains for each cell.
+        Returns strains for each cell or just some.
+
+        Parameters
+        ----------
+        cells : Iterable, Optional
+            Indices of cells for which data is requested.
+            If specified, the result is a dictionary with the indices
+            being the keys. Default is None.
+        flatten: bool, Optional
+            If True, nodal results are flattened. Default is True.
+        squeeze : bool, Optional
+            If True, dummy axes are removed. This may be relevant if you
+            only have one load case or element, but still want to have
+            results with predictable shape. Default is True.
 
         Returns
         -------
-        numpy.ndarray
+        numpy.ndarray or dict
+            A dictionary if cell indices are specified, or a NumPy array.
 
         """
-        blocks = self.cellblocks(inclusive=True)
         kwargs.update(squeeze=False)
         if cells is not None:
-            kwargs.update(cells=cells)
-            res = {}
-            def foo(b:FemMesh): 
-                return b.cd.strains(*args, **kwargs)
-            [res.update(d) for d in map(foo, blocks)]
-            return res
+            def f(b:FemMesh, cid:int): 
+                return b.cd.strains(*args, cells=[cid], **kwargs)[0]
+            boc = self.blocks_of_cells(i=cells)
+            return {cid : f(boc[cid], cid) for cid in cells}
         else:
+            blocks = self.cellblocks(inclusive=True)
             def foo(b:FemMesh): 
                 return b.cd.strains(*args, **kwargs)
             return np.vstack(list(map(foo, blocks)))
 
     @squeeze(True)
     def external_forces(self, *args, cells:Iterable=None, 
-                        flatten: bool = True, squeeze: bool = True, 
-                        **kwargs) -> ndarray:
+                        flatten: bool = True, **kwargs) -> ndarray:
         """
-        Returns external forces for each cell.
+        Returns external forces for each cell or just some.
+
+        Parameters
+        ----------
+        cells : Iterable, Optional
+            Indices of cells for which external forces are requested.
+            If specified, the result is a dictionary with the indices
+            being the keys. Default is None.
+        flatten: bool, Optional
+            If True, nodal results are flattened. Default is True.
+        squeeze : bool, Optional
+            If True, dummy axes are removed. This may be relevant if you
+            only have one load case or element, but still want to have
+            results with predictable shape. Default is True.
 
         Returns
         -------
-        numpy.ndarray
+        numpy.ndarray or dict
+            A dictionary if cell indices are specified, or a NumPy array.
 
         """
-        blocks = self.cellblocks(inclusive=True)
         kwargs.update(flatten=flatten, squeeze=False)
         if cells is not None:
-            kwargs.update(cells=cells)
-            res = {}
-            def foo(b:FemMesh): 
-                return b.cd.external_forces(*args, **kwargs)
-            [res.update(d) for d in map(foo, blocks)]
-            return res
+            def f(b:FemMesh, cid:int): 
+                return b.cd.external_forces(*args, cells=[cid], **kwargs)[0]
+            boc = self.blocks_of_cells(i=cells)
+            return {cid : f(boc[cid], cid) for cid in cells}
         else:
+            blocks = self.cellblocks(inclusive=True)
             def foo(b:FemMesh): 
                 return b.cd.external_forces(*args, **kwargs)
             return np.vstack(list(map(foo, blocks)))
 
     @squeeze(True)
-    def internal_forces(self, *args, cells:Iterable=None, flatten: bool = True,
-                        squeeze: bool = True, **kwargs) -> ndarray:
+    def internal_forces(self, *args, cells:Iterable=None, 
+                        flatten: bool = True, **kwargs) -> ndarray:
         """
-        Returns internal forces for each cell.
+        Returns internal forces for each cell or just some.
+        
+        Parameters
+        ----------
+        cells : Iterable, Optional
+            Indices of cells for which internal forces are requested.
+            If specified, the result is a dictionary with the indices
+            being the keys. Default is None.
+        flatten: bool, Optional
+            If True, nodal results are flattened. Default is True.
+        squeeze : bool, Optional
+            If True, dummy axes are removed. This may be relevant if you
+            only have one load case or element, but still want to have
+            results with predictable shape. Default is True.
 
         Returns
         -------
-        numpy.ndarray
+        numpy.ndarray or dict
+            A dictionary if cell indices are specified, or a NumPy array.
 
         """
-        blocks = self.cellblocks(inclusive=True)
         kwargs.update(flatten=flatten, squeeze=False)
         if cells is not None:
-            kwargs.update(cells=cells)
-            res = {}
-            def foo(b:FemMesh): 
-                return b.cd.internal_forces(*args, **kwargs)
-            [res.update(d) for d in map(foo, blocks)]
-            return res
+            def f(b:FemMesh, cid:int): 
+                return b.cd.internal_forces(*args, cells=[cid], **kwargs)[0]
+            boc = self.blocks_of_cells(i=cells)
+            return {cid : f(boc[cid], cid) for cid in cells}
         else:
+            blocks = self.cellblocks(inclusive=True)
             def foo(b:FemMesh): 
                 return b.cd.internal_forces(*args, **kwargs)
             return np.vstack(list(map(foo, blocks)))

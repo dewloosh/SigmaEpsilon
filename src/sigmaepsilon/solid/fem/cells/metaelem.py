@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
-from polymesh.abc import ABCMeta_MeshData
+from polymesh.abcdata import ABCMeta_MeshData
 from polymesh.cell import PolyCell
 
 from ..dofmap import DOF

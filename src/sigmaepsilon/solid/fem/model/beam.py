@@ -160,13 +160,9 @@ class BernoulliBeam(Solid):
         if isinstance(values, np.ndarray):
             dens = values
         else:
-            dens = self.db.density
-        try:
-            areas = self.areas()
-        except Exception:
-            areas = np.ones_like(dens)
+            dens = self.density
         lengths = self.lengths()
-        return areas * dens * lengths
+        return dens * lengths
 
     def mass(self, *args, **kwargs) -> float:
         """
