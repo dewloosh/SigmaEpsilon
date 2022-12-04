@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 from neumann.numint import GaussPoints as Gauss
-
 from polymesh.cells import H8 as HexaHedron
 
 from ..model.solid3d import Solid3d
-
 from .elem import FiniteElement
 from .metaelem import ABCFiniteElement as ABC
 
@@ -20,3 +18,5 @@ class H8(ABC, Solid3d, HexaHedron, FiniteElement):
         },
         'reduced': Gauss(1, 1, 1)
     }
+    
+    

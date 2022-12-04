@@ -177,7 +177,7 @@ def _shape_function_matrix_L_multi(shp: ndarray):
 
 
 @njit(nogil=True, parallel=True, fastmath=True, cache=__cache__)
-def body_load_vector_bulk(values: ndarray, shp: ndarray, gdshp: ndarray,
+def body_load_vector_Bernoulli(values: ndarray, shp: ndarray, gdshp: ndarray,
                           djac: ndarray, w: ndarray):
     """
     Input values are assumed to be evaluated at multiple (nG) Gauss points of

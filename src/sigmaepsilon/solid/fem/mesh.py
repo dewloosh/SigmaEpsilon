@@ -456,8 +456,7 @@ class FemMesh(PolyData, ABC_FemMesh):
 
     @squeeze(True)
     def cell_dof_solution(self, *args, cells:Iterable=None, 
-                          flatten: bool = True, squeeze: bool = True, 
-                          **kwargs) -> ndarray:
+                          flatten: bool = True, **kwargs) -> ndarray:
         """
         Returns degree of freedom solution for each cell or just some.
 
@@ -485,11 +484,7 @@ class FemMesh(PolyData, ABC_FemMesh):
             def f(b:FemMesh, cid:int): 
                 return b.cd.dof_solution(*args, cells=[cid], **kwargs)[0]
             boc = self.blocks_of_cells(i=cells)
-            res = {cid : f(boc[cid], cid) for cid in cells}
-            if squeeze:
-                return {cid : np.squeeze(v) for cid, v in res.items()}
-            else:
-                return res
+            return {cid : f(boc[cid], cid) for cid in cells}
         else:
             blocks = self.cellblocks(inclusive=True)
             def foo(b:FemMesh): 
@@ -497,8 +492,7 @@ class FemMesh(PolyData, ABC_FemMesh):
             return np.vstack(list(map(foo, blocks)))
 
     @squeeze(True)
-    def strains(self, *args, cells:Iterable=None, squeeze: bool = True,
-                **kwargs) -> ndarray:
+    def strains(self, *args, cells:Iterable=None, **kwargs) -> ndarray:
         """
         Returns strains for each cell or just some.
 
@@ -526,11 +520,7 @@ class FemMesh(PolyData, ABC_FemMesh):
             def f(b:FemMesh, cid:int): 
                 return b.cd.strains(*args, cells=[cid], **kwargs)[0]
             boc = self.blocks_of_cells(i=cells)
-            res = {cid : f(boc[cid], cid) for cid in cells}
-            if squeeze:
-                return {cid : np.squeeze(v) for cid, v in res.items()}
-            else:
-                return res
+            return {cid : f(boc[cid], cid) for cid in cells}
         else:
             blocks = self.cellblocks(inclusive=True)
             def foo(b:FemMesh): 
@@ -539,8 +529,7 @@ class FemMesh(PolyData, ABC_FemMesh):
 
     @squeeze(True)
     def external_forces(self, *args, cells:Iterable=None, 
-                        flatten: bool = True, squeeze: bool = True, 
-                        **kwargs) -> ndarray:
+                        flatten: bool = True, **kwargs) -> ndarray:
         """
         Returns external forces for each cell or just some.
 
@@ -568,11 +557,7 @@ class FemMesh(PolyData, ABC_FemMesh):
             def f(b:FemMesh, cid:int): 
                 return b.cd.external_forces(*args, cells=[cid], **kwargs)[0]
             boc = self.blocks_of_cells(i=cells)
-            res = {cid : f(boc[cid], cid) for cid in cells}
-            if squeeze:
-                return {cid : np.squeeze(v) for cid, v in res.items()}
-            else:
-                return res
+            return {cid : f(boc[cid], cid) for cid in cells}
         else:
             blocks = self.cellblocks(inclusive=True)
             def foo(b:FemMesh): 
@@ -581,8 +566,7 @@ class FemMesh(PolyData, ABC_FemMesh):
 
     @squeeze(True)
     def internal_forces(self, *args, cells:Iterable=None, 
-                        flatten: bool = True, squeeze: bool = True, 
-                        **kwargs) -> ndarray:
+                        flatten: bool = True, **kwargs) -> ndarray:
         """
         Returns internal forces for each cell or just some.
         
@@ -610,11 +594,7 @@ class FemMesh(PolyData, ABC_FemMesh):
             def f(b:FemMesh, cid:int): 
                 return b.cd.internal_forces(*args, cells=[cid], **kwargs)[0]
             boc = self.blocks_of_cells(i=cells)
-            res = {cid : f(boc[cid], cid) for cid in cells}
-            if squeeze:
-                return {cid : np.squeeze(v) for cid, v in res.items()}
-            else:
-                return res
+            return {cid : f(boc[cid], cid) for cid in cells}
         else:
             blocks = self.cellblocks(inclusive=True)
             def foo(b:FemMesh): 

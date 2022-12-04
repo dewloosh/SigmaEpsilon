@@ -8,7 +8,7 @@ from neumann.array import atleast1d, atleastnd, ascont
 from neumann.utils import to_range_1d
 
 from .utils.bernoulli import (
-    shape_function_matrix_bulk, body_load_vector_bulk,
+    shape_function_matrix_bulk, body_load_vector_Bernoulli,
     global_shape_function_derivatives_bulk as gdshpB,
     lumped_mass_matrices_direct as dlump
 )
@@ -269,7 +269,8 @@ class BernoulliBase(BernoulliBeam):
         djac = self.jacobian(jac=jac)  # (nE, nG)
         gdshp = self.shape_function_derivatives(jac=jac, dshp=dshp)  
         # (nE, nP, nNE=2, nDOF=6, 3)
-        return body_load_vector_bulk(values, shp, gdshp, djac, qweights).astype(float)
+        return body_load_vector_Bernoulli(values, shp, gdshp, 
+                                          djac, qweights).astype(float)
 
     def _postproc_local_internal_forces_(self, values: np.ndarray, *args,
                                          rng, points, cells, dofsol, **kwargs):

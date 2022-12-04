@@ -420,7 +420,8 @@ def element_dofmap_bulk(dofmap: ndarray, nDOF: int, nNODE: int):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def expand_coeff_matrix_bulk(A_in: ndarray, A_out: ndarray, dofmap: ndarray):
+def expand_coeff_matrix_bulk(A_in: ndarray, A_out: ndarray, 
+                             dofmap: ndarray) -> ndarray:
     """
     Expands the local coefficient matrices into a standard form. It is used
     for instance when the total matrix is built up of smaller parts.
@@ -431,6 +432,19 @@ def expand_coeff_matrix_bulk(A_in: ndarray, A_out: ndarray, dofmap: ndarray):
         for j in prange(nDOF):
             A_out[:, dofmap[i], dofmap[j]] = A_in[:, i, j]
     return A_out
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def expand_load_vector_bulk(v_in: ndarray, v_out: ndarray, 
+                            dofmap: ndarray) -> ndarray:
+    """
+    Expands the local load vectors into a standard form.
+
+    """
+    nDOF = dofmap.shape[0]
+    for i in prange(nDOF):
+        v_out[:, dofmap[i], :] = v_in[:, i, :]
+    return v_out
 
 
 @njit(nogil=True, parallel=True, cache=__cache)

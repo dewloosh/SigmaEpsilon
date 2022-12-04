@@ -165,11 +165,10 @@ def nodal_load_vector(values: ndarray, **kwargs) -> ndarray:
     return f
 
 
-@njit(nogil=True, parallel=True, fastmath=True, cache=__cache)
+@njit(nogil=True, parallel=False, fastmath=True, cache=__cache)
 def assemble_load_vector(values: ndarray, gnum: ndarray, N: int = -1):
     """
-    Returns global dof numbering based on element 
-    topology data.
+    Returns global dof numbering based on element topology data.
 
     Parameters
     ----------
@@ -177,10 +176,8 @@ def assemble_load_vector(values: ndarray, gnum: ndarray, N: int = -1):
         3d numpy float array of shape (nE, nEVAB, nRHS), representing 
         element data. The length of the second axis matches the the number of
         degrees of freedom per cell.
-
     gnum : int
         Global indices of local degrees of freedoms of elements.
-
     N : int, Optional
         The number of total unknowns in the system. Must be specified correcly,
         to get a vector the same size of the global system. If not specified, it is
@@ -200,7 +197,7 @@ def assemble_load_vector(values: ndarray, gnum: ndarray, N: int = -1):
     res = np.zeros((N, nRHS), dtype=values.dtype)
     for i in range(nE):
         for j in range(nEVAB):
-            for k in prange(nRHS):
+            for k in range(nRHS):
                 res[gnum[i, j], k] += values[i, j, k]
     return res
 
