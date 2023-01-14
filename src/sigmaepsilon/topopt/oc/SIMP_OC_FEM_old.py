@@ -5,7 +5,7 @@ from sigmaepsilon.solid.fem.utils import irows_icols_bulk
 from sigmaepsilon.solid.fem.mesh import FemMesh
 from sigmaepsilon.solid.fem.imap import (index_mappers, box_spmatrix,
                                          box_rhs, box_dof_numbering)
-from neumann.array import matrixform
+from neumann import matrixform
 from neumann.linalg.sparse.csr import csr_matrix as csr
 
 from scipy.sparse import coo_matrix as npcoo, csc_matrix as npcsc

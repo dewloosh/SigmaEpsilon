@@ -4,7 +4,7 @@ from numpy import swapaxes as swap
 from typing import Union, Iterable
 
 from linkeddeepdict import LinkedDeepDict
-from neumann.array import atleast1d
+from neumann import atleast1d
 
 from .problem import NavierProblem
 from .loads import LoadGroup, NavierLoadError

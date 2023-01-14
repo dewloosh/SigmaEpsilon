@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 from typing import Callable
 from numba import njit, prange
 import numpy as np
 from numpy import ndarray
 
-from neumann.linalg import ReferenceFrame, inv
-
+from neumann.linalg import inv
 from polymesh.utils import cells_coords
 
 __cache = True
@@ -35,11 +33,9 @@ def loc_to_glob(pcoord: np.ndarray, gcoords: np.ndarray, shpfnc: Callable):
         2D array containing coordinates for every node of a single element.
             nNE : number of vertices of the element
             nD : number of dimensions of the model space
-
     pcoords : (nDP, ) ndarray
         1D array of parametric coordinates for a single point.
             nDP : number of dimensions of the parametric space
-
     shpfnc : Callable
         A function that evaluates shape function values at a point,
         specified with parametric coordinates.
@@ -72,12 +68,10 @@ def loc_to_glob_bulk(pcoords: np.ndarray, gcoords: np.ndarray,
             nE : number of elements
             nNE : number of vertices of the element
             nD : number of dimensions of the model space
-
     pcoords : (nP, nDP) ndarray
         2D array of parametric coordinates for several points.
             nP : number of points
             nDP : number of dimensions of the parametric space
-
     shpfnc : Callable
         A function that evaluates shape function values at a point,
         specified with parametric coordinates.
@@ -109,7 +103,8 @@ def loc_to_glob_bulk(pcoords: np.ndarray, gcoords: np.ndarray,
 @njit(nogil=True, parallel=True, cache=__cache)
 def glob_to_loc(coord: np.ndarray, gcoords: np.ndarray, lcoords: np.ndarray,
                 monomsfnc: Callable):
-    """Global to local transformation for a single point and cell.
+    """
+    Global to local transformation for a single point and cell.
 
     Returns local coordinates of a point in an element, provided the global
     corodinates of the points of the element, an array of global
@@ -122,16 +117,13 @@ def glob_to_loc(coord: np.ndarray, gcoords: np.ndarray, lcoords: np.ndarray,
         2D array containing coordinates for every node of a single element.
             nNE : number of vertices of the element
             nD : number of dimensions of the model space
-
     coord : (nD, ) ndarray
         1D array of global coordinates for a single point.
             nD : number of dimensions of the model space
-
     lcoords : (nNE, nDP) ndarray
         2D array of local coordinates of the parametric element.
             nNE : number of vertices of the element
             nDP : number of dimensions of the parametric space
-
     monomsfnc : Callable
         A function that evaluates monomials of the shape functions at a point
         specified with parametric coordinates.
@@ -158,7 +150,8 @@ def glob_to_loc(coord: np.ndarray, gcoords: np.ndarray, lcoords: np.ndarray,
 @njit(nogil=True, parallel=True, cache=__cache)
 def glob_to_loc_bulk(coords: np.ndarray, gcoords: np.ndarray,
                      lcoords: np.ndarray, monomsfnc: Callable):
-    """Global to local transformation for multiple cells and points.
+    """
+    Global to local transformation for multiple cells and points.
 
     Returns local coordinates of a point in an element, provided the global
     corodinates of the points of the element, an array of global
@@ -172,17 +165,14 @@ def glob_to_loc_bulk(coords: np.ndarray, gcoords: np.ndarray,
             nE : number of elements
             nNE : number of vertices of the element
             nD : number of dimensions of the model space
-
     coords : (nP, nD) ndarray
         2D array of global coordinates for several points.
             nP : number of points
             nD : number of dimensions of the model space
-
     lcoords : (nNE, nDP) ndarray
         2D array of local coordinates of the parametric element.
             nNE : number of vertices of the element
             nDP : number of dimensions of the parametric space
-
     monomsfnc : Callable
         A function that evaluates monomials of the shape functions at a point
         specified with parametric coordinates.
@@ -219,7 +209,8 @@ def glob_to_loc_bulk(coords: np.ndarray, gcoords: np.ndarray,
 @njit(nogil=True, cache=__cache)
 def pip(coord: np.ndarray, gcoords: np.ndarray, lcoords: np.ndarray,
         monomsfnc: Callable, shpfnc: Callable, tol=1e-12):
-    """Point-in-polygon test for a single cell and point.
+    """
+    Point-in-polygon test for a single cell and point.
 
     Performs the point-in-poligon test for a single point and cell.
     False means that the point is outside of the cell, True means the point
@@ -231,20 +222,16 @@ def pip(coord: np.ndarray, gcoords: np.ndarray, lcoords: np.ndarray,
         2D array containing coordinates for every node of a single element.
             nNE : number of vertices of the element
             nD : number of dimensions of the model space
-
     coord : (nD, ) ndarray
         1D array of global coordinates for a single point.
             nD : number of dimensions of the model space
-
     lcoords : (nNE, nDP) ndarray
         2D array of local coordinates of the parametric element.
             nNE : number of vertices of the element
             nDP : number of dimensions of the parametric space
-
     monomsfnc : Callable
         A function that evaluates monomials of the shape functions at a point
         specified with parametric coordinates.
-
     shpfnc : Callable
         A function that evaluates shape function values at a point,
         specified with parametric coordinates.
@@ -390,17 +377,13 @@ def mass_matrix_bulk(N: ndarray, dens: ndarray, weights: ndarray,
     N : 4d numpy float array
         Evaluations of the shape function matrix according to the type of 
         the element for every cell and Gauss point.
-
     dens : 1d numpy float array
         1d float array of densities of several elements.
-
     weights : 1d numpy float array
         Array of weighting factors for the cells (eg. areas, volumes) with 
         the same shape as 'dens'. 
-
     w : 1d numpy float array
         Weights of the Gauss points
-
     djac : 2d numpy float array
         Jacobi determinants for every element and Gauss point.
 
@@ -554,16 +537,13 @@ def body_load_vector_bulk(values: ndarray, N: ndarray, djac: ndarray,
     values: numpy.ndarray
         A 3d float array of body loads of shape (nE, nRHS, nNE * nDOF)
         for several elements and load cases.
-    
     N: numpy.ndarray
         A float array of shape (nG, nDOF, nDOF * nNODE), being the shape 
         function matrix evaluated at a nG number of Gauss points of several 
         cells.
-
     djac: numpy.ndarray
         A float array of shape (nE, nG), being jacobian determinants
         evaluated at the Gauss points of several cells.
-        
     w: numpy.ndarray
         1d float array of weights for an nG number of Gauss points,
         with a shape of (nG,).

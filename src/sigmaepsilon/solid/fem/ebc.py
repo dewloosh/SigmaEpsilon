@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from typing import Iterable, Union, Tuple
 from abc import abstractmethod
 import numpy as np
@@ -6,8 +5,8 @@ from numpy import ndarray, concatenate as conc
 from scipy.sparse import coo_matrix as coo
 
 from neumann.linalg import ReferenceFrame
-from neumann.array import atleast1d, atleast2d, repeat_diagonal_2d
-from polymesh.space import index_of_closest_point
+from neumann import atleast1d, atleast2d, repeat_diagonal_2d
+from polymesh.utils.space import index_of_closest_point
 
 from .mesh import FemMesh
 from .dofmap import DOF
@@ -28,38 +27,101 @@ class EssentialBoundaryCondition:
         ...
 
 
+class NodeToNode(EssentialBoundaryCondition):
+    """
+    Constrains relative motion of nodes.
+    
+    Parameters
+    ----------
+    imap : Union[dict, ndarray, list]
+        An iterable to describe pairs of nodes.
+    penalty : float, Optional
+        Penalty value for Courant-type penalization. 
+        Default is `~sigmaepsilon.solid.fem.constants.DEFAULT_DIRICHLET_PENALTY`.
+        
+    Example
+    -------
+    The following lines tie together all DOFs of nodes 1 with node 2 and node 3 with 4.
+    The large penalty value means that the tied nodes should exhibit the same displacements.
+    
+    >>> from sigmaepsilon.solid.fem import NodeToNode
+    >>> n2n = NodeToNode([[1, 2], [3, 4]], penalty=1e12)
+    
+    To tie only DOFs 'UX' and 'ROTZ':
+    
+    >>> n2n = NodeToNode([[1, 2], [3, 4]], dofs=['UX', 'ROTZ'], penalty=1e12)
+    """
+    
+    def __init__(self, imap:Union[dict, ndarray, list], dofs : Iterable=None,
+                 penalty : float = DEFAULT_DIRICHLET_PENALTY):
+        self.imap = imap
+        self.penalty=penalty
+        if isinstance(dofs, Iterable):
+            self.dofmap = DOF.dofmap(dofs)
+        else:
+            self.dofmap = None
+        
+    def assemble(self, mesh:FemMesh) -> Tuple[coo, ndarray]:
+        """
+        Returns the penalty stiffness matrix and the penalty load matrix.
+        """
+        imap = None
+        if isinstance(self.imap, dict):
+            imap = np.stack([list(self.imap.keys()), list(self.imap.values())], axis=1)
+        else:
+            imap = np.array(self.imap).astype(int)
+        nI = len(imap)
+        nDOF = mesh.NDOFN
+        nN = len(mesh.pointdata)
+        N = nDOF * nN
+        if self.dofmap is None:
+            dmap = np.arange(nDOF)
+        else:
+            dmap = self.dofmap
+        dmap = np.array(dmap, dtype=int)
+        nF = nI * len(dmap)
+        fdata = np.tile([1, -1], nF)
+        frows = np.repeat(np.arange(nF), 2)
+        #i_source = np.stack([dmap + (i_ * nDOF) for i_ in imap[:, 0]], axis=0)
+        #i_target = np.stack([dmap + (i_ * nDOF) for i_ in imap[:, 1]], axis=0)
+        #fcols = np.stack([i_source.flatten(), i_target.flatten()], axis=1).flatten()
+        i_source = conc([dmap + (i_ * nDOF) for i_ in imap[:, 0]])
+        i_target = conc([dmap + (i_ * nDOF) for i_ in imap[:, 1]])
+        fcols = np.stack([i_source, i_target], axis=1).flatten()
+        factors = coo((fdata, (frows, fcols)), shape=(nF, N))
+        Kp = self.penalty * (factors.T @ factors)
+        fp = np.zeros(N, dtype=float)
+        Kp.eliminate_zeros()
+        return Kp, fp
+
+
 class NodalSupport(EssentialBoundaryCondition):
     """
     A class to handle nodal supports.
     
     Parameters
     ----------
+    data : dict, Optional
+        Dictionary to define the prescribed values. Valid keys are
+        'UX', 'UY', 'UZ', 'ROTX', 'ROTY', 'ROTZ'. Default is None.
     x : Iterable, Optional
         An iterable expressing the location of one or more points. 
         Use it if you don't know the index of the point of application 
         in advance. Default is None.
-        
     i : Iterable[int] or int, Optional
         The index of one or more points of in a pointcloud. 
         Default is None.
-            
-    values : dict, Optional
-        Dictionary to define the prescribed values. Valid keys are
-        'UX', 'UY', 'UZ', 'ROTX', 'ROTY', 'ROTZ'. Default is None.
-    
     frame : numpy.ndarray or ReferenceFrame, Optional
         Use it do define inclined supports. If it is a NumPy array, 
         it must be a 3x3 matrix representing a set of orthonormal base 
         vectors. A None value means that the prescribed values are understood
         in the frame of the mesh the constraints are applied to. 
         Default is None.
-        
     penalty : float, Optional
         Penalty value for Courant-type penalization. 
-        Default is `sigmaepsilon.solid.fem.constants.DEFAULT_DIRICHLET_PENALTY`.
-        
+        Default is `~sigmaepsilon.solid.fem.constants.DEFAULT_DIRICHLET_PENALTY`.
     **kwargs : dict, Optional
-        Keyword arguments used for elementwise definition of 'values'.
+        Keyword arguments used for elementwise definition of 'data'.
         
     Examples
     --------
@@ -83,7 +145,12 @@ class NodalSupport(EssentialBoundaryCondition):
     
     >>> support = NodalSupport(x=[[0, 0, 0], [L, 0, 0]], 
     >>>                        UX = 0., UY=0., penalty=1e12)
-            
+    
+    The prescribed values can also be provided with a dictionary as the first
+    positional argument:
+    
+    >>> support = NodalSupport({'UX' : 0., 'UY' : 0.}, x=[[0, 0, 0], [L, 0, 0]],  
+    >>>                         penalty=1e12)
     """
 
     def __init__(self, data:dict=None, *, x: Iterable = None, i: int = None,

@@ -10,7 +10,7 @@ from time import time
 #from concurrent.futures import ThreadPoolExecutor
 
 from linkeddeepdict import LinkedDeepDict
-from neumann.array import matrixform
+from neumann import matrixform
 
 from .imap import unbox_lhs
 from .preproc import fem_coeff_matrix_coo, box_fem_data_sparse

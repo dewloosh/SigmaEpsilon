@@ -6,7 +6,7 @@ from numba import njit, prange
 from numpy import ndarray, sin, cos, ndarray, pi as PI
 
 from neumann import squeeze
-from neumann.array import atleast1d, atleast2d, atleast3d
+from neumann import atleast1d, atleast2d, atleast3d
 
 
 @squeeze(True)

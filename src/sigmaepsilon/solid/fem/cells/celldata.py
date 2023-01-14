@@ -3,8 +3,8 @@ import numpy as np
 from numpy import ndarray
 
 from dewloosh.core import classproperty
-from neumann.array import atleastnd
-from neumann.array import atleastnd
+from neumann import atleastnd
+from neumann import atleastnd
 from neumann.logical import is1dfloatarray, isboolarray
 from polymesh.celldata import CellData as MeshCellData
 
@@ -19,36 +19,28 @@ class CellData(MeshCellData):
     ----------
     activity : numpy.ndarray, Optional
         1d boolean array describing the activity of the elements.
-        
     density : numpy.ndarray, Optional
         1d float array describing the density as mass per unit volume if areas
         (or thickness) are provided, mass per unit length (or area) othervise. 
         See the Notes. Default is None.
-        
     loads : numpy.ndarray, Optional
         3d (for a single load case) or 4d (for multiple load cases) float 
         array of body loads for each load component of each node of each cell.
         Default is None.
-        
     strain_loads : numpy.ndarray, Optional
         2d float array of body strain loads for each cell and strain 
         component. Default is None.
-        
     t or thickness : numpy.ndarray, Optional
         1d float array of thicknesses. Only for 2d cells.
         Default is None.
-            
     fixity : numpy.ndarray, Optional
         3d boolean array of element fixity. Default is None.
-        
     areas : numpy.ndarray, Optional
         1d float array of cross sectional areas. Only for 1d cells.
         Default is None.
-        
     fields : dict, Optional
         Every value of this dictionary is added to the dataset. 
         Default is `None`.
-        
     **kwargs : dict, Optional
         For every key and value pair where the value is a numpy array
         with a matching shape (has entries for all points), the key

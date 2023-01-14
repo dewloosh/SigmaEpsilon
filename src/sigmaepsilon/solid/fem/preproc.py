@@ -9,7 +9,7 @@ from numba import njit, prange
 
 from neumann import squeeze
 from neumann.logical import isintegerarray, isfloatarray, isboolarray
-from neumann.array import bool_to_float, atleastnd, matrixform
+from neumann import bool_to_float, atleastnd, matrixform
 from neumann.linalg.sparse.utils import lower_spdata, upper_spdata
 
 from .utils import (nodes2d_to_dofs1d, irows_icols_bulk,

@@ -7,7 +7,7 @@ import numpy as np
 from numpy import ndarray
 
 from neumann import squeeze
-from neumann.array import atleast3d
+from neumann import atleast3d
 
 from polymesh import PolyData
 
@@ -601,16 +601,7 @@ class FemMesh(PolyData, ABC_FemMesh):
                 return b.cd.internal_forces(*args, **kwargs)
             return np.vstack(list(map(foo, blocks)))
 
-    def stresses_at_cells_nodes(self, *args, **kwargs) -> ndarray:
-        """
-        Returns stresses at all nodes of all cells.
-        """
-        blocks = self.cellblocks(inclusive=True)
-        def foo(b:FemMesh): 
-            return b.cd.stresses_at_nodes(*args, **kwargs)
-        return np.vstack(list(map(foo, blocks)))
-
-    def stresses_at_centers(self, *args, **kwargs) -> ndarray:
+    def internal_forces_at_centers(self, *args, **kwargs) -> ndarray:
         """
         Returns stresses at the centers of all cells.
 

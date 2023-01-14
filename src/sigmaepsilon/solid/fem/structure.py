@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from typing import Tuple, Union, List
 
 import numpy as np
@@ -7,9 +6,10 @@ from scipy.sparse import coo_matrix
 
 from dewloosh.core.wrapping import Wrapper
 from neumann import squeeze
-from neumann.array import repeat
+from neumann import repeat
 
 from .mesh import FemMesh
+from .ebc import EssentialBoundaryCondition as EBC
 from .femsolver import StaticSolver, DynamicSolver
 from .preproc import assemble_load_vector
 from .tr import tr_element_matrices_bulk, tr_nodal_loads_bulk
@@ -33,14 +33,13 @@ class Structure(Wrapper):
     essential_penalty : float, Optional
         Penalty parameter for the Courant penalty function used to enforce
         Dirichlet (essential) boundary conditions. If not provided, a default
-        value of `sigmaepsilon.solid.fem.constants.DEFAULT_DIRICHLET_PENALTY` 
+        value of `~sigmaepsilon.solid.fem.constants.DEFAULT_DIRICHLET_PENALTY` 
         is used.
     mass_penalty_ratio : float, Optional
         Ratio of the penalty factors applied to the stiffness matrix (pK) and
         the mass matrix (pM) as pM/pK. If not provided, a default
-        value of `sigmaepsilon.solid.fem.constants.DEFAULT_MASS_PENALTY_RATIO` 
+        value of `~sigmaepsilon.solid.fem.constants.DEFAULT_MASS_PENALTY_RATIO` 
         is used.
-
     """
 
     def __init__(self, 
@@ -83,11 +82,11 @@ class Structure(Wrapper):
         self._wrapped = value
 
     @property
-    def constraints(self) -> List:
+    def constraints(self) -> List[EBC]:
         """
         Returns the constraints of the structure as a list. Note that
         this is an independent mechanism from the 'fixity' data defined
-        for the :class:`sigmaepsilon.solid.fem.pointdata.PointData` object 
+        for the :class:`~sigmaepsilon.solid.fem.pointdata.PointData` object 
         of the underlying mesh instance.
         """
         if self._constraints is None:
@@ -98,6 +97,19 @@ class Structure(Wrapper):
         """
         Clears up the constraints. This does not affect the 'fixity'
         definitions in the pointdata of the mesh.
+        
+        Note
+        ----
+        You can also use the `clear` method of the constrain list to get
+        rid of previously defined constraints.
+        
+        Examples
+        --------
+        >>> structure.clear_constraints()
+        
+        is equivalent to
+        
+        >>> structure.constraints.clear()
         """
         self._constraints = None
 
@@ -112,7 +124,6 @@ class Structure(Wrapper):
         ----------
         flatten : bool, Optional
             If True, the result is a 1d array, otherwise 2d. Default is False.
-
         squeeze : bool, Optional
             Calls :func:`numpy.squeeze` on the result. This might be relevant for 
             single element operations, or if there is only one load case, etc. Then,
@@ -279,7 +290,6 @@ class Structure(Wrapper):
         ----------
         flatten : bool, Optional
             If True, the result is a 1d array, otherwise 2d. Default is False.
-
         squeeze : bool, Optional
             Calls :func:`numpy.squeeze` on the result. This might be relevant for 
             single element operations, or if there is only one load case, etc. Then,
@@ -295,8 +305,8 @@ class Structure(Wrapper):
 
     @flatten_pd(False)
     @squeeze(True)
-    def reaction_forces(self, *args, flatten: bool = False, squeeze: bool = True,
-                        store: str = None, **kwargs) -> ndarray:
+    def reaction_forces(self, *, flatten: bool = False, squeeze: bool = True,
+                        **kwargs) -> ndarray:
         """
         Returns the vector of reaction forces.
 
@@ -304,7 +314,6 @@ class Structure(Wrapper):
         ----------
         flatten : bool, Optional
             If True, the result is a 1d array, otherwise 2d. Default is False.
-
         squeeze : bool, Optional
             Calls :func:`numpy.squeeze` on the result. This might be relevant for 
             single element operations, or if there is only one load case, etc. Then,
@@ -330,13 +339,11 @@ class Structure(Wrapper):
         ----------
         flatten : bool, Optional
             If True, the result is a 1d array, otherwise 2d. Default is False.
-
         squeeze : bool, Optional
             Calls :func:`numpy.squeeze` on the result. This might be relevant for 
             single element operations, or if there is only one load case, etc. Then,
             it depends on the enviroment if a standard shape is desirable to maintain 
             or not. Default is True.
-
         """
         return self.mesh.pd.forces
 
@@ -405,7 +412,7 @@ class Structure(Wrapper):
 
         See also
         --------
-        :func:`sigmaepslion.solid.fem.dyn.effective_modal_masses`
+        :func:`~sigmaepslion.solid.fem.dyn.effective_modal_masses`
 
         """
         M_sparse = self.mesh.mass_matrix(penalize=False)
@@ -414,15 +421,15 @@ class Structure(Wrapper):
     def Rayleigh_quotient(self, u: ndarray, f: ndarray) -> ndarray:
         """
         Returns Rayleigh's quotient. The call forwards all parameters
-        to :func:`sigmaepslion.solid.fem.dyn.Rayleigh_quotient`, see the 
+        to :func:`~sigmaepslion.solid.fem.dyn.Rayleigh_quotient`, see the 
         docs there for the details. If there are no actions specified, 
         the function feeds it with the results from a linear elastic solution.
 
         Parameters
         ----------
-        u : ndarray
+        u : numpy.ndarray
             One or more nodal displacement vectors.
-        f : ndarray
+        f : numpy.ndarray
             One or more nodal load vectors.
 
         Returns
@@ -432,8 +439,7 @@ class Structure(Wrapper):
 
         See also
         --------
-        :func:`sigmaepslion.solid.fem.dyn.Rayleigh_quotient`
-
+        :func:`~sigmaepslion.solid.fem.dyn.Rayleigh_quotient`
         """
         M_sparse = self.mass_matrix(penalize=True)
         return Rayleigh_quotient(M_sparse, u, f=f)
@@ -447,7 +453,6 @@ class Structure(Wrapper):
         See also
         --------
         :func:`preprocess`
-
         """
         blocks = self.mesh.cellblocks(inclusive=True)
         for block in blocks:

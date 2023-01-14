@@ -4,7 +4,7 @@ from numpy import ndarray
 from numba import njit, prange
 
 from polymesh.cells import T3 as Triangle
-from polymesh.tri.triutils import lcoords_tri, shp_tri_loc
+from polymesh.utils.tri import lcoords_tri, shp_tri_loc
 
 from ..model.membrane import Membrane
 

@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
 import unittest
 from neumann.linalg import Vector, linspace
-from neumann.array import repeat, minmax
+from neumann import repeat, minmax
 from neumann.logical import allclose
 from polymesh.space import StandardFrame, PointCloud
-from polymesh.space.utils import (index_of_closest_point,
+from polymesh.utils.space import (index_of_closest_point,
                                   index_of_furthest_point)
-from polymesh.topo.tr import L2_to_L3
+from polymesh.utils.topology import L2_to_L3
 from sigmaepsilon.solid.fem.cells import B2, B3
 from sigmaepsilon.solid import (Structure, LineMesh, PointData)
 from sigmaepsilon.solid.fem import NodalSupport

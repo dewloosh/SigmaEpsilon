@@ -4,7 +4,7 @@ from numba import njit
 
 from neumann.numint import GaussPoints as Gauss
 
-from polymesh.tri.triutils import area_tri_bulk
+from polymesh.utils.tri import area_tri_bulk
 from polymesh.utils import cells_coords
 from polymesh.cells import Q4 as Quadrilateral
 

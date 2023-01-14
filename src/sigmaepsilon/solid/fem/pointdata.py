@@ -4,7 +4,7 @@ from typing import Callable
 import numpy as np
 from numpy import ndarray
 
-from neumann.array import atleastnd
+from neumann import atleastnd
 from polymesh.pointdata import PointData as MeshPointData
 
 

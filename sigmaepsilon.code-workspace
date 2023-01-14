@@ -20,6 +20,12 @@
 		},
 		{
 			"path": "../LinkedDeepDict"
+		},
+		{
+			"path": "../dewloosh-plotly"
+		},
+		{
+			"path": "../dewloosh-mpl"
 		}
 	],
 	"settings": {}

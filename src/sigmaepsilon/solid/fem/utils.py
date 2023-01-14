@@ -7,7 +7,7 @@ from numpy import ndarray
 from scipy.sparse import spmatrix
 
 from neumann.linalg.sparse.csr import csr_matrix as csr
-from neumann.array import find1d, flatten2dC
+from neumann import find1d, flatten2dC
 
 __cache = True
 

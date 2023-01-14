@@ -15,14 +15,11 @@ from sectionproperties.analysis.section import Section
 
 from dewloosh.core.wrapping import Wrapper
 from linkeddeepdict.tools.kwargtools import getallfromkwargs
-
-from neumann.array import atleastnd, ascont
+from neumann import atleastnd, ascont
 from polymesh.utils import centralize
-from polymesh.tri.trimesh import TriMesh
-from polymesh.tet.tetmesh import TetMesh
-from polymesh.topo.tr import T6_to_T3
-from polymesh.topo import detach_mesh_bulk
-
+from polymesh.trimesh import TriMesh
+from polymesh.tetmesh import TetMesh
+from polymesh.utils.topology import T6_to_T3, detach_mesh_bulk
 from .utils import calc_beam_stresses_2d, calc_beam_stresses_4d
 
 

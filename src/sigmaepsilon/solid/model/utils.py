@@ -5,7 +5,7 @@ from numpy.linalg import inv
 from numba import njit, prange
 
 from neumann.linalg import linspace1d
-from neumann.array import clip1d
+from neumann import clip1d
 
 __cache = True
 

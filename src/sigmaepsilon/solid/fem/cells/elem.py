@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from collections import namedtuple
 from typing import Iterable, Union
 from functools import partial
@@ -9,10 +8,10 @@ from numpy import ndarray
 
 from neumann import squeeze, config
 from neumann.linalg import ReferenceFrame
-from neumann.array import atleast1d, atleastnd, ascont
+from neumann import atleast1d, atleastnd, ascont
 from neumann.utils import to_range_1d
 from neumann.linalg.sparse.jaggedarray import JaggedArray
-from polymesh.topo import TopologyArray
+from polymesh import TopologyArray
 
 from ..preproc import (fem_coeff_matrix_coo, assert_min_diagonals_bulk,
                        assemble_load_vector, condensate_Kf_bulk, condensate_M_bulk)
@@ -60,10 +59,8 @@ class FiniteElement(CellData, FemMixin):
         ----------
         source : str or ReferenceFrame, Optional
             A source frame. Default is None.
-
         target : str or ReferenceFrame, Optional
             A target frame. Default is None.
-
         N : int, Optional
             Number of points. If not specified, the number of nodes is inferred from 
             the class of the instance the function is called upon. Default is None.
@@ -132,15 +129,13 @@ class FiniteElement(CellData, FemMixin):
                 are wrt. the range [0, 1], unless specified otherwise with the 'rng' 
                 parameter. If not provided, results are returned for the nodes of the 
                 selected elements. Default is None.
-
         rng : Iterable, Optional
-            Range where the points of evauation are understood. Default is [0, 1].
-
+            Range where the points of evauation are understood. Only for 1d cells.
+            Default is [0, 1].
         cells : int or Iterable[int], Optional
             Indices of cells. If not provided, results are returned for all cells.
             If cells are provided, the function returns a dictionary, with the cell 
             indices being the keys. Default is None.
-
         target : str or ReferenceFrame, Optional
             Reference frame for the output. A value of None or 'local' refers to the 
             local system of the cells. Default is 'local'.
@@ -159,6 +154,7 @@ class FiniteElement(CellData, FemMixin):
             assert len(cells) > 0, "Length of cells is zero!"
         else:
             cells = np.s_[:]
+        nDIM = self.NDIM
 
         dofsol = self.pointdata.dofsol
         dofsol = atleastnd(dofsol, 3, back=True)
@@ -173,18 +169,24 @@ class FiniteElement(CellData, FemMixin):
         values = tr1d(values, dcm)
         values = ascont(np.swapaxes(values, 1, 2))  # (nE, nEVAB, nRHS)
 
-        if points is None:
-            points = np.array(self.lcoords()).flatten()
-            rng = [-1, 1]
+        if nDIM == 1:
+            if points is None:
+                points = np.array(self.lcoords()).flatten()
+                rng = [-1, 1]
+            else:
+                rng = np.array([0, 1]) if rng is None else np.array(rng)
         else:
-            rng = np.array([0, 1]) if rng is None else np.array(rng)
+            if points is None:
+                points = np.array(self.lcoords())
 
         # approximate at points
         # values -> (nE, nEVAB, nRHS)
-        points, rng = to_range_1d(
-            points, source=rng, target=[-1, 1]).flatten(), [-1, 1]
-
-        N = self.shape_function_matrix(points, rng=rng)[cells]
+        if nDIM == 1:
+            points, rng = to_range_1d(
+                points, source=rng, target=[-1, 1]).flatten(), [-1, 1]
+            N = self.shape_function_matrix(points, rng=rng)[cells]
+        else:
+            N = self.shape_function_matrix(points)[cells]
         # N -> (nP, nDOF, nDOF * nNODE) for constant metric
         # N -> (nE, nP, nDOF, nDOF * nNODE) for variable metric
         values = ascont(np.swapaxes(values, 1, 2))  # (nE, nRHS, nEVAB)
@@ -225,11 +227,9 @@ class FiniteElement(CellData, FemMixin):
                 are wrt. the range [0, 1], unless specified otherwise with the 'rng' 
                 parameter. If not provided, results are returned for the nodes of the 
                 selected elements. Default is None.
-
         rng : Iterable, Optional
             Range where the points of evauation are understood. Only for 1d cells.
             Default is [0, 1].
-
         cells : int or Iterable[int], Optional
             Indices of cells. If not provided, results are returned for all cells.
             Default is None.
@@ -250,16 +250,24 @@ class FiniteElement(CellData, FemMixin):
             assert len(cells) > 0, "Length of cells is zero!"
         else:
             cells = np.s_[:]
+        nDIM = self.NDIM
 
-        if points is None:
-            points = np.array(self.lcoords()).flatten()
-            rng = [-1, 1]
+        if nDIM==1:
+            if points is None:
+                points = np.array(self.lcoords()).flatten()
+                rng = [-1, 1]
+            else:
+                rng = np.array([0, 1]) if rng is None else np.array(rng)
+            points, rng = to_range_1d(
+                points, source=rng, target=[-1, 1]).flatten(), [-1, 1]
         else:
-            rng = np.array([0, 1]) if rng is None else np.array(rng)
-        points, rng = to_range_1d(
-            points, source=rng, target=[-1, 1]).flatten(), [-1, 1]
-
-        dshp = self.shape_function_derivatives(points, rng=rng)[cells]
+            if points is None:
+                points = np.array(self.lcoords())
+        
+        if nDIM==1:
+            dshp = self.shape_function_derivatives(points, rng=rng)[cells]
+        else:
+            dshp = self.shape_function_derivatives(points)[cells]
         ecoords = self.local_coordinates()[cells]
         jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)
         # (nE, nP, nD, nD)
@@ -429,20 +437,16 @@ class FiniteElement(CellData, FemMixin):
                 are wrt. the range [0, 1], unless specified otherwise with the 'rng' 
                 parameter. If not provided, results are returned for the nodes of the 
                 selected elements. Default is None.
-
         rng : Iterable[float], Optional
-            Range where the points of evauation are understood. 
-            Only for 1d cells. Default is [0, 1].
-
+            Range where the points of evauation are understood. Only for 1d cells. 
+            Default is [0, 1].
         cells : int or Iterable[int], Optional
             Indices of cells. If not provided, results are returned for all cells.
             Default is None.
-
         target : Union[str, ReferenceFrame], Optional
             The target frame. Default is 'local', which means that the returned forces 
             should be understood as coordinates of generalized vectors in the local 
             frames of the cells.
-
         flatten: bool, Optional
             Determines the shape of the resulting array. Default is True.
 
@@ -463,21 +467,28 @@ class FiniteElement(CellData, FemMixin):
             assert len(cells) > 0, "Length of cells is zero!"
         else:
             cells = np.s_[:]
+        nDIM = self.NDIM
 
-        if points is None:
-            points = np.array(self.lcoords()).flatten()
+        if nDIM == 1:
+            if points is None:
+                points = np.array(self.lcoords()).flatten()
+                rng = [-1, 1]
+            else:
+                if isinstance(points, Iterable):
+                    points = np.array(points)
+                rng = np.array([0, 1]) if rng is None else np.array(rng)
+            points= to_range_1d(points, source=rng, target=[-1, 1]).flatten()
             rng = [-1, 1]
         else:
-            if isinstance(points, Iterable):
-                points = np.array(points)
-            rng = np.array([0, 1]) if rng is None else np.array(rng)
+            if points is None:
+                points = np.array(self.lcoords())
 
         # approximate at points
         # values : (nE, nEVAB, nRHS)
-        points, rng = to_range_1d(
-            points, source=rng, target=[-1, 1]).flatten(), [-1, 1]
-
-        dshp = self.shape_function_derivatives(points, rng=rng)[cells]
+        if nDIM == 1:
+            dshp = self.shape_function_derivatives(points, rng=rng)[cells]
+        else:
+            dshp = self.shape_function_derivatives(points)[cells]
         ecoords = self.local_coordinates()[cells]
         jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)
         # jac -> (nE, nP, 1, 1)
@@ -553,11 +564,9 @@ class FiniteElement(CellData, FemMixin):
         transform : bool, Optional
             If True, local matrices are transformed to the global frame.
             Default is True.
-
         minval : float, Optional
             A minimal value for the entries in the main diagonal. Set it to a negative
             value to diable its effect. Default is 1e-12.
-
         sparse : bool, Optional
             If True, the returned object is a sparse COO matrix. Default is False.
 
@@ -607,7 +616,7 @@ class FiniteElement(CellData, FemMixin):
             _topo = kwargs.get('_topo', self.topology().to_numpy())
             _frames = kwargs.get('_frames', self.frames)
             if _frames is not None:
-                ec = self.local_coordinates(_topo=_topo, frames=_frames)
+                ec = self.local_coordinates(target=_frames)
             else:
                 ec = self.points_of_cells(topo=_topo)
             dbkey = self._dbkey_strain_displacement_matrix_
@@ -665,11 +674,9 @@ class FiniteElement(CellData, FemMixin):
         transform : bool, Optional
             If True, local matrices are transformed to the global frame.
             Default is True.
-
         minval : float, Optional
             A minimal value for the entries in the main diagonal. Set it to a 
             negative value to diable its effect. Default is 1e-12.
-
         sparse : bool, Optional
             If True, the returned object is a sparse COO matrix. 
             Default is False.
@@ -720,9 +727,9 @@ class FiniteElement(CellData, FemMixin):
         _ecoords = kwargs.get('_ecoords', None)
         if _ecoords is None:
             if frames is not None:
-                _ecoords = self.local_coordinates(_topo=_topo, frames=frames)
+                _ecoords = self.local_coordinates(target=frames)
             else:
-                _ecoords = self.points_of_cells(topo=_topo)
+                _ecoords = self.points_of_cells()
         if isinstance(values, np.ndarray):
             _dens = values
         else:
@@ -777,7 +784,6 @@ class FiniteElement(CellData, FemMixin):
         assemble : bool, Optional
             If True, the values are returned with a matching shape to the total
             system. Default is False.
-
         transform : bool, Optional
             If True, local matrices are transformed to the global frame.
             Default is True.
@@ -826,16 +832,13 @@ class FiniteElement(CellData, FemMixin):
             Strain loads as a 3d numpy array of shape (nE, nS, nRHS). 
             The array must contain values for all cells (nE), strain 
             components (nS) and load cases (nL).
-
         return_zeroes : bool, Optional
             Controls what happends if there are no strain loads provided.
             If True, a zero array is retured with correct shape, otherwise None. 
             Default is False.
-
         transform : bool, Optional
             If True, local matrices are transformed to the global frame.
             Default is True.
-
         assemble : bool, Optional
             If True, the values are returned with a matching shape to the total
             system. Default is False.
@@ -913,20 +916,16 @@ class FiniteElement(CellData, FemMixin):
         ----------
         values : numpy.ndarray, Optional
             Body load values for all cells. Default is None.
-
         constant : bool, Optional
             Set this True if the input represents a constant load.
             Default is False.
-
         assemble : bool, Optional
             If True, the values are returned with a matching shape to the total
             system. Default is False.
-
         return_zeroes : bool, Optional
             Controls what happends if there are no strain loads provided.
             If True, a zero array is retured with correct shape, otherwise None. 
             Default is False.
-
         transform : bool, Optional
             If True, local matrices are transformed to the global frame.
             Default is True.

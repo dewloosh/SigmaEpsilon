@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 import numpy as np
 from numpy import ndarray
 from typing import Union, Callable, Iterable
 
 from neumann import squeeze
-from neumann.array import atleast1d, atleastnd, ascont
+from neumann import atleast1d, atleastnd, ascont
 from neumann.utils import to_range_1d
 
 from .utils.bernoulli import (
@@ -88,11 +87,9 @@ class BernoulliBase(BernoulliBeam):
         ----------
         pcoords : float or Iterable[float]
             Locations of the evaluation points.
-
         rng : Iterable, Optional
             The range in which the locations ought to be understood, 
-            typically [0, 1] or [-1, 1]. Default is [0, 1].
-            
+            typically [0, 1] or [-1, 1]. Default is [0, 1].     
         lengths : Iterable, Optional
             The lengths of the beams in the block. Default is None.
 
@@ -130,19 +127,15 @@ class BernoulliBase(BernoulliBeam):
         ----------
         pcoords : float or Iterable, Optional
             Locations of the evaluation points. Default is None.
-
         rng : Iterable, Optional
             The range in which the locations ought to be understood, 
             typically [0, 1] or [-1, 1]. Only if 'pcoords' is provided.
             Default is [0, 1].
-            
         lengths : Iterable, Optional
             The lengths of the beams in the block. Default is None.
-
         jac : Iterable, Optional
             The jacobian matrix as a float array of shape (nE, nP, 1, 1), evaluated for 
             each point in each cell. Default is None.
-
         dshp : Iterable, Optional
             The shape function derivatives of the master element as a float array of 
             shape (nP, nNE, nDOF=6, 3), evaluated at a 'nP' number of points. 
@@ -189,7 +182,6 @@ class BernoulliBase(BernoulliBeam):
         ----------
         pcoords : float or Iterable
             Locations of the evaluation points.
-
         rng : Iterable, Optional
             The range in which the locations ought to be understood, 
             typically [0, 1] or [-1, 1]. Default is [0, 1].
@@ -304,11 +296,9 @@ class BernoulliBase(BernoulliBeam):
         alpha : float, Optional
             A nonnegative parameter, typically between 0 and 1/50 (see notes).
             Default is 1/20.
-
         lumping : str, Optional
             Controls lumping. Currently only direct lumping is available.
             Default is 'direct'.
-
         frmt : str, Optional
             Possible values are 'full' or 'diag'. If 'diag', only the diagonal
             entries are returned, if 'full' a full matrix is returned.

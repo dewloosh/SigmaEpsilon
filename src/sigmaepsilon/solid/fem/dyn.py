@@ -4,7 +4,7 @@ from numpy import ndarray
 from scipy.sparse import spmatrix
 import numpy as np
 
-from neumann.array import atleast2d
+from neumann import atleast2d
 
 from .linsolve import solve_standard_form
 from .eigsolve import eig_sparse, eig_dense

@@ -10,7 +10,7 @@ from numba import njit, prange
 from numba.typed import Dict as nbDict
 from numba import types as nbtypes
 
-from neumann.array import minmax
+from neumann import minmax
 
 __cache = True
 

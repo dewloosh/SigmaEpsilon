@@ -3,7 +3,7 @@ import numpy as np
 from numpy import sin, cos, ndarray, pi as PI
 from numba import njit, prange
 from typing import Iterable, Union
-from neumann.array import (atleast1d, atleast2d, atleast3d,
+from neumann import (atleast1d, atleast2d, atleast3d,
                            atleast4d, itype_of_ftype)
 
 

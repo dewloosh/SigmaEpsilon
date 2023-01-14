@@ -2,19 +2,19 @@
 import numpy as np
 from numpy import ndarray
 from scipy.sparse import spmatrix
-from scipy.sparse import coo_matrix as npcoo, csc_matrix as npcsc
+from scipy.sparse import (coo_matrix as npcoo, 
+                          csc_matrix as npcsc)
 import time
-from typing import Union
 
 from linkeddeepdict import LinkedDeepDict
-from neumann.array import atleast2d, matrixform
+from neumann import matrixform
 
 from .mesh import FemMesh
 from .utils import irows_icols_bulk
 from .linsolve import solve_standard_form, unbox_lhs
-from .imap import index_mappers, box_spmatrix, box_rhs, box_dof_numbering
-from .dyn import (effective_modal_masses, Rayleigh_quotient,
-                  natural_circular_frequencies)
+from .imap import( index_mappers, box_spmatrix, box_rhs, 
+                  box_dof_numbering)
+from .dyn import natural_circular_frequencies
 from .constants import DEFAULT_MASS_PENALTY_RATIO
 
 

@@ -11,7 +11,7 @@ from .metaelem import ABCFiniteElement as ABC
 
 class H27(ABC, Solid3d, HexaHedron, FiniteElement):
 
-    qrule = 'selective'
+    qrule = 'full'
     quadrature = {
         'full': Gauss(3, 3, 3),
         'selective': {

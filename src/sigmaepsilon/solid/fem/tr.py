@@ -2,7 +2,7 @@ import numpy as np
 from numpy import ndarray
 from numba import njit, prange
 
-from neumann.array import repeat_diagonal_2d, ascont
+from neumann import repeat_diagonal_2d, ascont
 
 __cache = True
 

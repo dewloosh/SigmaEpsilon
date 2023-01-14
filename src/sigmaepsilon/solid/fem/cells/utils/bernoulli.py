@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import numpy as np
 from numpy import ndarray
 from numba import njit, prange
@@ -22,7 +21,6 @@ def global_shape_function_derivatives_bulk(dshp: ndarray, jac: ndarray):
         A float array of shape (nE, nP, nNE, nDOF=6, 3)
         Derivatives of shape functions evaluated at an 'nP' number of 
         points of an 'nE' number of elements.
-
     jac: numpy.ndarray 
         A float array of shape (nE, nP, 1, 1)
         Jacobi determinants, evaluated for each point in each cell.
@@ -57,7 +55,6 @@ def shape_function_matrix(shp: ndarray, gdshp: ndarray):
     shp: numpy.ndarray
         A float array of shape (nNE, nDOF=6), being the shape 
         functions evaluated at a single point of a single cell.
-
     gdshp: numpy.ndarray
         A float array of shape (nNE, nDOF=6, 3), being derivatives of shape 
         functions evaluated at a single point of a single cell.
@@ -113,7 +110,6 @@ def shape_function_matrix_bulk(shp: ndarray, gdshp: ndarray):
     shp: numpy.ndarray
         A float array of shape (nE, nP, nNE, nDOF=6), being the shape 
         functions evaluated at a nP number of points of several cells.
-
     dshp: numpy.ndarray
         A float array of shape (nE, nP, nNE, nDOF=6, 3), being derivatives 
         of shape functions evaluated at a nP number of points of several cells.
@@ -188,15 +184,12 @@ def body_load_vector_Bernoulli(values: ndarray, shp: ndarray, gdshp: ndarray,
     values: numpy.ndarray
         A 3d float array of body loads of shape (nE, nRHS, nNE * 6)
         for several elements and load cases.
-    
     shp: numpy.ndarray
         A float array of shape (nE, nG, nNE, nDOF=6), being the shape 
         functions evaluated at a nG number of Gauss points of several cells.
-
     djac: numpy.ndarray
         A float array of shape (nE, nG), being jacobian determinants
         evaluated at the Gauss points of several cells.
-        
     w: numpy.ndarray
         1d float array of weights for an nG number of Gauss points,
         with a shape of (nG,).
@@ -233,16 +226,12 @@ def lumped_mass_matrices_direct(dens: ndarray, lengths: ndarray, areas: ndarray,
     ----------
     dens : numpy.ndarray
         1d numpy float array of material densities.
-
     lengths : numpy.ndarray
         1d numpy float array of element lengths.
-
     areas : numpy.ndarray
         1d numpy float array of element areas.
-
     topo : numpy.ndarray
         2d numpy integer array of node indices referencing the global pointcloud.
-
     alpha : float, Optional
         A nonnegative parameter, typically between 0 and 1/50 (see notes).
         Default is 1/20.

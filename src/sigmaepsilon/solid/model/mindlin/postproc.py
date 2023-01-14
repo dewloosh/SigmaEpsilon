@@ -3,7 +3,7 @@ import numpy as np
 from numba import njit, prange
 from collections import Iterable
 
-from neumann.array import (ascont, atleast1d, atleast2d,
+from neumann import (ascont, atleast1d, atleast2d,
                            atleast3d, atleast4d)
 
 from ..utils import layers_of_points, points_of_layers
