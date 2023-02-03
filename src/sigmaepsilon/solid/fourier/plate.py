@@ -27,9 +27,18 @@ class RectangularPlate(NavierProblem):
 
     """
 
-    def __init__(self, size: Tuple[float], shape: Tuple[int], *,
-                 D11: float = None, D12: float = None, D22: float = None,
-                 D66: float = None, S44: float = None, S55: float = None):
+    def __init__(
+        self,
+        size: Tuple[float],
+        shape: Tuple[int],
+        *,
+        D11: float = None,
+        D12: float = None,
+        D22: float = None,
+        D66: float = None,
+        S44: float = None,
+        S55: float = None
+    ):
         super().__init__()
         self.size = np.array(size, dtype=float)
         self.shape = np.array(shape, dtype=int)
@@ -83,12 +92,11 @@ class RectangularPlate(NavierProblem):
         _loads.problem = self
         LC = list(_loads.cases())
         RHS = np.stack(list(lc.rhs() for lc in LC))
-        
+
         # SOLUTION
         points = np.array(points)
         coeffs = linsolve(LHS, RHS, squeeze=False)
-        res = postproc(self.size, self.shape, points, coeffs, 
-                       RHS, D, S, squeeze=False)
+        res = postproc(self.size, self.shape, points, coeffs, RHS, D, S, squeeze=False)
         # (nRHS, nLHS, nP, nX)
         res = swap(res, 1, 2)
         # (nRHS, nP, nLHS, nX)

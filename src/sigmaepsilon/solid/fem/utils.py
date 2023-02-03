@@ -1,12 +1,12 @@
-# -*- coding: utf-8 -*-
-from typing import Union
+from typing import Union, Tuple
 
 from numba import njit, prange
 import numpy as np
 from numpy import ndarray
 from scipy.sparse import spmatrix
+import awkward as ak
 
-from neumann.linalg.sparse.csr import csr_matrix as csr
+from neumann.linalg.sparse import csr_matrix as csr, JaggedArray
 from neumann import find1d, flatten2dC
 
 __cache = True
@@ -16,18 +16,17 @@ __cache = True
 def fixity2d_to_dofs1d(fixity2d: np.ndarray, inds: np.ndarray = None):
     """
     Returns the indices of the degrees of freedoms
-    being supressed. 
+    being supressed.
 
-    Optionally, global indices of the rows in 'fixity2d' 
+    Optionally, global indices of the rows in 'fixity2d'
     array can be provided by the optional argument 'inds'.
 
     Parameters
     ----------
     fixity2d : numpy.ndarray
-        2d numpy array of booleans. It has as many rows as nodes, and as 
+        2d numpy array of booleans. It has as many rows as nodes, and as
         many columns as derees of freedom per node in the model. A True
         value means that the corresponding dof is fully supressed.
-
     inds : numpy.ndarray, Optional
         1d numpy array of integers, default is None. If provided, it should
         list the global indices of the nodes, for which the data is provided
@@ -36,49 +35,45 @@ def fixity2d_to_dofs1d(fixity2d: np.ndarray, inds: np.ndarray = None):
     Returns
     -------
     dofinds : np.ndarray
-        1d numpy array of integers. 
-
+        1d numpy array of integers.
     """
     ndof = fixity2d.shape[1]
     args = np.argwhere(fixity2d == True)
     N = args.shape[0]
     res = np.zeros(N, dtype=args.dtype)
     for i in prange(N):
-        res[i] = args[i, 0]*ndof + args[i, 1]
+        res[i] = args[i, 0] * ndof + args[i, 1]
     if inds is None:
         return res
     else:
         dofinds = np.zeros_like(res)
         for i in prange(len(inds)):
             for j in prange(ndof):
-                dofinds[i*ndof + j] = inds[i]*ndof + j
+                dofinds[i * ndof + j] = inds[i] * ndof + j
         return dofinds[res]
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
 def nodes2d_to_dofs1d(inds: np.ndarray, values: np.ndarray):
     """
-    Returns a tuple of degree of freedom indices and data, 
+    Returns a tuple of degree of freedom indices and data,
     based on a nodal definition.
 
     Parameters
     ----------
     inds : numpy.ndarray
         1d numpy array of integers, listing global node indices.
-
     values : numpy.ndarray
-        3d numpy float array of shape (nN, nDOF, nX), listing values 
+        3d numpy float array of shape (nN, nDOF, nX), listing values
         for each node in 'inds'. nX is the number of datasets.
 
     Returns
     -------
     dofinds : numpy.ndarray
         1d numpy array of integers, denoting global dof indices.
-
     dofvals : numpy.ndarray
-        2d numpy float array of shape (nN * nDOF, nX), denoting values 
+        2d numpy float array of shape (nN * nDOF, nX), denoting values
         on dofs in 'dofinds'.
-
     """
     nN, dof_per_node, nRHS = values.shape
     dofinds = np.zeros((nN * dof_per_node), dtype=inds.dtype)
@@ -100,9 +95,8 @@ def weighted_stiffness_bulk(K: np.ndarray, weights: np.ndarray):
     Parameters
     ----------
     K : numpy.ndarray
-        2d numpy array of floats, where the first axis of K runs 
+        2d numpy array of floats, where the first axis of K runs
         along the elements.
-
     weights : numpy.ndarray
         1d numpy array of floats.
 
@@ -110,7 +104,6 @@ def weighted_stiffness_bulk(K: np.ndarray, weights: np.ndarray):
     -------
     Kw : numpy.ndarray
         2d numpy array of floats with the same shape as 'K'.
-
     """
     nE = len(weights)
     res = np.zeros_like(K)
@@ -120,14 +113,14 @@ def weighted_stiffness_bulk(K: np.ndarray, weights: np.ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def irows_icols_bulk(edofs: np.ndarray):
+def irows_icols_bulk(edofs: np.ndarray) -> Tuple[ndarray]:
     """
     Returns row and column index data for several finite elements.
 
     Parameters
     ----------
     edofs : numpy.ndarray
-        2d numpy array. Each row has the meaning of global degree of 
+        2d numpy array. Each row has the meaning of global degree of
         freedom numbering for a given finite element.
 
     Returns
@@ -135,7 +128,6 @@ def irows_icols_bulk(edofs: np.ndarray):
     irows : numpy.ndarray
         Global indices of the rows of the entries of stiffness matrices
         of the elements.
-        
     icols : numpy.ndarray
         Global indices of the columns of the entries of stiffness matrices
         of the elements.
@@ -144,7 +136,6 @@ def irows_icols_bulk(edofs: np.ndarray):
     -----
     The implementation assumes that every cell has the same number of
     degrees of freedom.
-
     """
     nE, nNE = edofs.shape
     nTOTV = nNE * nNE
@@ -159,8 +150,35 @@ def irows_icols_bulk(edofs: np.ndarray):
     return irows, icols
 
 
+@njit(nogil=True, parallel=False, cache=False)
+def irows_icols_jagged(edofs: JaggedArray, irows, icols):
+    """
+    Returns row and column index data for several finite elements of different
+    kinds.
+
+    Parameters
+    ----------
+    edofs : JaggedArray
+        2d jagged array. Each row has the meaning of global degree of
+        freedom numbering for a given finite element.
+    irows, icols
+        Awkward array builders.
+    """
+    for iE in range(len(edofs)):
+        dofs = edofs[iE]
+        irows.begin_list()
+        icols.begin_list()
+        nDOF = len(dofs)
+        for iDOF in range(nDOF):
+            for jDOF in range(nDOF):
+                irows.integer(dofs[iDOF])
+                icols.integer(dofs[jDOF])
+        irows.end_list()
+        icols.end_list()
+
+
 @njit(nogil=True, cache=__cache, parallel=True)
-def irows_icols_bulk_filtered(edofs: np.ndarray, inds: np.ndarray):
+def irows_icols_bulk_filtered(edofs: np.ndarray, inds: np.ndarray) -> Tuple[ndarray]:
     """
     Returns row and column index data for finite elements specified
     by the index array `inds`.
@@ -168,9 +186,8 @@ def irows_icols_bulk_filtered(edofs: np.ndarray, inds: np.ndarray):
     Parameters
     ----------
     edofs : numpy.ndarray
-        2d numpy array. Each row has the meaning of global degree of 
+        2d numpy array. Each row has the meaning of global degree of
         freedom numbering for a given finite element.
-
     inds: numpy.ndarray
         1d numpy array of integers specifying active elements in an assembly.
 
@@ -179,7 +196,6 @@ def irows_icols_bulk_filtered(edofs: np.ndarray, inds: np.ndarray):
     irows : numpy.ndarray
         Global indices of the rows of the entries of stiffness matrices
         of the elements.
-        
     icols : numpy.ndarray
         Global indices of the columns of the entries of stiffness matrices
         of the elements.
@@ -188,7 +204,6 @@ def irows_icols_bulk_filtered(edofs: np.ndarray, inds: np.ndarray):
     -----
     The implementation assumes that every cell has the same number of
     degrees of freedom.
-
     """
     nI = len(inds)
     nNE = edofs.shape[1]
@@ -204,10 +219,48 @@ def irows_icols_bulk_filtered(edofs: np.ndarray, inds: np.ndarray):
     return irows, icols
 
 
+def irows_icols(
+    edofs: Union[JaggedArray, ndarray, ak.Array], inds: ndarray = None
+) -> Tuple[Union[JaggedArray, ndarray]]:
+    """
+    Returns row and column indices for coefficient matrices of several finite
+    elements.
+
+    Parameters
+    ----------
+    edofs : numpy.ndarray or JaggedArray or awkward.Array
+        2d numpy array. Each row has the meaning of coefficient numbering for a
+        given finite element.
+    inds: numpy.ndarray, Optional
+        1d numpy array of integers specifying active elements in an assembly.
+        Default is None.
+
+    Returns
+    -------
+    Tuple[Union[JaggedArray, ndarray]]
+        Two NumPy arrays or two JaggedArrays.
+    """
+    if isinstance(edofs, ndarray):
+        if inds:
+            return irows_icols_bulk_filtered(edofs, inds)
+        else:
+            return irows_icols_bulk(edofs)
+    elif isinstance(edofs, ak.Array):
+        if inds:
+            raise NotImplementedError
+        else:
+            irows = ak.ArrayBuilder()
+            icols = ak.ArrayBuilder()
+            irows_icols_jagged(edofs, irows, icols)
+            return JaggedArray(irows.snapshot()), JaggedArray(icols.snapshot())
+    elif isinstance(edofs, JaggedArray):
+        return irows_icols(edofs.to_ak(), inds)
+
+
 @njit(nogil=True, cache=__cache, parallel=True)
 def topo_to_gnum(topo: np.ndarray, ndofn: int):
     """
-    Returns global dof numbering based on element 
+    Returns global dof numbering based on element
     topology data.
 
     Parameters
@@ -215,7 +268,6 @@ def topo_to_gnum(topo: np.ndarray, ndofn: int):
     topo : numpy.ndarray
         2d numpy array of integers. Topology array listing global
         node numbers for several elements.
-
     ndofn : int
         Number of degrees of freedoms per node.
 
@@ -223,21 +275,20 @@ def topo_to_gnum(topo: np.ndarray, ndofn: int):
     -------
     gnum : numpy.ndarray
         2d numpy array of integers.
-
     """
     nE, nNE = topo.shape
-    gnum = np.zeros((nE, nNE*ndofn), dtype=topo.dtype)
+    gnum = np.zeros((nE, nNE * ndofn), dtype=topo.dtype)
     for i in prange(nE):
         for j in prange(nNE):
             for k in prange(ndofn):
-                gnum[i, j*ndofn + k] = topo[i, j]*ndofn + k
+                gnum[i, j * ndofn + k] = topo[i, j] * ndofn + k
     return gnum
 
 
 @njit(nogil=True, cache=__cache, parallel=True)
 def topo_to_gnum_jagged(topo, gnum, ndofn: int):
     """
-    Returns global dof numbering based on element 
+    Returns global dof numbering based on element
     topology data.
 
     Parameters
@@ -245,10 +296,8 @@ def topo_to_gnum_jagged(topo, gnum, ndofn: int):
     topo : numpy.ndarray
         2d array of integers. Topology array listing global
         node numbers for several elements.
-
-    gnum : numpy.ndarray
+    gnum : numpy.ndarray or Awkward array
         2d buffer array for the results.
-
     ndofn : int
         Number of degrees of freedoms per node.
 
@@ -256,13 +305,12 @@ def topo_to_gnum_jagged(topo, gnum, ndofn: int):
     -------
     gnum : numpy.ndarray
         2d numpy array of integers.
-
     """
     nE, _ = topo.shape
     for i in prange(nE):
         for j in prange(len(topo[i])):
             for k in prange(ndofn):
-                gnum[i, j*ndofn + k] = topo[i, j]*ndofn + k
+                gnum[i, j * ndofn + k] = topo[i, j] * ndofn + k
     return gnum
 
 
@@ -286,7 +334,7 @@ def penalty_factor_matrix(cellfixity: ndarray, shp: ndarray):
 @njit(nogil=True, parallel=True, cache=__cache)
 def approximation_matrix(ndf: ndarray, NDOFN: int):
     """
-    Returns a matrix of approximation coefficients 
+    Returns a matrix of approximation coefficients
     for all elements.
     """
     nE, nNE = ndf.shape[:2]
@@ -298,14 +346,14 @@ def approximation_matrix(ndf: ndarray, NDOFN: int):
             for j in prange(nNE):
                 for ii in prange(NDOFN):
                     for jj in prange(NDOFN):
-                        res[iE, i*2 + ii, j*2 + jj] = nappr[i, j] * ndf[iE, i]
+                        res[iE, i * 2 + ii, j * 2 + jj] = nappr[i, j] * ndf[iE, i]
     return res
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
 def nodal_approximation_matrix(ndf: ndarray):
     """
-    Returns a matrix of nodal approximation coefficients 
+    Returns a matrix of nodal approximation coefficients
     for all elements.
     """
     nE, nNE = ndf.shape[:2]
@@ -323,21 +371,21 @@ def nodal_compatibility_factors(nam_csr_tot: csr, nam: ndarray, topo: ndarray):
     indptr = nam_csr_tot.indptr
     indices = nam_csr_tot.indices
     data = nam_csr_tot.data
-    nN = len(indptr)-1
+    nN = len(indptr) - 1
     widths = np.zeros(nN, dtype=indptr.dtype)
     for iN in range(nN):
-        widths[iN] = indptr[iN+1] - indptr[iN]
+        widths[iN] = indptr[iN + 1] - indptr[iN]
     factors = dict()
     nreg = dict()
     for iN in range(nN):
         factors[iN] = np.zeros((widths[iN], widths[iN]), dtype=nam.dtype)
-        nreg[iN] = indices[indptr[iN]: indptr[iN+1]]
+        nreg[iN] = indices[indptr[iN] : indptr[iN + 1]]
     nE, nNE = topo.shape
     for iE in range(nE):
         topoE = topo[iE]
         for jNE in range(nNE):
             nID = topo[iE, jNE]
-            dataN = data[indptr[nID]: indptr[nID+1]]
+            dataN = data[indptr[nID] : indptr[nID + 1]]
             topoN = nreg[nID]
             dataNE = np.zeros(widths[nID], dtype=nam.dtype)
             imap = find1d(topoE, topoN)
@@ -363,12 +411,12 @@ def compatibility_factors_to_coo(ncf: dict, nreg: dict):
     cols = np.zeros(N, dtype=np.int32)
     c = 0
     for iN in range(nN):
-        data[c: c + shapes[iN]] = flatten2dC(ncf[iN])
+        data[c : c + shapes[iN]] = flatten2dC(ncf[iN])
         nNN = widths[iN]
         for jNN in prange(nNN):
             for kNN in prange(nNN):
-                rows[c + jNN*nNN + kNN] = nreg[iN][jNN]
-                cols[c + jNN*nNN + kNN] = nreg[iN][kNN]
+                rows[c + jNN * nNN + kNN] = nreg[iN][jNN]
+                cols[c + jNN * nNN + kNN] = nreg[iN][kNN]
         c += shapes[iN]
     return data, rows, cols
 
@@ -379,7 +427,7 @@ def topo1d_to_gnum1d(topo1d: ndarray, NDOFN: int):
     gnum1d = np.zeros(nN * NDOFN, dtype=topo1d.dtype)
     for i in prange(nN):
         for j in prange(NDOFN):
-            gnum1d[i*NDOFN + j] = topo1d[i] * NDOFN + j
+            gnum1d[i * NDOFN + j] = topo1d[i] * NDOFN + j
     return gnum1d
 
 
@@ -390,7 +438,7 @@ def ncf_to_cf(ncf: ndarray, NDOFN: int):
     for i in prange(nN):
         for ii in prange(NDOFN):
             for j in prange(nN):
-                cf[i*NDOFN + ii, j*NDOFN + ii] = ncf[i, j]
+                cf[i * NDOFN + ii, j * NDOFN + ii] = ncf[i, j]
     return cf
 
 
@@ -415,56 +463,70 @@ def element_dofmap_bulk(dofmap: ndarray, nDOF: int, nNODE: int):
     res = np.zeros(nNODE * nDOF_, dtype=dofmap.dtype)
     for i in prange(nNODE):
         for j in prange(nDOF_):
-            res[i*nDOF_ + j] = i*nDOF + dofmap[j]
+            res[i * nDOF_ + j] = i * nDOF + dofmap[j]
     return res
 
 
-@njit(nogil=True, parallel=True, cache=__cache)
-def expand_coeff_matrix_bulk(A_in: ndarray, A_out: ndarray, 
-                             dofmap: ndarray) -> ndarray:
+@njit(nogil=True, parallel=False, cache=__cache)
+def expand_shape_function_matrix_bulk(A_in: ndarray, A_out: ndarray, 
+                                      dofmap: ndarray) -> ndarray:
     """
-    Expands the local coefficient matrices into a standard form. It is used
-    for instance when the total matrix is built up of smaller parts.
-
+    Expands the shape function matrices into a standard form.
     """
-    nDOF = dofmap.shape[0]
-    for i in prange(nDOF):
-        for j in prange(nDOF):
-            A_out[:, dofmap[i], dofmap[j]] = A_in[:, i, j]
+    # nE, nP, nV, nX_in
+    nX = A_in.shape[-1]
+    for iX in prange(nX):
+        A_out[:, :, :, dofmap[iX]] = A_in[:, :, :, iX]
     return A_out
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def expand_load_vector_bulk(v_in: ndarray, v_out: ndarray, 
-                            dofmap: ndarray) -> ndarray:
+def expand_coeff_matrix_bulk(A_in: ndarray, A_out: ndarray, dofmap: ndarray) -> ndarray:
     """
-    Expands the local load vectors into a standard form.
-
+    Expands the local coefficient matrices into a standard form. It is used
+    for instance when the total matrix is built up of smaller parts.
     """
     nDOF = dofmap.shape[0]
+    nV = A_in.shape[0]
     for i in prange(nDOF):
-        v_out[:, dofmap[i], :] = v_in[:, i, :]
+        for j in prange(nDOF):
+            for k in prange(nV):
+                A_out[k, dofmap[i], dofmap[j]] = A_in[k, i, j]
+    return A_out
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def expand_load_vector_bulk(v_in: ndarray, v_out: ndarray, dofmap: ndarray) -> ndarray:
+    """
+    Expands the local load vectors into a standard form.
+    """
+    nDOF = dofmap.shape[0]
+    nV0 = v_out.shape[0]
+    nV1 = v_out.shape[2]
+    for i in prange(nDOF):
+        for j in prange(nV0):
+            for k in prange(nV1):
+                v_out[j, dofmap[i], k] = v_in[j, i, k]
     return v_out
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
 def nodal_mass_matrix_data(nodal_masses: ndarray, ndof: int = 6):
     N = nodal_masses.shape[0]
-    res = np.zeros((N*ndof))
+    res = np.zeros((N * ndof))
     for i in prange(N):
-        res[i*ndof: i*ndof + 3] = nodal_masses[i]
+        res[i * ndof : i * ndof + 3] = nodal_masses[i]
     return res
 
 
 def min_stiffness_diagonal(K: Union[ndarray, spmatrix]) -> float:
     """
     Returns the minimum diagonal entry of the stiffness matrix.
-    
+
     Parameters
     ----------
     K : Union[ndarray, spmatrix]
         The stiffness matrix as a dense or a sparse array.
-        
     """
     if isinstance(K, spmatrix):
         return np.min(K.diagonal())

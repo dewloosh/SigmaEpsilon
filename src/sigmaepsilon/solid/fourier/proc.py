@@ -38,7 +38,7 @@ def linsolve_Timoshenko(A: ndarray, B: ndarray):
     """
     nLHS, nMN = A.shape[:2]
     nRHS = B.shape[0]
-    res = np.zeros((nRHS, nLHS, nMN, 2))    
+    res = np.zeros((nRHS, nLHS, nMN, 2))
     for i in prange(nRHS):
         for j in prange(nLHS):
             for k in prange(nMN):
@@ -57,11 +57,11 @@ def linsolve2d(A: ndarray, B: ndarray):
             for j in prange(nLHS):
                 for k in prange(nMN):
                     res[i, j, k] = npsolve(A[j, k], B[i, k])
-                    #res[i, j, k] = inv3x3(A[j, k]) @ B[i, k] 
+                    # res[i, j, k] = inv3x3(A[j, k]) @ B[i, k]
     else:
         for i in prange(nRHS):
             for j in prange(nLHS):
                 for k in prange(nMN):
                     res[i, j, k] = npsolve(A[j, k], B[i, k])
-                    #res[i, j, k] = inv2x2(A[j, k]) @ B[i, k]
+                    # res[i, j, k] = inv2x2(A[j, k]) @ B[i, k]
     return res

@@ -35,32 +35,34 @@ class NavierBeam(NavierProblem):
 
     Examples
     --------
-    To define an Euler-Bernoulli beam of length 10.0 and 
+    To define an Euler-Bernoulli beam of length 10.0 and
     bending stiffness 2000.0 with 100 harmonic terms involved:
-    
+
     >>> from sigmaepsilon.solid.fourier import NavierBeam
     >>> beam = NavierBeam(10.0, 100, EI=2000.0)
-    
-    To define a Timoshenko beam of length 10.0, bending stiffness 
+
+    To define a Timoshenko beam of length 10.0, bending stiffness
     2000.0 and shear stiffness 1500.0 with 100 harmonic terms involved:
-    
+
     >>> from sigmaepsilon.solid.fourier import NavierBeam
     >>> beam = NavierBeam(10.0, 100, EI=2000.0, GA=1500.0)
-    
+
     """
 
-    def __init__(self, length: float, N: int = 100, *,
-                 EI: float = None, GA: float = None):
+    def __init__(
+        self, length: float, N: int = 100, *, EI: float = None, GA: float = None
+    ):
         super().__init__()
         self.length = length
         self.EI = EI
         self.GA = GA
         self.N = N
 
-    def solve(self, loads: Union[dict, LoadGroup], 
-              points: Union[float, Iterable]) -> LinkedDeepDict:
+    def solve(
+        self, loads: Union[dict, LoadGroup], points: Union[float, Iterable]
+    ) -> LinkedDeepDict:
         """
-        Solves the problem and calculates all postprocessing quantities at 
+        Solves the problem and calculates all postprocessing quantities at
         one ore more points.
 
         Parameters
@@ -69,10 +71,10 @@ class NavierBeam(NavierProblem):
             The loads. If it is an array, it should be a 2d float array.
 
         points : float or Iterable
-            A float or an 1d iterable of coordinates, where the results are 
+            A float or an 1d iterable of coordinates, where the results are
             to be evaluated. If it is a scalar, the resulting dictionary
-            contains 1d arrays for every quantity, for every load case. If 
-            there are multiple points, the result attached to a load case is 
+            contains 1d arrays for every quantity, for every load case. If
+            there are multiple points, the result attached to a load case is
             a 2d array, where the first axis goes along the points.
 
         Returns
@@ -82,8 +84,7 @@ class NavierBeam(NavierProblem):
 
         """
         # STIFFNESS
-        LHS = lhs_Navier(self.length, self.N, D=self.EI,
-                         S=self.GA, squeeze=False)
+        LHS = lhs_Navier(self.length, self.N, D=self.EI, S=self.GA, squeeze=False)
 
         # LOADS
         if isinstance(loads, LoadGroup):
@@ -108,8 +109,9 @@ class NavierBeam(NavierProblem):
 
         # POSTPROCESSING
         points = atleast1d(points)
-        res = postproc(self.length, self.N, points, coeffs,
-                       RHS, self.EI, self.GA, squeeze=False)
+        res = postproc(
+            self.length, self.N, points, coeffs, RHS, self.EI, self.GA, squeeze=False
+        )
         # (nRHS, nLHS, nP, nX)
         res = swap(res, 1, 2)
         # (nRHS, nP, nLHS, nX)

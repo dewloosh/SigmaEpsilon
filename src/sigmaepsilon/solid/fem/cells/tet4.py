@@ -1,21 +1,15 @@
-# -*- coding: utf-8 -*-
 import numpy as np
 
 from polymesh.cells import TET4 as Tetra
 from polymesh.utils.tet import nat_to_loc_tet as n2l
 
-from ..model.solid3d import Solid3d
+from ..material.solid3d import Solid3d
 from .elem import FiniteElement
-from .metaelem import ABCFiniteElement as ABC
-
+from .meta import ABCFiniteElement as ABC
 
 
 class TET4(ABC, Solid3d, Tetra, FiniteElement):
-
-    qrule = 'full'
+    qrule = "full"
     quadrature = {
-        'full': (
-            np.array([[1/4, 1/4, 1/4]]), 
-            np.array([1/6])
-            ),
+        "full": (np.array([[1 / 4, 1 / 4, 1 / 4]]), np.array([1 / 6])),
     }

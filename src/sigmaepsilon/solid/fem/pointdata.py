@@ -10,7 +10,7 @@ from polymesh.pointdata import PointData as MeshPointData
 
 class PointData(MeshPointData):
     """
-    A subclass of :class:`polymesh.pointdata.PointData` to handle data related 
+    A subclass of :class:`polymesh.pointdata.PointData` to handle data related
     to the pointcloud of a finite element mesh.
 
     Parameters
@@ -18,36 +18,36 @@ class PointData(MeshPointData):
     fixity : numpy.ndarray, Optional
         A 2d boolean or float array describing essential boundary conditions.
         Default is None.
-        
+
     loads : numpy.ndarray, Optional
         A 2d or 3d float array of nodal loads.
         Default is None.
-        
+
     mass : numpy.ndarray, Optional
         2d array of nodal masses for each degree of freedom of a node.
         Default is None.
-        
+
     fields : dict, Optional
         Every value of this dictionary is added to the dataset. Default is `None`.
-        
+
     **kwargs : dict, Optional
         For every key and value pair where the value is a numpy array
         with a matching shape (has entries for all points), the key
         is considered as a field and the value is added to the database.
-        
+
     Examples
     --------
     We will define the point-related data of a simple linear console. At the
-    moment this means the specification of cordinates, nodal loads, and boundary 
+    moment this means the specification of cordinates, nodal loads, and boundary
     conditions. The common properties of these attributes is that each of these
     can be best described by arrays having the same length as the pointcloud itself.
     Import the necessary stuff:
-    
+
     >>> from sigmaepsilon.solid import Structure, LineMesh, PointData
     >>> from neumann.linalg import linspace, Vector
     >>> from polymesh.space import StandardFrame, PointCloud, frames_of_lines
     >>> import numpy as np
-    
+
     Define a coordinate frame, and a coordinate array,
 
     >>> GlobalFrame = StandardFrame(dim=3)
@@ -66,9 +66,9 @@ class PointData(MeshPointData):
     >>> loads[-1, :3] = global_load_vector
     >>> fixity[0, :] = True
 
-    and finally we can define our dataset.  
+    and finally we can define our dataset.
 
-    >>> pd = PointData(coords=coords, frame=GlobalFrame, 
+    >>> pd = PointData(coords=coords, frame=GlobalFrame,
     >>>                loads=loads, fixity=fixity)
 
     See also
@@ -77,28 +77,35 @@ class PointData(MeshPointData):
     :class:`polymesh.PolyData`
     :class:`polymesh.CellData`
     :class:`awkward.Record`
-    
+
     """
 
     _attr_map_ = {
-        'loads': 'loads',
-        'mass': 'mass',
-        'fixity': 'fixity',
-        'dofsol' : 'dofsol',
-        'shapes' : '_shapes_',
-        'reactions' : 'reactions',
-        'forces' : 'forces',
+        "loads": "loads",
+        "mass": "mass",
+        "fixity": "fixity",
+        "dofsol": "dofsol",
+        "shapes": "_shapes_",
+        "reactions": "reactions",
+        "forces": "forces",
     }
     NDOFN = 6
 
-    def __init__(self, *args, fixity:ndarray=None, loads:ndarray=None, 
-                 mass:ndarray=None, fields:dict=None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        fixity: ndarray = None,
+        loads: ndarray = None,
+        mass: ndarray = None,
+        fields: dict = None,
+        **kwargs
+    ):
         amap = self.__class__._attr_map_
 
         if fields is not None:
-            fixity = fields.pop(amap['fixity'], fixity)
-            loads = fields.pop(amap['loads'], loads)
-            mass = fields.pop(amap['mass'], mass)
+            fixity = fields.pop(amap["fixity"], fixity)
+            loads = fields.pop(amap["loads"], loads)
+            mass = fields.pop(amap["mass"], mass)
 
         super().__init__(*args, fields=fields, **kwargs)
 
@@ -109,8 +116,7 @@ class PointData(MeshPointData):
             if fixity is None:
                 fixity = np.zeros((nP, NDOFN), dtype=bool)
             else:
-                assert isinstance(fixity, np.ndarray) and len(
-                    fixity.shape) == 2
+                assert isinstance(fixity, np.ndarray) and len(fixity.shape) == 2
             self.fixity = fixity
 
             if loads is None:
@@ -131,83 +137,83 @@ class PointData(MeshPointData):
 
     @property
     def _dbkey_fixity_(self) -> str:
-        return self.__class__._attr_map_['fixity']
-    
+        return self.__class__._attr_map_["fixity"]
+
     @property
     def has_fixity(self):
         return self._dbkey_fixity_ in self._wrapped.fields
-    
+
     @property
     def fixity(self) -> ndarray:
         """Returns fixity information as a 2d numpy array."""
-        return self._wrapped[self.__class__._attr_map_['fixity']].to_numpy()
+        return self._wrapped[self.__class__._attr_map_["fixity"]].to_numpy()
 
     @fixity.setter
     def fixity(self, value: ndarray):
         """Sets essential boundary conditions."""
         assert isinstance(value, ndarray)
-        self._wrapped[self.__class__._attr_map_['fixity']] = value
+        self._wrapped[self.__class__._attr_map_["fixity"]] = value
 
     @property
     def loads(self) -> ndarray:
         """Returns the nodal load vector."""
-        return self._wrapped[self.__class__._attr_map_['loads']].to_numpy()
+        return self._wrapped[self.__class__._attr_map_["loads"]].to_numpy()
 
     @loads.setter
     def loads(self, value: ndarray):
         """Sets the nodal load vector."""
         assert isinstance(value, ndarray)
-        self._wrapped[self.__class__._attr_map_['loads']] = value
-        
+        self._wrapped[self.__class__._attr_map_["loads"]] = value
+
     @property
     def mass(self) -> ndarray:
         """Retruns nodal masses."""
-        return self._wrapped[self.__class__._attr_map_['mass']].to_numpy()
+        return self._wrapped[self.__class__._attr_map_["mass"]].to_numpy()
 
     @mass.setter
     def mass(self, value: ndarray):
         """Sets nodal masses."""
         assert isinstance(value, ndarray)
-        self._wrapped[self.__class__._attr_map_['mass']] = value
-        
+        self._wrapped[self.__class__._attr_map_["mass"]] = value
+
     @property
     def dofsol(self) -> ndarray:
         """Returns the displacement vector."""
-        return self._wrapped[self.__class__._attr_map_['dofsol']].to_numpy()
+        return self._wrapped[self.__class__._attr_map_["dofsol"]].to_numpy()
 
     @dofsol.setter
     def dofsol(self, value: ndarray):
         assert isinstance(value, ndarray)
-        self._wrapped[self.__class__._attr_map_['dofsol']] = value
-        
+        self._wrapped[self.__class__._attr_map_["dofsol"]] = value
+
     @property
     def vshapes(self) -> ndarray:
         """Returns the modal shapes."""
-        return self._wrapped[self.__class__._attr_map_['shapes']].to_numpy()
+        return self._wrapped[self.__class__._attr_map_["shapes"]].to_numpy()
 
     @vshapes.setter
     def vshapes(self, value: ndarray):
         assert isinstance(value, ndarray)
-        self._wrapped[self.__class__._attr_map_['shapes']] = value  
-        
+        self._wrapped[self.__class__._attr_map_["shapes"]] = value
+
     @property
     def reactions(self) -> ndarray:
         """Returns the vector of reaction forces."""
-        return self._wrapped[self.__class__._attr_map_['reactions']].to_numpy()
+        return self._wrapped[self.__class__._attr_map_["reactions"]].to_numpy()
 
     @reactions.setter
     def reactions(self, value: ndarray):
         assert isinstance(value, ndarray)
-        self._wrapped[self.__class__._attr_map_['reactions']] = value   
-        
+        self._wrapped[self.__class__._attr_map_["reactions"]] = value
+
     @property
     def forces(self) -> ndarray:
-        return self._wrapped[self.__class__._attr_map_['forces']].to_numpy()
+        return self._wrapped[self.__class__._attr_map_["forces"]].to_numpy()
 
     @forces.setter
     def forces(self, value: ndarray):
         assert isinstance(value, ndarray)
-        self._wrapped[self.__class__._attr_map_['forces']] = value    
+        self._wrapped[self.__class__._attr_map_["forces"]] = value
 
 
 def flatten_pd(default=True):
@@ -222,6 +228,8 @@ def flatten_pd(default=True):
                     return x.reshape((nN * nDOFN, nRHS))
             else:
                 return fnc(*args, **kwargs)
+
         inner.__doc__ = fnc.__doc__
         return inner
+
     return decorator

@@ -1,9 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<BorlandProject>
-  <Transactions>
-    <Transaction>2022/08/04 12:24:48.029,=Q:\Embarcadero\Projects\Unit1.pas</Transaction>
-    <Transaction>2022/08/04 12:25:54.892,F:\GitHub\sigmaepsilon\delphi\test.dfm=Q:\Embarcadero\Projects\Unit1.dfm</Transaction>
-    <Transaction>2022/08/04 12:25:54.892,F:\GitHub\sigmaepsilon\delphi\test.pas=Q:\Embarcadero\Projects\Unit1.pas</Transaction>
-    <Transaction>2022/08/04 12:26:04.415,F:\GitHub\sigmaepsilon\delphi\SigmaEpsilon.dproj=Q:\Embarcadero\Projects\Project1.dproj</Transaction>
-  </Transactions>
-</BorlandProject>

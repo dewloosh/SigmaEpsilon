@@ -1,78 +1,46 @@
-# -*- coding: utf-8 -*-
-import numpy as np
-from numba import njit
+from neumann.numint import gauss_points as gp
 
-from neumann.numint import GaussPoints as Gauss
-
-from polymesh.utils.tri import area_tri_bulk
-from polymesh.utils import cells_coords
+from polymesh.utils.cells.q4 import area_Q4_bulk
 from polymesh.cells import Q4 as Quadrilateral
 
-from ..model.membrane import Membrane
-from ..model.plate import Plate
+from ..material.membrane import Membrane
+from ..material.mindlinplate import MindlinPlate
+from ..material.mindlinshell import MindlinShell
 
 from .elem import FiniteElement
-from .metaelem import ABCFiniteElement as ABC
-
-__cache = True
+from .meta import ABCFiniteElement as ABC
 
 
-@njit(nogil=True, parallel=True, cache=__cache)
-def area_Q4_bulk(ecoords : np.ndarray):
-    nE = len(ecoords)
-    res = np.zeros(nE, dtype=ecoords.dtype)
-    res += area_tri_bulk(ecoords[:, :3, :])
-    res += area_tri_bulk(ecoords[:, np.array([0, 2, 3]), :])
-    return res
-
-
-class Q4M(ABC, Membrane, Quadrilateral, FiniteElement):
-    
-    qrule = 'full'
+class Q4_M(ABC, Membrane, Quadrilateral, FiniteElement):
+    qrule = "full"
     quadrature = {
-        'full' : Gauss(2, 2), 
-        'selective' : {
-            (0, 1) : 'full',
-            (2,) : 'reduced'
-            },
-        'reduced' : Gauss(1, 1)
-        }
-        
-    def areas(self, *args, coords=None, topo=None, **kwargs):
-        """This shadows the original geometrical implementation."""
-        if coords is None:
-            coords = self.container.root().coords()
-        topo = self.topology().to_numpy() if topo is None else topo
-        return area_Q4_bulk(cells_coords(coords, topo))
-       
+        "full": gp(2, 2),
+        "selective": {(0, 1): "full", (2,): "reduced"},
+        "reduced": gp(1, 1),
+    }
 
-class Q4P(ABC, Plate, Quadrilateral, FiniteElement):
-    
-    qrule = 'selective'
+    def areas(self, *args, **kwargs):
+        """This shadows the original geometrical implementation."""
+        topo = self.topology().to_numpy() if topo is None else topo
+        return area_Q4_bulk(self.local_coordinates(topo=topo))
+
+
+class Q4_P_MR(ABC, MindlinPlate, Quadrilateral, FiniteElement):
+    qrule = "selective"
     quadrature = {
-        'full' : Gauss(2, 2), 
-        'selective' : {
-            (0, 1, 2) : 'full',
-            (3, 4) : 'reduced'
-            },
-        'reduced' : Gauss(1, 1)
-        }
-        
-    def areas(self, *args, coords=None, topo=None, **kwargs):
-        """This shadows the original geometrical implementation."""
-        if coords is None:
-            coords = self.container.root().coords()
-        topo = self.topology().to_numpy() if topo is None else topo
-        self.local_coordinates(topo=topo)
-        return area_Q4_bulk(cells_coords(coords, topo))
+        "full": gp(2, 2),
+        "selective": {(0, 1, 2): "full", (3, 4): "reduced"},
+        "reduced": gp(1, 1),
+    }
     
-    
-if __name__ == '__main__':
-    from sympy import symbols
 
-    r, s = symbols('r s')
-
-    N1 = 0.125*(1-r)*(1-s)
-    N2 = 0.125*(1+r)*(1-s)
-    N3 = 0.125*(1+r)*(1+s)
-    N4 = 0.125*(1-r)*(1+s)
+class Q4_S_MR(ABC, MindlinShell, Quadrilateral, FiniteElement):
+    qrule = "selective"
+    quadrature = {
+        'full': gp(2, 2),
+        'selective': {
+            (0, 1, 3, 4, 5): 'full',
+            (2, 6, 7): 'reduced'
+        },
+        'reduced': gp(1, 1)
+    }

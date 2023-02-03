@@ -1,14 +1,12 @@
-# -*- coding: utf-8 -*-
-from neumann.numint import GaussPoints as Gauss
+from neumann.numint import gauss_points as gp
 from polymesh.cells import L2 as Line
 
 from .bernoulli import BernoulliBase as Bernoulli
-from .gen.b2 import (shape_function_values_bulk, 
-                     shape_function_derivatives_bulk)
+from .gen.b2 import shape_function_values_bulk, shape_function_derivatives_bulk
 from .elem import FiniteElement
-from .metaelem import ABCFiniteElement as ABC
+from .meta import ABCFiniteElement as ABC
 
-__all__ = ['Bernoulli2']
+__all__ = ["Bernoulli2"]
 
 
 class Bernoulli2(ABC, Bernoulli, Line, FiniteElement):
@@ -16,15 +14,12 @@ class Bernoulli2(ABC, Bernoulli, Line, FiniteElement):
     Finite element class to handle 2-noded Bernoulli beams.
     """
 
-    qrule = 'full'
+    qrule = "full"
     quadrature = {
-        'full': Gauss(2),
-        'selective': {
-            (0, 1): 'full',
-            (2): 'reduced'
-        },
-        'reduced': Gauss(1),
-        'mass' : Gauss(4)
+        "full": gp(2),
+        "selective": {(0, 1): "full", (2): "reduced"},
+        "reduced": gp(1),
+        "mass": gp(4),
     }
     shpfnc = shape_function_values_bulk
     dshpfnc = shape_function_derivatives_bulk

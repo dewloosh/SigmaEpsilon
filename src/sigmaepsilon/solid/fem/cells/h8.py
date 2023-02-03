@@ -1,22 +1,15 @@
-# -*- coding: utf-8 -*-
-from neumann.numint import GaussPoints as Gauss
+from neumann.numint import gauss_points as gp
 from polymesh.cells import H8 as HexaHedron
 
-from ..model.solid3d import Solid3d
+from ..material.solid3d import Solid3d
 from .elem import FiniteElement
-from .metaelem import ABCFiniteElement as ABC
+from .meta import ABCFiniteElement as ABC
 
 
 class H8(ABC, Solid3d, HexaHedron, FiniteElement):
-
-    qrule = 'selective'
+    qrule = "selective"
     quadrature = {
-        'full': Gauss(2, 2, 2),
-        'selective': {
-            (0, 1, 2): 'full',
-            (3, 4, 5): 'reduced'
-        },
-        'reduced': Gauss(1, 1, 1)
+        "full": gp(2, 2, 2),
+        "selective": {(0, 1, 2): "full", (3, 4, 5): "reduced"},
+        "reduced": gp(1, 1, 1),
     }
-    
-    
