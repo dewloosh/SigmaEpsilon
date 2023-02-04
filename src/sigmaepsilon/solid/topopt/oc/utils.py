@@ -93,32 +93,31 @@ def compliances_bulk(K: ndarray, U: ndarray, gnum: ndarray):
     nE, nNE = gnum.shape
     res = np.zeros(nE, dtype=K.dtype)
     for iE in prange(nE):
-        for i in prange(nNE):
-            for j in prange(nNE):
+        for i in range(nNE):
+            for j in range(nNE):
                 res[iE] += K[iE, i, j] * U[gnum[iE, i]] * U[gnum[iE, j]]
     return res
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def compliances_flat(K: ndarray, U: ndarray, kcols: ndarray, 
-                     kranges: ndarray) -> ndarray:
+def compliances_flat(K: ndarray, U: ndarray, krows: ndarray, kcols: ndarray, 
+                     kranges: ndarray, ) -> ndarray:
     nE = len(kranges) - 1
     res = np.zeros(nE, dtype=K.dtype)
     for i in prange(nE):
         _r, r_ = kranges[i], kranges[i + 1]
-        res[i] = np.sum(K[_r : r_] * U[kcols[_r : r_]])
+        res[i] = np.sum(U[krows[_r : r_]] * K[_r : r_] * U[kcols[_r : r_]])
     return res
 
 
-def element_stiffness_ranges(K_bulk: Union[ndarray, JaggedArray]) -> ndarray:
-    nE = len(K_bulk)
-    if isinstance(K_bulk, ndarray):
-        assert len(K_bulk.shape) == 3, "Mismatch in shape"
+def element_stiffness_ranges(kshape : tuple) -> ndarray:
+    nE = kshape[0]
+    if len(kshape) == 3 and isinstance(kshape[1], int):
         res = np.zeros(nE + 1, dtype=int)
-        res[1:] = np.cumsum(np.full(nE, K_bulk.shape[1] * K_bulk.shape[2]))
-    elif isinstance(K_bulk, JaggedArray):
+        res[1:] = np.cumsum(np.full(nE, kshape[1] * kshape[2]))
+    elif isinstance(kshape[1], ndarray):
         res = np.zeros(nE + 1, dtype=int)
-        res[1:] = np.cumsum(K_bulk.widths())
+        res[1:] = np.cumsum(kshape[1])
     else:
-        raise TypeError(f"Invalid type {type(K_bulk)}")
+        raise ValueError(f"Invalid shape {kshape}")
     return res

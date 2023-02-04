@@ -270,7 +270,7 @@ class BeamSection(Wrapper, MaterialModel):
         """
         return np.array(self.mesh["triangles"].tolist())
 
-    def trimesh(self, subdivide=False, T6=False, **kwargs) -> TriMesh:
+    def trimesh(self, subdivide:bool=False, order:int=1, **kwargs) -> TriMesh:
         """
         Returns the mesh of the section as a collection of T3 triangles.
         Keyword arguments are forwarded to the constructor of
@@ -278,9 +278,8 @@ class BeamSection(Wrapper, MaterialModel):
 
         Parameters
         ----------
-        T6 : boolean, Optional
-            If False, the original T6 trinagles are transformed into T3
-            triangles. Default is False.
+        order : boolean, Optional
+            Order of the tetrahedra. Order 1 means linear, order 2 quadratic. Default is 1.
         subdivide : boolean, Optional
             Controls how the T6 triangles are transformed into T3 triangles,
             if the argument 'T6' is False. If True, the T6 triangles
@@ -299,12 +298,14 @@ class BeamSection(Wrapper, MaterialModel):
         >>> trimesh = section.trimesh()
         """
         points, triangles = self.coords(), self.topology()
-        if not T6:
+        if order==1:
             if subdivide:
                 path = np.array([[0, 5, 4], [5, 1, 3], [3, 2, 4], [5, 3, 4]], dtype=int)
                 points, triangles = T6_to_T3(points, triangles, path=path)
             else:
                 points, triangles = detach_mesh_bulk(points, triangles[:, :3])
+        else:
+            raise NotImplementedError
         return TriMesh(points=points, triangles=triangles, **kwargs)
 
     def extrude(self, *args, length=None, frame=None, N=None, **kwargs) -> TetMesh:

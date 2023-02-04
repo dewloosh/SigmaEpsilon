@@ -117,6 +117,7 @@ class StaticSolver(Solver):
                 self.krows, self.kcols = irows_icols(self.gnum)
                 self.krows = self.krows.flatten()
                 self.kcols = self.kcols.flatten()
+                self.kshape = self.K_bulk.shape
             self.K_sparse = npcoo(
                 (self.K_bulk.flatten(), (self.krows, self.kcols)),
                 shape=(self.N, self.N),

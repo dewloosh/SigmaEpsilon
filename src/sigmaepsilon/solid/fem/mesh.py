@@ -100,8 +100,8 @@ class FemMesh(PolyData, ABC_FemMesh):
         Returns True if the mesh is jagged, i.e. if it consists of blocks with
         inconsistent matrix shapes, thus prohibiting bulk calculations.
         """
-        cell_class_id = map(lambda b: id(b.cd.__class__), self.cellblocks())
-        return len(set(cell_class_id)) > 0
+        cell_class_id = map(lambda b: id(b.cd.__class__), self.cellblocks(inclusive=True))
+        return len(set(cell_class_id)) > 1
     
     def is_regular(self, **kwargs) -> bool:
         """

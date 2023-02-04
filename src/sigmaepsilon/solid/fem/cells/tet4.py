@@ -1,7 +1,6 @@
 import numpy as np
 
 from polymesh.cells import TET4 as Tetra
-from polymesh.utils.tet import nat_to_loc_tet as n2l
 
 from ..material.solid3d import Solid3d
 from .elem import FiniteElement

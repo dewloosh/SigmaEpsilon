@@ -124,8 +124,9 @@ def maximize_stiffness(
         structure.linear_static_analysis()
     femsolver : StaticSolver = structure._static_solver_.core
     assert femsolver.regular
-    kcols = femsolver.kcols
-    kranges = element_stiffness_ranges(femsolver.K_bulk)
+    krows, kcols = femsolver.krows, femsolver.kcols
+    kshape = femsolver.kshape
+    kranges = element_stiffness_ranges(kshape)
     K_virgin = np.copy(femsolver.K_bulk.flatten())
     mesh = structure.mesh
     vols = mesh.volumes()
@@ -153,7 +154,7 @@ def maximize_stiffness(
                 )
         femsolver._proc_()
         U = get_dof_solution()
-        comps[:] = compliances_flat(K_virgin, U, kcols, kranges)
+        comps[:] = compliances_flat(K_virgin, U, krows, kcols, kranges)
         np.clip(comps, 1e-7, None, out=comps)
         return np.sum(comps)
 
