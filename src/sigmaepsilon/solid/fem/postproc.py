@@ -6,7 +6,7 @@ from scipy.interpolate import interp1d
 __cache = True
 
 
-def approx_element_solution_bulk(v: ndarray, A: ndarray):
+def approx_element_solution_bulk(v: ndarray, A: ndarray) -> ndarray:
     """
     Approximates discrete solution over several elements.
 
@@ -33,7 +33,7 @@ def approx_element_solution_bulk(v: ndarray, A: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def _approx_element_solution_bulk_cm_(v: ndarray, A: ndarray):
+def _approx_element_solution_bulk_cm_(v: ndarray, A: ndarray) -> ndarray:
     """
     Approximates discrete solution over several elements.
 
@@ -61,7 +61,7 @@ def _approx_element_solution_bulk_cm_(v: ndarray, A: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def _approx_element_solution_bulk_vm_(v: ndarray, A: ndarray):
+def _approx_element_solution_bulk_vm_(v: ndarray, A: ndarray) -> ndarray:
     """
     Approximates discrete solution over several elements.
 
@@ -89,7 +89,7 @@ def _approx_element_solution_bulk_vm_(v: ndarray, A: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def calculate_external_forces_bulk(K: ndarray, dofsol: ndarray):
+def calculate_external_forces_bulk(K: ndarray, dofsol: ndarray) -> ndarray:
     """
     Returns the external nodal load vectors for several elements.
 
@@ -121,7 +121,7 @@ def calculate_external_forces_bulk(K: ndarray, dofsol: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def calculate_internal_forces_bulk(strains: ndarray, D: ndarray):
+def calculate_internal_forces_bulk(strains: ndarray, D: ndarray) -> ndarray:
     """
     strain (nE, nRHS, nP, nX)
     D (nE, nX, nX)
@@ -138,7 +138,7 @@ def calculate_internal_forces_bulk(strains: ndarray, D: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def explode_kinetic_strains(kstrains: ndarray, nP: int):
+def explode_kinetic_strains(kstrains: ndarray, nP: int) -> ndarray:
     """
     ---
     (nE, nRHS, nP, nSTRE)
@@ -153,7 +153,7 @@ def explode_kinetic_strains(kstrains: ndarray, nP: int):
     return res
 
 
-def extrapolate_gauss_data_1d(gpos: ndarray, gdata: ndarray):
+def extrapolate_gauss_data_1d(gpos: ndarray, gdata: ndarray) -> ndarray:
     gdata = swap(gdata, 0, 2)  # (nDOFN, nE, nP) --> (nP, nE, nDOFN)
     approx = interp1d(gpos, gdata, fill_value="extrapolate", axis=0)
 
@@ -165,7 +165,7 @@ def extrapolate_gauss_data_1d(gpos: ndarray, gdata: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def element_dof_solution_bulk(dofsol1d: ndarray, gnum: ndarray):
+def element_dof_solution_bulk(dofsol1d: ndarray, gnum: ndarray) -> ndarray:
     """
     Returns an array that contains degree of freedom solution for
     every node of every element.
@@ -191,4 +191,26 @@ def element_dof_solution_bulk(dofsol1d: ndarray, gnum: ndarray):
     for i in prange(nE):
         for j in prange(nRHS):
             res[i, :, j] = dofsol1d[gnum[i, :], j]
+    return res
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def element_compliances_bulk(K: ndarray, U: ndarray, gnum: ndarray):
+    nE, nNE = gnum.shape
+    res = np.zeros(nE, dtype=K.dtype)
+    for iE in prange(nE):
+        for i in range(nNE):
+            for j in range(nNE):
+                res[iE] += K[iE, i, j] * U[gnum[iE, i]] * U[gnum[iE, j]]
+    return res
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def element_compliances_flat(K: ndarray, U: ndarray, krows: ndarray, kcols: ndarray,
+                             kranges: ndarray, ) -> ndarray:
+    nE = len(kranges) - 1
+    res = np.zeros(nE, dtype=K.dtype)
+    for i in prange(nE):
+        _r, r_ = kranges[i], kranges[i + 1]
+        res[i] = np.sum(U[krows[_r: r_]] * K[_r: r_] * U[kcols[_r: r_]])
     return res

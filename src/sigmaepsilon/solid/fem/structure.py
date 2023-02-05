@@ -493,14 +493,14 @@ class Structure(Wrapper):
         if jagged:
             f_bulk = mesh.cell_load_vector(assemble=True, transform=True, squeeze=False)
             K_bulk = mesh.elastic_stiffness_matrix(
-                sparse=False, transform=True, _jagged=jagged
+                sparse=False, transform=True, _jagged=jagged, squeeze=False,
             )
         else:
             f_bulk = mesh.cell_load_vector(
                 assemble=False, transform=False, squeeze=False
             )
             K_bulk = mesh.elastic_stiffness_matrix(
-                sparse=False, transform=False, _jagged=jagged
+                sparse=False, transform=False, _jagged=jagged, squeeze=False
             )
 
         if not jagged:

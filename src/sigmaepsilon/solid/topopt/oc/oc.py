@@ -10,12 +10,12 @@ from sigmaepsilon.solid.fem.femsolver import StaticSolver
 
 from .filter import sensitivity_filter, sensitivity_filter_csr
 from .utils import (
-    compliances_flat,
     get_filter_factors,
     get_filter_factors_csr,
     weighted_stiffness_flat as weighted_stiffness,
     element_stiffness_ranges
 )
+from ...fem.postproc import element_compliances_flat as element_compliances
 
 
 class OptRes(NamedTuple):
@@ -154,7 +154,7 @@ def maximize_stiffness(
                 )
         femsolver._proc_()
         U = get_dof_solution()
-        comps[:] = compliances_flat(K_virgin, U, krows, kcols, kranges)
+        comps[:] = element_compliances(K_virgin, U, krows, kcols, kranges)
         np.clip(comps, 1e-7, None, out=comps)
         return np.sum(comps)
 

@@ -6,7 +6,7 @@ from numpy import ndarray
 from numba import types as nbtypes
 from numba.typed import Dict as nbDict
 
-from neumann.linalg.sparse import csr_matrix, JaggedArray
+from neumann.linalg.sparse import csr_matrix
 
 __cache = True
 
@@ -85,28 +85,6 @@ def weighted_stiffness_1d_regular(data: ndarray, weights: ndarray):
         res[i * dsize : (i + 1) * dsize] = (
             data[i * dsize : (i + 1) * dsize] * weights[i]
         )
-    return res
-
-
-@njit(nogil=True, parallel=True, cache=__cache)
-def compliances_bulk(K: ndarray, U: ndarray, gnum: ndarray):
-    nE, nNE = gnum.shape
-    res = np.zeros(nE, dtype=K.dtype)
-    for iE in prange(nE):
-        for i in range(nNE):
-            for j in range(nNE):
-                res[iE] += K[iE, i, j] * U[gnum[iE, i]] * U[gnum[iE, j]]
-    return res
-
-
-@njit(nogil=True, parallel=True, cache=__cache)
-def compliances_flat(K: ndarray, U: ndarray, krows: ndarray, kcols: ndarray, 
-                     kranges: ndarray, ) -> ndarray:
-    nE = len(kranges) - 1
-    res = np.zeros(nE, dtype=K.dtype)
-    for i in prange(nE):
-        _r, r_ = kranges[i], kranges[i + 1]
-        res[i] = np.sum(U[krows[_r : r_]] * K[_r : r_] * U[kcols[_r : r_]])
     return res
 
 

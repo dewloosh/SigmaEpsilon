@@ -100,9 +100,10 @@ class FemMesh(PolyData, ABC_FemMesh):
         Returns True if the mesh is jagged, i.e. if it consists of blocks with
         inconsistent matrix shapes, thus prohibiting bulk calculations.
         """
-        cell_class_id = map(lambda b: id(b.cd.__class__), self.cellblocks(inclusive=True))
+        cell_class_id = map(lambda b: id(b.cd.__class__),
+                            self.cellblocks(inclusive=True))
         return len(set(cell_class_id)) > 1
-    
+
     def is_regular(self, **kwargs) -> bool:
         """
         Returns true if the numbering of the nodes in the mesh (hence the numbering
@@ -216,6 +217,7 @@ class FemMesh(PolyData, ABC_FemMesh):
         sum_duplicates: bool = True,
         sparse: bool = False,
         transform: bool = True,
+        squeeze: bool = False,
         **kwargs,
     ) -> Union[ndarray, coo_matrix]:
         """
@@ -232,6 +234,10 @@ class FemMesh(PolyData, ABC_FemMesh):
         transform : bool, Optional
             If True, local matrices are transformed to the global frame.
             Default is True.
+        squeeze : bool, Optional
+            If True, the results is squeezed befor return (see numpy.squeeze).
+            This is only relevant if there is only one element in the block.
+            Default is False.
 
         Returns
         -------
@@ -242,7 +248,9 @@ class FemMesh(PolyData, ABC_FemMesh):
             assert transform, "Must transform for sparse output."
 
             def foo(b: FemMesh):
-                return b.cd.elastic_stiffness_matrix(sparse=True, transform=True)
+                return b.cd.elastic_stiffness_matrix(
+                    sparse=True, transform=True, squeeze=squeeze
+                )
 
             K = np.sum(list(map(foo, blocks))).tocoo()
             if eliminate_zeros:
@@ -253,14 +261,17 @@ class FemMesh(PolyData, ABC_FemMesh):
         else:
 
             def foo(b: FemMesh):
-                return b.cd.elastic_stiffness_matrix(transform=transform)
+                return b.cd.elastic_stiffness_matrix(
+                    transform=transform, squeeze=squeeze
+                    )
 
             if kwargs.get("_jagged", self.is_jagged()):
                 shaper = map(
                     lambda x: x.reshape(x.shape[0], x.shape[1] * x.shape[1]),
                     map(foo, blocks),
                 )
-                mapper = map(lambda x: JaggedArray(x, force_numpy=False), shaper)
+                mapper = map(lambda x: JaggedArray(
+                    x, force_numpy=False), shaper)
             else:
                 mapper = map(foo, blocks)
             return np.vstack(list(mapper))
@@ -336,7 +347,8 @@ class FemMesh(PolyData, ABC_FemMesh):
                     lambda x: x.reshape(x.shape[0], x.shape[1] * x.shape[1]),
                     map(foo, blocks),
                 )
-                mapper = map(lambda x: JaggedArray(x, force_numpy=False), shaper)
+                mapper = map(lambda x: JaggedArray(
+                    x, force_numpy=False), shaper)
             else:
                 mapper = map(foo, blocks)
             return np.vstack(list(mapper))
@@ -365,7 +377,8 @@ class FemMesh(PolyData, ABC_FemMesh):
             sparse=True, transform=True, eliminate_zeros=False, sum_duplicates=False
         )
         # nodal masses
-        M += self.nodal_mass_matrix(eliminate_zeros=False, sum_duplicates=False)
+        M += self.nodal_mass_matrix(eliminate_zeros=False,
+                                    sum_duplicates=False)
         if eliminate_zeros:
             M.eliminate_zeros()
         if sum_duplicates:
