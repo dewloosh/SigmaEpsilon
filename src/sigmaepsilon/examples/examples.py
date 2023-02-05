@@ -1,17 +1,15 @@
-# -*- coding: utf-8 -*-
 import numpy as np
 from linkeddeepdict import LinkedDeepDict
 from linkeddeepdict.tools import getallfromkwargs
 
 from polymesh.space import StandardFrame, PointCloud
 from polymesh.grid import gridH8 as grid
-from polymesh.topo.tr import H8_to_L2
-from polymesh.space import frames_of_lines
-from polymesh.space.utils import index_of_closest_point
+from polymesh.utils.topology.tr import H8_to_L2
+from polymesh.utils.space import index_of_closest_point, frames_of_lines
 
-from sigmaepsilon.solid import BeamSection
-from sigmaepsilon.solid import Structure, LineMesh, PointData
-from sigmaepsilon.solid.fem.cells import B2 as Beam
+from sigmaepsilon import BeamSection
+from sigmaepsilon import Structure, LineMesh, PointData
+from sigmaepsilon.fem.cells import B2 as Beam
 
 
 def console_grid_bernoulli() -> Structure:
@@ -23,7 +21,6 @@ def console_grid_bernoulli() -> Structure:
     >>> from sigmaepsilon.examples import console_grid_bernoulli
     >>> structure = console_grid_bernoulli()
     >>> structure.linsolve()
-
     """
     # units in kN and cm
 
