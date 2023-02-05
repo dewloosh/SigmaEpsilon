@@ -141,9 +141,7 @@ class StaticSolver(Solver):
         K = self.K_sparse + self.P_sparse
         K.eliminate_zeros()
         K.sum_duplicates()
-        self.u, summary = solve_standard_form(
-            K, self.f, summary=True, solver=solver
-        )
+        self.u, summary = solve_standard_form(K, self.f, summary=True, solver=solver)
         self._summary["proc"] = summary
 
     def _postproc_(self):

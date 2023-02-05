@@ -468,8 +468,9 @@ def element_dofmap_bulk(dofmap: ndarray, nDOF: int, nNODE: int):
 
 
 @njit(nogil=True, parallel=False, cache=__cache)
-def expand_shape_function_matrix_bulk(A_in: ndarray, A_out: ndarray, 
-                                      dofmap: ndarray) -> ndarray:
+def expand_shape_function_matrix_bulk(
+    A_in: ndarray, A_out: ndarray, dofmap: ndarray
+) -> ndarray:
     """
     Expands the shape function matrices into a standard form.
     """

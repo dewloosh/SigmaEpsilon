@@ -207,7 +207,7 @@ class ABCFiniteElement(FemMixin, metaclass=MetaFiniteElement):
     dofs = ()
     dofmap = ()
 
-    def shape_function_matrix(self, *args, expand:bool=False, **kwargs):
+    def shape_function_matrix(self, *args, expand: bool = False, **kwargs):
         N = super().shape_function_matrix(*args, **kwargs)
         if expand:
             constans_metric = len(N.shape) == 3

@@ -196,7 +196,6 @@ def pproc_Mindlin_3D(
     points: np.ndarray,
     strains2d: np.ndarray,
     *args,
-    squeeze=True,
     angles: Iterable = None,
     separate=True,
     shear_factors: Iterable = None,
@@ -288,7 +287,4 @@ def pproc_Mindlin_3D(
     else:
         res3d = s_126_n + s_126_m, s_45, e_126_n + e_126_m, e_45
 
-    if squeeze:
-        return tuple(map(np.squeeze, res3d))
-    else:
-        return res3d
+    return res3d

@@ -270,7 +270,7 @@ class BeamSection(Wrapper, MaterialModel):
         """
         return np.array(self.mesh["triangles"].tolist())
 
-    def trimesh(self, subdivide:bool=False, order:int=1, **kwargs) -> TriMesh:
+    def trimesh(self, subdivide: bool = False, order: int = 1, **kwargs) -> TriMesh:
         """
         Returns the mesh of the section as a collection of T3 triangles.
         Keyword arguments are forwarded to the constructor of
@@ -298,7 +298,7 @@ class BeamSection(Wrapper, MaterialModel):
         >>> trimesh = section.trimesh()
         """
         points, triangles = self.coords(), self.topology()
-        if order==1:
+        if order == 1:
             if subdivide:
                 path = np.array([[0, 5, 4], [5, 1, 3], [3, 2, 4], [5, 3, 4]], dtype=int)
                 points, triangles = T6_to_T3(points, triangles, path=path)

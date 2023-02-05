@@ -3,12 +3,13 @@ import numpy as np
 from numpy import ndarray
 from typing import Union, Iterable, Any
 
-from dewloosh.core.tools import allinkwargs, popfromkwargs, float_to_str_sig
+from dewloosh.core.tools import float_to_str_sig
 from linkeddeepdict import LinkedDeepDict
 from linkeddeepdict.tools.dtk import parsedicts_addr
 
 from .problem import NavierProblem
 from .preproc import rhs_rect_const, rhs_conc_1d, rhs_conc_2d, rhs_line_const
+from .utils import points_to_rectangle_region
 
 
 class NavierLoadError(Exception):
@@ -62,7 +63,6 @@ class LoadGroup(LinkedDeepDict):
     by typing
 
     >>> loads.lock()
-
     """
 
     _typestr_ = None
@@ -109,18 +109,15 @@ class LoadGroup(LinkedDeepDict):
         inclusive : bool, Optional
             If True, returns the object the call is made upon.
             Default is False.
-
         blocktype : Any, Optional
             The type of the load groups to return. Default is None, that
             returns all types.
-
         deep : bool, Optional
             If True, all deep groups are returned separately. Default is True.
 
         Yields
         ------
         LoadGroup
-
         """
         dtype = LoadGroup if blocktype is None else blocktype
         return self.containers(self, inclusive=inclusive, dtype=dtype, deep=deep)
@@ -134,18 +131,15 @@ class LoadGroup(LinkedDeepDict):
         inclusive : bool, Optional
             If True, returns the object the call is made upon.
             Default is True.
-
         blocktype : Any, Optional
             The type of the load groups to return. Default is None, that
             returns all types.
-
         deep : bool, Optional
             If True, all deep groups are returned separately. Default is True.
 
         Yields
         ------
         LoadGroup
-
         """
         return filter(
             lambda i: i.__class__._typestr_ is not None,
@@ -173,14 +167,11 @@ class LoadGroup(LinkedDeepDict):
         ----------
         path : str
             The path of the file on your filesystem.
-
         mode : str, Optional
             https://www.programiz.com/python-programming/file-operation
-
         indent : int, Optional
             Governs the level to which members will be pretty-printed.
             Default is 4.
-
         """
         with open(path, mode) as f:
             json.dump(self.to_dict(), f, indent=indent)
@@ -198,7 +189,6 @@ class LoadGroup(LinkedDeepDict):
         Returns
         -------
         LoadGroup
-
         """
         if path is not None:
             with open(path, "r") as f:
@@ -228,10 +218,8 @@ class LoadGroup(LinkedDeepDict):
         ----------
         d : dict, Optional
             A dictionary.
-
         **kwargs : dict, Optional
             Keyword arguments defining a load group.
-
         """
         if d is None:
             d = kwargs
@@ -289,40 +277,17 @@ class RectangleLoad(LoadGroup):
 
     Parameters
     ----------
-    value: Iterable
-        1d or 2d iterable of scalars for all 3 degrees of
-        freedom in the order :math:`mx, my, fz`.
-
-    points: Iterable, Optional
-        The coordinates of the lower-left and upper-right points of the region
-        where the load is applied. Default is None.
-
-    **kwargs : dict, Optional
-        If the region of application is not specified by the argument 'points',
-        extra keyword arguments are forwarded to :func:`get_coords`. Default is None.
-
+    v: Iterable
+       Load intensities for each dof in the order :math:`fz, mx, my`.
+    x: Iterable, Optional
+       The coordinates of the lower-left and upper-right points of the region
+       where the load is applied. Default is None.
     """
 
     _typestr_ = "rectangle"
 
-    def __init__(self, *args, value: Iterable, points: Iterable = None, **kwargs):
-        if points is not None:
-            self.points = np.array(points, dtype=float)
-        else:
-            self.points = RectangleLoad.get_coords(kwargs)
-        self.value = np.array(value, dtype=float)
-        super().__init__()
-
-    def _encode_(self, *args, **kwargs) -> dict:
-        res = {}
-        cls = type(self)
-        res = {
-            "type": cls._typestr_,
-            "key": self.key,
-            "region": float_to_str_sig(self.region(), sig=6),
-            "value": float_to_str_sig(self.value, sig=6),
-        }
-        return res
+    def __init__(self, *args, x: Iterable = None, v: Iterable = None, **kwargs):
+        super().__init__(*args, x=x, v=v, **kwargs)
 
     @classmethod
     def _decode_(cls, d: dict = None, *args, **kwargs):
@@ -331,80 +296,24 @@ class RectangleLoad(LoadGroup):
             kwargs = None
         if kwargs is not None:
             d.update(kwargs)
-        points = RectangleLoad.get_coords(d)
         clskwargs = {
             "key": d.pop("key", None),
-            "points": points,
-            "value": np.array(d.pop("value"), dtype=float),
+            "x": np.array(d.pop("x")),
+            "v": np.array(d.pop("v")),
         }
         clskwargs.update(d)
         return cls(**clskwargs)
 
-    @staticmethod
-    def get_coords(d: dict = None, *args, **kwargs):
-        """
-        Returns the bottom-left and upper-right coordinates of the region
-        of the load from several inputs.
-
-        Parameters
-        ----------
-        d : dict, Optional
-            A dictionary, which is equivalrent to a parameter set from the
-            other parameters listed here. Default is None.
-
-        region : Iterable, Optional
-            An iterable of length 4 with values x0, y0, w, and h. Here x0 and y0 are
-            the coordinates of the bottom-left corner, w and h are the width and height
-            of the region.
-
-        xy : Iterable, Optional
-            The position of the bottom-left corner as an iterable of length 2.
-
-        w : float, Optional
-            The width of the region.
-
-        h : float, Optional
-            The height of the region.
-
-        center : Iterable, Optional
-            The coordinates of the center of the region.
-
-        Returns
-        -------
-        numpy.ndarray
-            A 2d float array of coordinates, where the entries of the first and second
-            rows are the coordinates of the lower-left and upper-right points of the region.
-
-        Examples
-        --------
-        The following definitions return the same output:
-
-        >>> from sigmaepsilon.fourier import RectLoad
-        >>> RectLoad.get_coords(region=[2, 3, 0.5, 0.7])
-        >>> RectLoad.get_coords(xy=[2, 3], w=0.5, h=0.7)
-        >>> RectLoad.get_coords(center=[2.25, 3.35], w=0.5, h=0.7)
-        >>> RectLoad.get_coords(dict(center=[2.25, 3.35], w=0.5, h=0.7))
-
-        """
-        points = None
-        if d is None:
-            d = kwargs
-        try:
-            if "points" in d:
-                points = np.array(d.pop("points"))
-            elif "region" in d:
-                x0, y0, w, h = np.array(d.pop("region"))
-                points = np.array([[x0, y0], [x0 + w, y0 + h]])
-            elif allinkwargs(["xy", "w", "h"], **d):
-                (x0, y0), w, h = popfromkwargs(["xy", "w", "h"], d)
-                points = np.array([[x0, y0], [x0 + w, y0 + h]])
-            elif allinkwargs(["center", "w", "h"], **d):
-                (xc, yc), w, h = popfromkwargs(["center", "w", "h"], d)
-                points = np.array([[xc - w / 2, yc - h / 2], [xc + w / 2, yc + h / 2]])
-        except Exception as e:
-            print(e)
-            return None
-        return points
+    def _encode_(self, *args, **kwargs) -> dict:
+        res = {}
+        cls = type(self)
+        res = {
+            "type": cls._typestr_,
+            "key": self.key,
+            "x": float_to_str_sig(self["x"], sig=6),
+            "v": float_to_str_sig(self["v"], sig=6),
+        }
+        return res
 
     def region(self) -> Iterable:
         """
@@ -412,8 +321,8 @@ class RectangleLoad(LoadGroup):
         the coordinates of the bottom-left corner, w and h are the width and height
         of the region.
         """
-        assert self.points is not None, "There are no points defined."
-        return _points_to_region_(self.points)
+        assert "x" in self, "There are no points defined."
+        return points_to_rectangle_region(self["x"])
 
     def rhs(self, *, problem: NavierProblem = None) -> ndarray:
         """
@@ -430,10 +339,11 @@ class RectangleLoad(LoadGroup):
         numpy.ndarray
             2d float array of shape (H, 3), where H is the total number
             of harmonic terms involved (defined for the problem).
-
         """
         p = problem if problem is not None else self.problem
-        return rhs_rect_const(p.size, p.shape, self.value, self.points)
+        x = np.array(self["x"], dtype=float)
+        v = np.array(self["v"], dtype=float)
+        return rhs_rect_const(p.size, p.shape, x, v)
 
     def __repr__(self):
         return "RectangleLoad(%s)" % (dict.__repr__(self))
@@ -449,11 +359,9 @@ class LineLoad(LoadGroup):
         The point of application as an 1d iterable for a beam, a 2d iterable
         for a plate. In the latter case, the first row is the first point, the
         second row is the second point.
-
     v : Iterable
         Load intensities for each dof. The order of the dofs for a beam
         is [F, M], for a plate it is [F, Mx, My].
-
     """
 
     _typestr_ = "line"
@@ -496,18 +404,16 @@ class LineLoad(LoadGroup):
         problem : NavierProblem, Optional
             A problem the coefficients are generated for. If not specified,
             the attached problem of the object is used. Default is None.
-
         Returns
         -------
         numpy.ndarray
             2d float array of shape (H, 3), where H is the total number
             of harmonic terms involved (defined for the problem).
-
         """
         p = problem if problem is not None else self.problem
         x = np.array(self["x"], dtype=float)
         v = np.array(self["v"], dtype=float)
-        return rhs_line_const(p.length, p.N, x, v)
+        return rhs_line_const(p.length, p.N, v, x)
 
     def __repr__(self):
         return "LineLoad(%s)" % (dict.__repr__(self))
@@ -522,11 +428,9 @@ class PointLoad(LoadGroup):
     x : Union[float, Iterable]
         The point of application. A scalar for a beam, an iterable of
         length 2 for a plate.
-
     v : Iterable
         Load values for each dof. The order of the dofs for a beam
         is [F, M], for a plate it is [F, Mx, My].
-
     """
 
     _typestr_ = "point"
@@ -571,13 +475,11 @@ class PointLoad(LoadGroup):
         problem : NavierProblem, Optional
             A problem the coefficients are generated for. If not specified,
             the attached problem of the object is used. Default is None.
-
         Returns
         -------
         numpy.ndarray
             2d float array of shape (H, 3), where H is the total number
             of harmonic terms involved (defined for the problem).
-
         """
         p = problem if problem is not None else self.problem
         x = self["x"]
@@ -589,11 +491,3 @@ class PointLoad(LoadGroup):
 
     def __repr__(self):
         return "PointLoad(%s)" % (dict.__repr__(self))
-
-
-def _points_to_region_(points: ndarray):
-    xmin = points[:, 0].min()
-    ymin = points[:, 1].min()
-    xmax = points[:, 0].max()
-    ymax = points[:, 1].max()
-    return xmin, ymin, xmax - xmin, ymax - ymin

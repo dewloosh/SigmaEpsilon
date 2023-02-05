@@ -6,7 +6,6 @@ import numpy as np
 from numpy import ndarray
 from numba import njit, prange
 
-from neumann import squeeze
 from neumann.logical import isintegerarray, isfloatarray, isboolarray
 from neumann import bool_to_float, atleastnd, matrixform
 from neumann.linalg.sparse.utils import lower_spdata, upper_spdata
@@ -141,7 +140,6 @@ def _build_nodal_data(values: ndarray, *, inds: ndarray = None, N: int = None):
     return inds, values, N
 
 
-@squeeze(True)
 def nodal_load_vector(values: ndarray, **kwargs) -> ndarray:
     """
     Assembles the right-hand-side of the global equation system.

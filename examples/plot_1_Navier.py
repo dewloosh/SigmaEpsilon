@@ -86,7 +86,7 @@ Mesh = PolyData(coords=coords, topo=triangles)
 centers = Mesh.centers()
 
 # %%
-Problem.postproc(centers[:, :2], squeeze=False, cleanup=False)
+Problem.postproc(centers[:, :2], cleanup=False)
 
 # %%
 UZ, ROTX, ROTY, CX, CY, CXY, EXZ, EYZ, MX, MY, MXY, QX, QY = list(range(13))

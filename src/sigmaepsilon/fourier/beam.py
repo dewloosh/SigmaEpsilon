@@ -1,5 +1,4 @@
 import numpy as np
-from numpy import swapaxes as swap
 from typing import Union, Iterable
 
 from linkeddeepdict import LinkedDeepDict
@@ -21,14 +20,11 @@ class NavierBeam(NavierProblem):
     ----------
     length : float
         The length of the beam.
-
     N : int, Optional
         The number of harmonic terms involved in the approximation.
         Default is 100.
-
     EI : float
         Bending stiffness. Default is None.
-
     GA : float, Optional
         Shear stiffness. Only for Timoshenko beams. Default is None.
 
@@ -68,7 +64,6 @@ class NavierBeam(NavierProblem):
         ----------
         loads : Union[dict, LoadGroup]
             The loads. If it is an array, it should be a 2d float array.
-
         points : float or Iterable
             A float or an 1d iterable of coordinates, where the results are
             to be evaluated. If it is a scalar, the resulting dictionary
@@ -80,10 +75,9 @@ class NavierBeam(NavierProblem):
         -------
         LinkedDeepDict
             A nested dictionary with a same layout as the input.
-
         """
         # STIFFNESS
-        LHS = lhs_Navier(self.length, self.N, D=self.EI, S=self.GA, squeeze=False)
+        LHS = lhs_Navier(self.length, self.N, D=self.EI, S=self.GA)
 
         # LOADS
         if isinstance(loads, LoadGroup):
@@ -94,28 +88,24 @@ class NavierBeam(NavierProblem):
             raise NavierLoadError()
         _loads.problem = self
         LC = list(_loads.cases())
-        RHS = np.stack(list(lc.rhs() for lc in LC))
+        RHS = np.vstack(list(lc.rhs() for lc in LC))
 
         # SOLUTION
         if self.GA is None:
             _RHS = rhs_Bernoulli(RHS, self.length)
             coeffs = linsolve_Bernoulli(LHS, _RHS)
             del _RHS
-            # (nRHS, nLHS, nMN)
+            # (nLHS, nRHS, nMN)
         else:
             coeffs = linsolve_Timoshenko(LHS, RHS)
-            # (nRHS, nLHS, nMN, 2)
+            # (nLHS, nRHS, nMN, 2)
 
         # POSTPROCESSING
         points = atleast1d(points)
-        res = postproc(
-            self.length, self.N, points, coeffs, RHS, self.EI, self.GA, squeeze=False
-        )
-        # (nRHS, nLHS, nP, nX)
-        res = swap(res, 1, 2)
-        # (nRHS, nP, nLHS, nX)
+        res = postproc(self.length, self.N, points, coeffs, RHS, self.EI, self.GA)
+        # (nLHS, nRHS, nP, nX)
         result = LinkedDeepDict()
         for i, lc in enumerate(LC):
-            result[lc.address] = np.squeeze(res[i, :, :])
+            result[lc.address] = res[0, i, :, :]
         result.lock()
         return result

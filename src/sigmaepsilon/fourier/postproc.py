@@ -1,7 +1,9 @@
+from typing import Iterable, Union
+
 import numpy as np
 from numpy import sin, cos, ndarray, pi as PI
 from numba import njit, prange
-from typing import Iterable, Union
+
 from neumann import atleast1d, atleast2d, atleast3d, atleast4d, itype_of_ftype
 
 
@@ -19,8 +21,6 @@ def postproc(
     loads: ndarray,
     D: Union[float, ndarray],
     S: Union[float, ndarray] = None,
-    *,
-    squeeze: bool = True
 ):
     """
     Calculates postprocessing items.
@@ -66,10 +66,10 @@ def postproc(
                 atleast3d(D),
                 loads,
             )
-    # (N, nRHS, nLHS, nP, ...)
+    # (N, nLHS, nRHS, nP, ...)
     res = np.sum(res, axis=0)
-    # (nRHS, nLHS, nP, ...)
-    return res if not squeeze else np.squeeze(res)
+    # (nLHS, nRHS, nP, ...)
+    return res
 
 
 @njit(nogil=True, parallel=True, cache=True)
@@ -84,23 +84,19 @@ def postproc_Bernoulli(
     ----------
     L : float
         The length of the beam.
-
     N : int
         The number of harmonic terms.
-
     points : numpy.ndarray
         1d array of shape (nP,) of coordinates.
-
     solution : numpy.ndarray
         Results of a Navier solution as a 3d array of shape (nRHS, nLHS, N).
-
     EI : float
         Bending stiffnesses as a 3d float array of shape (nLHS, 3, 3).
 
     Returns
     -------
     numpy.ndarray
-        5d array of shape (N, nRHS, nLHS, nP, ...) of post-processing items.
+        5d array of shape (N, nLHS, nRHS, nP, ...) of post-processing items.
         The indices along the last axis denote the following quantities:
 
             0 : displacement
@@ -117,8 +113,8 @@ def postproc_Bernoulli(
 
     """
     nP = points.shape[0]
-    nRHS, nLHS = solution.shape[:2]
-    res = np.zeros((N, nRHS, nLHS, nP, 6), dtype=solution.dtype)
+    nLHS, nRHS = solution.shape[:2]
+    res = np.zeros((N, nLHS, nRHS, nP, 6), dtype=solution.dtype)
     for iRHS in prange(nRHS):
         for iLHS in prange(nLHS):
             for iP in prange(nP):
@@ -128,13 +124,13 @@ def postproc_Bernoulli(
                     arg = PI * n / L
                     Sn = sin(x * arg)
                     Cn = cos(x * arg)
-                    vn = solution[iRHS, iLHS, iN]
+                    vn = solution[iLHS, iRHS, iN]
                     q = loads[iRHS, iN, 1]
-                    res[iN, iRHS, iLHS, iP, 0] = vn * Sn
-                    res[iN, iRHS, iLHS, iP, 1] = vn * arg * Cn
-                    res[iN, iRHS, iLHS, iP, 2] = -vn * arg**2 * Sn
-                    res[iN, iRHS, iLHS, iP, 4] = -EI[iLHS] * vn * arg**2 * Sn
-                    res[iN, iRHS, iLHS, iP, 5] = (EI[iLHS] * vn * arg**3 + q) * Cn
+                    res[iN, iLHS, iRHS, iP, 0] = vn * Sn
+                    res[iN, iLHS, iRHS, iP, 1] = vn * arg * Cn
+                    res[iN, iLHS, iRHS, iP, 2] = -vn * arg**2 * Sn
+                    res[iN, iLHS, iRHS, iP, 4] = -EI[iLHS] * vn * arg**2 * Sn
+                    res[iN, iLHS, iRHS, iP, 5] = (EI[iLHS] * vn * arg**3 + q) * Cn
     return res
 
 
@@ -150,26 +146,21 @@ def postproc_Timoshenko(
     ----------
     L : float
         The length of the beam.
-
     N : int
         The number of harmonic terms.
-
     points : numpy.ndarray
         1d array of shape (nP,) of coordinates.
-
     solution : numpy.ndarray
         Results of a Navier solution as a 4d array of shape (nRHS, nLHS, N, 2).
-
     EI : float
         Bending stiffnesses as an 1d float array of shape (nLHS).
-
     GA : float
         Corrected shear stiffnesses as an 1d float array of shape (nLHS).
 
     Returns
     -------
     numpy.ndarray
-        5d array of shape (N, nRHS, nLHS, nP, ...) of post-processing items.
+        5d array of shape (N, nLHS, nRHS, nP, ...) of post-processing items.
         The indices along the last axis denote the following quantities:
 
             0 : displacement
@@ -186,8 +177,8 @@ def postproc_Timoshenko(
 
     """
     nP = points.shape[0]
-    nRHS, nLHS = solution.shape[:2]
-    res = np.zeros((N, nRHS, nLHS, nP, 6), dtype=solution.dtype)
+    nLHS, nRHS = solution.shape[:2]
+    res = np.zeros((N, nLHS, nRHS, nP, 6), dtype=solution.dtype)
     for iRHS in prange(nRHS):
         for iLHS in prange(nLHS):
             for iP in prange(nP):
@@ -197,13 +188,13 @@ def postproc_Timoshenko(
                     arg = PI * n / L
                     Sn = sin(x * arg)
                     Cn = cos(x * arg)
-                    vn, rn = solution[iRHS, iLHS, iN]
-                    res[iN, iRHS, iLHS, iP, 0] = vn * Sn
-                    res[iN, iRHS, iLHS, iP, 1] = rn * Cn
-                    res[iN, iRHS, iLHS, iP, 2] = -rn * arg * Sn
-                    res[iN, iRHS, iLHS, iP, 3] = (vn * arg - rn) * Cn
-                    res[iN, iRHS, iLHS, iP, 4] = -EI[iLHS] * rn * arg * Sn
-                    res[iN, iRHS, iLHS, iP, 5] = GA[iLHS] * (vn * arg - rn) * Cn
+                    vn, rn = solution[iLHS, iRHS, iN]
+                    res[iN, iLHS, iRHS, iP, 0] = vn * Sn
+                    res[iN, iLHS, iRHS, iP, 1] = rn * Cn
+                    res[iN, iLHS, iRHS, iP, 2] = -rn * arg * Sn
+                    res[iN, iLHS, iRHS, iP, 3] = (vn * arg - rn) * Cn
+                    res[iN, iLHS, iRHS, iP, 4] = -EI[iLHS] * rn * arg * Sn
+                    res[iN, iLHS, iRHS, iP, 5] = GA[iLHS] * (vn * arg - rn) * Cn
     return res
 
 
@@ -219,20 +210,15 @@ def postproc_Mindlin(
     ----------
     size : numpy.ndarray
         Sizes in both directions as an 1d float array of length 2.
-
     shape : numpy.ndarray
         Number of harmonic terms involved in both directions as an
         1d integer array of length 2.
-
     points : numpy.ndarray
         2d array of shape (nP, 2) of coordinates.
-
     solution : numpy.ndarray
         Results of a Navier solution as a 4d array of shape (nRHS, nLHS, M * N, 3).
-
     D : numpy.ndarray
         Bending stiffnesses as a 3d float array of shape (nLHS, 3, 3).
-
     S : numpy.ndarray
         Corrected shear stiffness as a 3d float array of shape (nLHS, 2, 2).
 
@@ -272,8 +258,8 @@ def postproc_Mindlin(
     Lx, Ly = size
     M, N = shape
     nP = points.shape[0]
-    nRHS, nLHS = solution.shape[:2]
-    res = np.zeros((M * N, nRHS, nLHS, nP, 13), dtype=D.dtype)
+    nLHS, nRHS = solution.shape[:2]
+    res = np.zeros((M * N, nLHS, nRHS, nP, 13), dtype=D.dtype)
     for iRHS in prange(nRHS):
         for iLHS in prange(nLHS):
             D11, D12, D22, D66 = (
@@ -290,39 +276,39 @@ def postproc_Mindlin(
                     Cm = cos(PI * m * xp / Lx)
                     for n in prange(1, N + 1):
                         iMN = (m - 1) * N + n - 1
-                        Amn, Bmn, Cmn = solution[iRHS, iLHS, iMN]
+                        Amn, Bmn, Cmn = solution[iLHS, iRHS, iMN]
                         Sn = sin(PI * n * yp / Ly)
                         Cn = cos(PI * n * yp / Ly)
-                        res[iMN, iRHS, iLHS, iP, UZ] = Cmn * Sm * Sn
-                        res[iMN, iRHS, iLHS, iP, ROTX] = Amn * Sm * Cn
-                        res[iMN, iRHS, iLHS, iP, ROTY] = Bmn * Sn * Cm
-                        res[iMN, iRHS, iLHS, iP, CX] = -PI * Bmn * m * Sm * Sn / Lx
-                        res[iMN, iRHS, iLHS, iP, CY] = PI * Amn * n * Sm * Sn / Ly
-                        res[iMN, iRHS, iLHS, iP, CXY] = (
+                        res[iMN, iLHS, iRHS, iP, UZ] = Cmn * Sm * Sn
+                        res[iMN, iLHS, iRHS, iP, ROTX] = Amn * Sm * Cn
+                        res[iMN, iLHS, iRHS, iP, ROTY] = Bmn * Sn * Cm
+                        res[iMN, iLHS, iRHS, iP, CX] = -PI * Bmn * m * Sm * Sn / Lx
+                        res[iMN, iLHS, iRHS, iP, CY] = PI * Amn * n * Sm * Sn / Ly
+                        res[iMN, iLHS, iRHS, iP, CXY] = (
                             -PI * Amn * m * Cm * Cn / Lx + PI * Bmn * n * Cm * Cn / Ly
                         )
-                        res[iMN, iRHS, iLHS, iP, EXZ] = (
+                        res[iMN, iLHS, iRHS, iP, EXZ] = (
                             Bmn * Sn * Cm + PI * Cmn * m * Sn * Cm / Lx
                         )
-                        res[iMN, iRHS, iLHS, iP, EYZ] = (
+                        res[iMN, iLHS, iRHS, iP, EYZ] = (
                             -Amn * Sm * Cn + PI * Cmn * n * Sm * Cn / Ly
                         )
-                        res[iMN, iRHS, iLHS, iP, MX] = (
+                        res[iMN, iLHS, iRHS, iP, MX] = (
                             PI * Amn * D12 * n * Sm * Sn / Ly
                             - PI * Bmn * D11 * m * Sm * Sn / Lx
                         )
-                        res[iMN, iRHS, iLHS, iP, MY] = (
+                        res[iMN, iLHS, iRHS, iP, MY] = (
                             PI * Amn * D22 * n * Sm * Sn / Ly
                             - PI * Bmn * D12 * m * Sm * Sn / Lx
                         )
-                        res[iMN, iRHS, iLHS, iP, MXY] = (
+                        res[iMN, iLHS, iRHS, iP, MXY] = (
                             -PI * Amn * D66 * m * Cm * Cn / Lx
                             + PI * Bmn * D66 * n * Cm * Cn / Ly
                         )
-                        res[iMN, iRHS, iLHS, iP, QX] = (
+                        res[iMN, iLHS, iRHS, iP, QX] = (
                             Bmn * S55 * Sn * Cm + PI * Cmn * S55 * m * Sn * Cm / Lx
                         )
-                        res[iMN, iRHS, iLHS, iP, QY] = (
+                        res[iMN, iLHS, iRHS, iP, QY] = (
                             -Amn * S44 * Sm * Cn + PI * Cmn * S44 * n * Sm * Cn / Ly
                         )
     return res
@@ -340,17 +326,13 @@ def postproc_Kirchhoff(
     ----------
     size : numpy.ndarray
         Sizes in both directions as an 1d float array of length 2.
-
     shape : numpy.ndarray
         Number of harmonic terms involved in both directions as an
         1d integer array of length 2.
-
     points : numpy.ndarray
         2d array of point coordinates of shape (nP, 2).
-
     solution : numpy.ndarray
         results of a Navier solution as a 3d array of shape (nRHS, nLHS, M * N).
-
     D : numpy.ndarray
         3d array of bending stiffness terms (nLHS, 3, 3).
 
@@ -390,8 +372,8 @@ def postproc_Kirchhoff(
     Lx, Ly = size
     M, N = shape
     nP = points.shape[0]
-    nRHS, nLHS = solution.shape[:2]
-    res = np.zeros((M * N, nRHS, nLHS, nP, 13), dtype=D.dtype)
+    nLHS, nRHS = solution.shape[:2]
+    res = np.zeros((M * N, nLHS, nRHS, nP, 13), dtype=D.dtype)
     for iRHS in prange(nRHS):
         for iLHS in prange(nLHS):
             D11, D12, D22, D66 = (
@@ -409,32 +391,32 @@ def postproc_Kirchhoff(
                         Sn = sin(PI * n * y / Ly)
                         Cn = cos(PI * n * y / Ly)
                         iMN = (m - 1) * N + n - 1
-                        Cmn = solution[iRHS, iLHS, iMN]
+                        Cmn = solution[iLHS, iRHS, iMN]
                         qxx, qyy = loads[iRHS, iMN, :2]
-                        res[iMN, iRHS, iLHS, iP, UZ] = Cmn * Sm * Sn
-                        res[iMN, iRHS, iLHS, iP, ROTX] = PI * Cmn * n * Sm * Cn / Ly
-                        res[iMN, iRHS, iLHS, iP, ROTY] = -PI * Cmn * m * Sn * Cm / Lx
-                        res[iMN, iRHS, iLHS, iP, CX] = (
+                        res[iMN, iLHS, iRHS, iP, UZ] = Cmn * Sm * Sn
+                        res[iMN, iLHS, iRHS, iP, ROTX] = PI * Cmn * n * Sm * Cn / Ly
+                        res[iMN, iLHS, iRHS, iP, ROTY] = -PI * Cmn * m * Sn * Cm / Lx
+                        res[iMN, iLHS, iRHS, iP, CX] = (
                             PI**2 * Cmn * m**2 * Sm * Sn / Lx**2
                         )
-                        res[iMN, iRHS, iLHS, iP, CY] = (
+                        res[iMN, iLHS, iRHS, iP, CY] = (
                             PI**2 * Cmn * n**2 * Sm * Sn / Ly**2
                         )
-                        res[iMN, iRHS, iLHS, iP, CXY] = (
+                        res[iMN, iLHS, iRHS, iP, CXY] = (
                             -2 * PI**2 * Cmn * m * n * Cm * Cn / (Lx * Ly)
                         )
-                        res[iMN, iRHS, iLHS, iP, MX] = (
+                        res[iMN, iLHS, iRHS, iP, MX] = (
                             PI**2 * Cmn * D11 * m**2 * Sm * Sn / Lx**2
                             + PI**2 * Cmn * D12 * n**2 * Sm * Sn / Ly**2
                         )
-                        res[iMN, iRHS, iLHS, iP, MY] = (
+                        res[iMN, iLHS, iRHS, iP, MY] = (
                             PI**2 * Cmn * D12 * m**2 * Sm * Sn / Lx**2
                             + PI**2 * Cmn * D22 * n**2 * Sm * Sn / Ly**2
                         )
-                        res[iMN, iRHS, iLHS, iP, MXY] = (
+                        res[iMN, iLHS, iRHS, iP, MXY] = (
                             -2 * PI**2 * Cmn * D66 * m * n * Cm * Cn / (Lx * Ly)
                         )
-                        res[iMN, iRHS, iLHS, iP, QX] = (
+                        res[iMN, iLHS, iRHS, iP, QX] = (
                             PI**3 * Cmn * D11 * m**3 * Sn * Cm / Lx**3
                             + PI**3
                             * Cmn
@@ -455,7 +437,7 @@ def postproc_Kirchhoff(
                             / (Lx * Ly**2)
                             + qxx * Sn * Cm
                         )
-                        res[iMN, iRHS, iLHS, iP, QY] = (
+                        res[iMN, iLHS, iRHS, iP, QY] = (
                             PI**3 * Cmn * D12 * m**2 * n * Sm * Cn / (Lx**2 * Ly)
                             + PI**3 * Cmn * D22 * n**3 * Sm * Cn / Ly**3
                             + 2

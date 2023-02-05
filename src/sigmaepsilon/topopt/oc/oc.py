@@ -13,17 +13,17 @@ from .utils import (
     get_filter_factors,
     get_filter_factors_csr,
     weighted_stiffness_flat as weighted_stiffness,
-    element_stiffness_ranges
+    element_stiffness_ranges,
 )
 from ...fem.postproc import element_compliances_flat as element_compliances
 
 
 class OptRes(NamedTuple):
     x: Iterable  # the design variables
-    obj: float   # the actual value of the objective function
-    vol: float   # the actual volume
-    pen: float   # the actual value of the penalty
-    n: int       # the number of iterations completed
+    obj: float  # the actual value of the objective function
+    vol: float  # the actual volume
+    pen: float  # the actual value of the penalty
+    n: int  # the number of iterations completed
 
 
 def maximize_stiffness(
@@ -122,7 +122,7 @@ def maximize_stiffness(
 
     if structure._static_solver_ is None:
         structure.linear_static_analysis()
-    femsolver : StaticSolver = structure._static_solver_.core
+    femsolver: StaticSolver = structure._static_solver_.core
     assert femsolver.regular
     krows, kcols = femsolver.krows, femsolver.kcols
     kshape = femsolver.kshape
@@ -147,11 +147,9 @@ def maximize_stiffness(
             return U[:, 0]
         return U
 
-    def compliance(update_stiffness:bool=False) -> ndarray:
+    def compliance(update_stiffness: bool = False) -> ndarray:
         if update_stiffness:
-            femsolver.update_stiffness(
-                weighted_stiffness(K_virgin, dens, kranges)
-                )
+            femsolver.update_stiffness(weighted_stiffness(K_virgin, dens, kranges))
         femsolver._proc_()
         U = get_dof_solution()
         comps[:] = element_compliances(K_virgin, U, krows, kcols, kranges)

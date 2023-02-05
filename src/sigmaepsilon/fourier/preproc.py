@@ -4,11 +4,9 @@ import numpy as np
 from numba import njit, prange
 from numpy import ndarray, sin, cos, ndarray, pi as PI
 
-from neumann import squeeze
 from neumann import atleast1d, atleast2d, atleast3d
 
 
-@squeeze(True)
 def lhs_Navier(
     size: Union[float, Tuple[float]],
     shape: Union[int, Tuple[int]],
@@ -16,7 +14,7 @@ def lhs_Navier(
     D: Union[float, ndarray],
     S: Union[float, ndarray] = None,
     **kw
-):
+) -> ndarray:
     """
     Returns coefficient matrices for a Navier solution, for a single or
     multiple left-hand sides.
@@ -25,22 +23,15 @@ def lhs_Navier(
     ----------
     size : Union[float, Tuple[float]]
         The size of the problem. Scalar for a beam, 2-tuple for a plate.
-
     shape : Union[int, Tuple[int]]
         The number of harmonic terms used. Scalar for a beam, 2-tuple for a plate.
-
     D : Union[float, ndarray]
         2d or 3d float array of bending stiffnesses for a plate, scalar or 1d float array
         for a beam.
-
     S : Union[float, ndarray], Optional
         2d or 3d float array of shear stiffnesses for a plate, scalar or 1d float array
         for a beam. Only for Mindlin-Reissner plates and Euler-Bernoulli beams.
         plates. Default is None.
-
-    squeeze : bool, Optional
-        Removes single-dimensional entries from the shape of the
-        resulting array. Default is True.
 
     Note
     ----
@@ -50,8 +41,7 @@ def lhs_Navier(
     -------
     numpy.ndarray
         The coefficients as an array. See the documentation of the corresponding
-        function for further details. Also, if `squeeze` is True, axes of length one
-        are removed.
+        function for further details.
 
     See Also
     --------
@@ -59,7 +49,6 @@ def lhs_Navier(
     :func:`lhs_Navier_Kirchhoff`
     :func:`lhs_Navier_Bernoulli`
     :func:`lhs_Navier_Timoshenko`
-
     """
     if isinstance(shape, Iterable):  # plate problem
         if S is None:
@@ -74,7 +63,7 @@ def lhs_Navier(
 
 
 @njit(nogil=True, parallel=True, cache=True)
-def lhs_Navier_Mindlin(size: tuple, shape: tuple, D: np.ndarray, S: np.ndarray):
+def lhs_Navier_Mindlin(size: tuple, shape: tuple, D: ndarray, S: ndarray) -> ndarray:
     """
     JIT compiled function, that returns coefficient matrices for a Navier
     solution for multiple left-hand sides.
@@ -83,14 +72,11 @@ def lhs_Navier_Mindlin(size: tuple, shape: tuple, D: np.ndarray, S: np.ndarray):
     ----------
     size : tuple
         Tuple of floats, containing the sizes of the rectagle.
-
     shape : tuple
         Tuple of integers, containing the number of harmonic terms
         included in both directions.
-
     D : numpy.ndarray
         3d float array of bending stiffnesses.
-
     S : numpy.ndarray
         3d float array of shear stiffnesses.
 
@@ -102,7 +88,6 @@ def lhs_Navier_Mindlin(size: tuple, shape: tuple, D: np.ndarray, S: np.ndarray):
     -------
     numpy.ndarray
         4d float array of coefficients.
-
     """
     Lx, Ly = size
     nLHS = D.shape[0]
@@ -141,7 +126,7 @@ def lhs_Navier_Mindlin(size: tuple, shape: tuple, D: np.ndarray, S: np.ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=True)
-def lhs_Navier_Kirchhoff(size: tuple, shape: tuple, D: np.ndarray):
+def lhs_Navier_Kirchhoff(size: tuple, shape: tuple, D: ndarray) -> ndarray:
     """
     JIT compiled function, that returns coefficient matrices for a Navier
     solution for multiple left-hand sides.
@@ -150,11 +135,9 @@ def lhs_Navier_Kirchhoff(size: tuple, shape: tuple, D: np.ndarray):
     ----------
     size : tuple
         Tuple of floats, containing the sizes of the rectagle.
-
     shape : tuple
         Tuple of integers, containing the number of harmonic terms
         included in both directions.
-
     D : numpy.ndarray
         3d float array of bending stiffnesses.
 
@@ -162,7 +145,6 @@ def lhs_Navier_Kirchhoff(size: tuple, shape: tuple, D: np.ndarray):
     -------
     numpy.ndarray
         2d float array of coefficients.
-
     """
     Lx, Ly = size
     nLHS = D.shape[0]
@@ -183,7 +165,7 @@ def lhs_Navier_Kirchhoff(size: tuple, shape: tuple, D: np.ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=True)
-def lhs_Navier_Bernoulli(L: float, N: int, EI: ndarray):
+def lhs_Navier_Bernoulli(L: float, N: int, EI: ndarray) -> ndarray:
     """
     JIT compiled function, that returns coefficient matrices for a Navier
     solution for multiple left-hand sides.
@@ -192,10 +174,8 @@ def lhs_Navier_Bernoulli(L: float, N: int, EI: ndarray):
     ----------
     L : float
         The length of the beam.
-
     N : int
         The number of harmonic terms.
-
     EI : numpy.ndarray
         1d float array of bending stiffnesses.
 
@@ -203,7 +183,6 @@ def lhs_Navier_Bernoulli(L: float, N: int, EI: ndarray):
     -------
     numpy.ndarray
         2d float array of coefficients.
-
     """
     nLHS = EI.shape[0]
     res = np.zeros((nLHS, N), dtype=EI.dtype)
@@ -214,7 +193,7 @@ def lhs_Navier_Bernoulli(L: float, N: int, EI: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=True)
-def lhs_Navier_Timoshenko(L: float, N: int, EI: ndarray, GA: ndarray):
+def lhs_Navier_Timoshenko(L: float, N: int, EI: ndarray, GA: ndarray) -> ndarray:
     """
     JIT compiled function, that returns coefficient matrices for a Navier
     solution for multiple left-hand sides.
@@ -223,13 +202,10 @@ def lhs_Navier_Timoshenko(L: float, N: int, EI: ndarray, GA: ndarray):
     ----------
     L : float
         The length of the beam.
-
     N : int
         The number of harmonic terms.
-
     EI : numpy.ndarray
         1d float array of bending stiffnesses.
-
     GA : numpy.ndarray
         1d float array of shear stiffnesses.
 
@@ -241,7 +217,6 @@ def lhs_Navier_Timoshenko(L: float, N: int, EI: ndarray, GA: ndarray):
     -------
     numpy.ndarray
         4d float array of coefficients.
-
     """
     nLHS = EI.shape[0]
     res = np.zeros((nLHS, N, 2, 2), dtype=EI.dtype)
@@ -258,7 +233,7 @@ def lhs_Navier_Timoshenko(L: float, N: int, EI: ndarray, GA: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=True)
-def rhs_Bernoulli(coeffs: ndarray, L: float):
+def rhs_Bernoulli(coeffs: ndarray, L: float) -> ndarray:
     """
     Calculates unknowns for Bernoulli Beams.
     """
@@ -271,17 +246,16 @@ def rhs_Bernoulli(coeffs: ndarray, L: float):
     return res
 
 
-@squeeze(True)
-def rhs_line_const(L: float, N: int, x: ndarray, values: ndarray):
+def rhs_line_const(L: float, N: int, v: ndarray, x: ndarray) -> ndarray:
     """
     Returns coefficients for constant loads over line segments in
     the order [f, m].
     """
-    return _line_const_(L, N, atleast2d(x), atleast2d(values))
+    return _line_const_(L, N, atleast2d(x), atleast2d(v))
 
 
 @njit(nogil=True, parallel=True, cache=True)
-def _line_const_(L: float, N: int, x: ndarray, values: ndarray):
+def _line_const_(L: float, N: int, x: ndarray, values: ndarray) -> ndarray:
     nR = values.shape[0]
     rhs = np.zeros((nR, N, 2), dtype=x.dtype)
     for iR in prange(nR):
@@ -295,13 +269,12 @@ def _line_const_(L: float, N: int, x: ndarray, values: ndarray):
     return rhs
 
 
-@squeeze(True)
-def rhs_rect_const(size: tuple, shape: tuple, values: np.ndarray, points: np.ndarray):
+def rhs_rect_const(size: tuple, shape: tuple, x: ndarray, v: ndarray) -> ndarray:
     """
     Returns coefficients for constant loads over rectangular patches
     in the order [f, mx, my].
     """
-    return _rect_const_(size, shape, atleast2d(values), atleast3d(points))
+    return _rect_const_(size, shape, atleast2d(v), atleast3d(x))
 
 
 @njit(nogil=True, cache=True)
@@ -314,7 +287,7 @@ def __rect_const__(
     w: float,
     h: float,
     values: ndarray,
-):
+) -> ndarray:
     Lx, Ly = size
     f, mx, my = values
     return np.array(
@@ -345,7 +318,9 @@ def __rect_const__(
 
 
 @njit(nogil=True, parallel=True, cache=True)
-def _rect_const_(size: tuple, shape: tuple, values: ndarray, points: ndarray):
+def _rect_const_(
+    size: tuple, shape: tuple, values: ndarray, points: ndarray
+) -> ndarray:
     nR = values.shape[0]
     M, N = shape
     rhs = np.zeros((nR, M * N, 3), dtype=points.dtype)
@@ -363,13 +338,12 @@ def _rect_const_(size: tuple, shape: tuple, values: ndarray, points: ndarray):
     return rhs
 
 
-@squeeze(True)
-def rhs_conc_1d(L: float, N: int, values: ndarray, points: ndarray):
-    return _conc1d_(L, N, atleast2d(values), atleast1d(points))
+def rhs_conc_1d(L: float, N: int, v: ndarray, x: ndarray) -> ndarray:
+    return _conc1d_(L, N, atleast2d(v), atleast1d(x))
 
 
 @njit(nogil=True, parallel=True, cache=True)
-def _conc1d_(L: tuple, N: tuple, values: ndarray, points: ndarray):
+def _conc1d_(L: tuple, N: tuple, values: ndarray, points: ndarray) -> ndarray:
     nRHS = values.shape[0]
     c = 2 / L
     rhs = np.zeros((nRHS, N, 2), dtype=points.dtype)
@@ -385,13 +359,12 @@ def _conc1d_(L: tuple, N: tuple, values: ndarray, points: ndarray):
     return rhs
 
 
-@squeeze(True)
-def rhs_conc_2d(size: tuple, shape: tuple, values: ndarray, points: ndarray):
-    return _conc2d_(size, shape, atleast2d(values), atleast2d(points))
+def rhs_conc_2d(size: tuple, shape: tuple, v: ndarray, x: ndarray) -> ndarray:
+    return _conc2d_(size, shape, atleast2d(v), atleast2d(x))
 
 
 @njit(nogil=True, parallel=True, cache=True)
-def _conc2d_(size: tuple, shape: tuple, values: ndarray, points: ndarray):
+def _conc2d_(size: tuple, shape: tuple, values: ndarray, points: ndarray) -> ndarray:
     nRHS = values.shape[0]
     Lx, Ly = size
     c = 4 / Lx / Ly

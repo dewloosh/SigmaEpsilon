@@ -32,15 +32,12 @@ class Q4_P_MR(ABC, MindlinPlate, Quadrilateral, FiniteElement):
         "selective": {(0, 1, 2): "full", (3, 4): "reduced"},
         "reduced": gp(1, 1),
     }
-    
+
 
 class Q4_S_MR(ABC, MindlinShell, Quadrilateral, FiniteElement):
     qrule = "selective"
     quadrature = {
-        'full': gp(2, 2),
-        'selective': {
-            (0, 1, 3, 4, 5): 'full',
-            (2, 6, 7): 'reduced'
-        },
-        'reduced': gp(1, 1)
+        "full": gp(2, 2),
+        "selective": {(0, 1, 3, 4, 5): "full", (2, 6, 7): "reduced"},
+        "reduced": gp(1, 1),
     }

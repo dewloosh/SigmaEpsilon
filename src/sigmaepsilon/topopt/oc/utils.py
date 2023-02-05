@@ -66,13 +66,12 @@ def weighted_stiffness_bulk(K: ndarray, weights: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def weighted_stiffness_flat(K: ndarray, weights: ndarray, 
-                            kranges: ndarray):
+def weighted_stiffness_flat(K: ndarray, weights: ndarray, kranges: ndarray):
     nE = len(weights)
     res = np.zeros_like(K, dtype=K.dtype)
     for i in prange(nE):
         _r, r_ = kranges[i], kranges[i + 1]
-        res[_r : r_] = weights[i] * K[_r : r_]
+        res[_r:r_] = weights[i] * K[_r:r_]
     return res
 
 
@@ -88,7 +87,7 @@ def weighted_stiffness_1d_regular(data: ndarray, weights: ndarray):
     return res
 
 
-def element_stiffness_ranges(kshape : tuple) -> ndarray:
+def element_stiffness_ranges(kshape: tuple) -> ndarray:
     nE = kshape[0]
     if len(kshape) == 3 and isinstance(kshape[1], int):
         res = np.zeros(nE + 1, dtype=int)

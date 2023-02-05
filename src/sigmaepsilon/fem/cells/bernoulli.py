@@ -2,7 +2,6 @@ import numpy as np
 from numpy import ndarray
 from typing import Union, Callable, Iterable
 
-from neumann import squeeze
 from neumann import atleast1d, atleastnd, ascont
 from neumann.utils import to_range_1d
 
@@ -306,7 +305,6 @@ class BernoulliBase(BernoulliBeam):
         values = calculate_shear_forces(dofsol, values, D, gdshp)
         return values  # (nE, nP, 6, nRHS)
 
-    @squeeze(True)
     def lumped_mass_matrix(
         self,
         *args,
@@ -330,7 +328,6 @@ class BernoulliBase(BernoulliBeam):
             Possible values are 'full' or 'diag'. If 'diag', only the diagonal
             entries are returned, if 'full' a full matrix is returned.
             Default is 'full'.
-
         """
         dbkey = self.__class__._attr_map_["M"]
         if lumping == "direct":

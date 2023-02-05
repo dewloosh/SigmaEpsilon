@@ -5,7 +5,7 @@ from scipy.sparse import coo_matrix
 import numpy as np
 from numpy import ndarray
 
-from neumann import squeeze, atleast3d
+from neumann import atleast3d
 from neumann.linalg.sparse import JaggedArray
 
 from polymesh import PolyData
@@ -100,8 +100,9 @@ class FemMesh(PolyData, ABC_FemMesh):
         Returns True if the mesh is jagged, i.e. if it consists of blocks with
         inconsistent matrix shapes, thus prohibiting bulk calculations.
         """
-        cell_class_id = map(lambda b: id(b.cd.__class__),
-                            self.cellblocks(inclusive=True))
+        cell_class_id = map(
+            lambda b: id(b.cd.__class__), self.cellblocks(inclusive=True)
+        )
         return len(set(cell_class_id)) > 1
 
     def is_regular(self, **kwargs) -> bool:
@@ -112,8 +113,8 @@ class FemMesh(PolyData, ABC_FemMesh):
             * the largest index equals the number of nodes in the mesh - 1
             * the number of unique indices equals the number of nodes in the mesh
         """
-        coords = kwargs.get('_coords', self.root().coords())
-        topo = kwargs.get('_topo', self.topology())
+        coords = kwargs.get("_coords", self.root().coords())
+        topo = kwargs.get("_topo", self.topology())
         imin, imax = np.min(topo), np.max(topo)
         nP = len(coords)
         c0 = imin == 0
@@ -132,7 +133,7 @@ class FemMesh(PolyData, ABC_FemMesh):
             return super().cells_coords(*args, **kwargs)
         else:
             blocks = self.cellblocks(inclusive=True)
-            kwargs.update(points=points, squeeze=False)
+            kwargs.update(points=points)
             if cells is not None:
                 kwargs.update(cells=cells)
                 res = {}
@@ -217,7 +218,6 @@ class FemMesh(PolyData, ABC_FemMesh):
         sum_duplicates: bool = True,
         sparse: bool = False,
         transform: bool = True,
-        squeeze: bool = False,
         **kwargs,
     ) -> Union[ndarray, coo_matrix]:
         """
@@ -234,10 +234,6 @@ class FemMesh(PolyData, ABC_FemMesh):
         transform : bool, Optional
             If True, local matrices are transformed to the global frame.
             Default is True.
-        squeeze : bool, Optional
-            If True, the results is squeezed befor return (see numpy.squeeze).
-            This is only relevant if there is only one element in the block.
-            Default is False.
 
         Returns
         -------
@@ -248,9 +244,7 @@ class FemMesh(PolyData, ABC_FemMesh):
             assert transform, "Must transform for sparse output."
 
             def foo(b: FemMesh):
-                return b.cd.elastic_stiffness_matrix(
-                    sparse=True, transform=True, squeeze=squeeze
-                )
+                return b.cd.elastic_stiffness_matrix(sparse=True, transform=True)
 
             K = np.sum(list(map(foo, blocks))).tocoo()
             if eliminate_zeros:
@@ -261,17 +255,14 @@ class FemMesh(PolyData, ABC_FemMesh):
         else:
 
             def foo(b: FemMesh):
-                return b.cd.elastic_stiffness_matrix(
-                    transform=transform, squeeze=squeeze
-                    )
+                return b.cd.elastic_stiffness_matrix(transform=transform)
 
             if kwargs.get("_jagged", self.is_jagged()):
                 shaper = map(
                     lambda x: x.reshape(x.shape[0], x.shape[1] * x.shape[1]),
                     map(foo, blocks),
                 )
-                mapper = map(lambda x: JaggedArray(
-                    x, force_numpy=False), shaper)
+                mapper = map(lambda x: JaggedArray(x, force_numpy=False), shaper)
             else:
                 mapper = map(foo, blocks)
             return np.vstack(list(mapper))
@@ -347,8 +338,7 @@ class FemMesh(PolyData, ABC_FemMesh):
                     lambda x: x.reshape(x.shape[0], x.shape[1] * x.shape[1]),
                     map(foo, blocks),
                 )
-                mapper = map(lambda x: JaggedArray(
-                    x, force_numpy=False), shaper)
+                mapper = map(lambda x: JaggedArray(x, force_numpy=False), shaper)
             else:
                 mapper = map(foo, blocks)
             return np.vstack(list(mapper))
@@ -377,8 +367,7 @@ class FemMesh(PolyData, ABC_FemMesh):
             sparse=True, transform=True, eliminate_zeros=False, sum_duplicates=False
         )
         # nodal masses
-        M += self.nodal_mass_matrix(eliminate_zeros=False,
-                                    sum_duplicates=False)
+        M += self.nodal_mass_matrix(eliminate_zeros=False, sum_duplicates=False)
         if eliminate_zeros:
             M.eliminate_zeros()
         if sum_duplicates:
@@ -469,7 +458,6 @@ class FemMesh(PolyData, ABC_FemMesh):
             logging.error(f"Exception {e} occured", exc_info=True)
         return K_coo.tocoo()
 
-    @squeeze(True)
     def nodal_load_vector(self, *args, **kwargs) -> ndarray:
         """
         Returns the nodal load vector.
@@ -482,10 +470,9 @@ class FemMesh(PolyData, ABC_FemMesh):
         nodal_data = self.root().pointdata.loads
         nodal_data = atleast3d(nodal_data, back=True)
         # (nP, nDOF, nRHS)
-        res = nodal_load_vector(nodal_data, squeeze=False)
+        res = nodal_load_vector(nodal_data)
         return res
 
-    @squeeze(True)
     def cell_load_vector(
         self, *, transform: bool = True, assemble: bool = False, **kwargs
     ) -> ndarray:
@@ -509,7 +496,7 @@ class FemMesh(PolyData, ABC_FemMesh):
         if assemble:
             assert transform, "Must transform before assembly."
         blocks = list(self.cellblocks(inclusive=True))
-        params = dict(squeeze=False, transform=transform, assemble=assemble)
+        params = dict(transform=transform, assemble=assemble)
         params.update(**kwargs)
 
         def foo(b: FemMesh):
@@ -541,7 +528,6 @@ class FemMesh(PolyData, ABC_FemMesh):
         [b.cd.condensate() for b in self.cellblocks(inclusive=True)]
         return self
 
-    @squeeze(True)
     def nodal_dof_solution(self, *, flatten: bool = False, **kw) -> ndarray:
         """
         Returns nodal degree of freedom solution.
@@ -565,7 +551,6 @@ class FemMesh(PolyData, ABC_FemMesh):
         else:
             return dofsol
 
-    @squeeze(True)
     def cell_dof_solution(
         self, *args, cells: Iterable = None, flatten: bool = True, **kwargs
     ) -> ndarray:
@@ -580,17 +565,13 @@ class FemMesh(PolyData, ABC_FemMesh):
             being the keys. Default is None.
         flatten: bool, Optional
             If True, nodal results are flattened. Default is True.
-        squeeze : bool, Optional
-            If True, dummy axes are removed. This may be relevant if you
-            only have one load case or element, but still want to have
-            results with predictable shape. Default is True.
 
         Returns
         -------
         numpy.ndarray or dict
             A dictionary if cell indices are specified, or a NumPy array.
         """
-        kwargs.update(flatten=flatten, squeeze=False)
+        kwargs.update(flatten=flatten)
         if cells is not None:
 
             def f(b: FemMesh, cid: int):
@@ -606,7 +587,6 @@ class FemMesh(PolyData, ABC_FemMesh):
 
             return np.vstack(list(map(foo, blocks)))
 
-    @squeeze(True)
     def strains(self, *args, cells: Iterable = None, **kwargs) -> ndarray:
         """
         Returns strains for each cell or just some.
@@ -619,17 +599,13 @@ class FemMesh(PolyData, ABC_FemMesh):
             being the keys. Default is None.
         flatten: bool, Optional
             If True, nodal results are flattened. Default is True.
-        squeeze : bool, Optional
-            If True, dummy axes are removed. This may be relevant if you
-            only have one load case or element, but still want to have
-            results with predictable shape. Default is True.
 
         Returns
         -------
         numpy.ndarray or dict
             A dictionary if cell indices are specified, or a NumPy array.
         """
-        kwargs.update(squeeze=False)
+        kwargs.update()
         if cells is not None:
 
             def f(b: FemMesh, cid: int):
@@ -645,7 +621,6 @@ class FemMesh(PolyData, ABC_FemMesh):
 
             return np.vstack(list(map(foo, blocks)))
 
-    @squeeze(True)
     def external_forces(
         self, *args, cells: Iterable = None, flatten: bool = True, **kwargs
     ) -> ndarray:
@@ -660,17 +635,13 @@ class FemMesh(PolyData, ABC_FemMesh):
             being the keys. Default is None.
         flatten: bool, Optional
             If True, nodal results are flattened. Default is True.
-        squeeze : bool, Optional
-            If True, dummy axes are removed. This may be relevant if you
-            only have one load case or element, but still want to have
-            results with predictable shape. Default is True.
 
         Returns
         -------
         numpy.ndarray or dict
             A dictionary if cell indices are specified, or a NumPy array.
         """
-        kwargs.update(flatten=flatten, squeeze=False)
+        kwargs.update(flatten=flatten)
         if cells is not None:
 
             def f(b: FemMesh, cid: int):
@@ -686,7 +657,6 @@ class FemMesh(PolyData, ABC_FemMesh):
 
             return np.vstack(list(map(foo, blocks)))
 
-    @squeeze(True)
     def internal_forces(
         self, *args, cells: Iterable = None, flatten: bool = True, **kwargs
     ) -> ndarray:
@@ -701,17 +671,13 @@ class FemMesh(PolyData, ABC_FemMesh):
             being the keys. Default is None.
         flatten: bool, Optional
             If True, nodal results are flattened. Default is True.
-        squeeze : bool, Optional
-            If True, dummy axes are removed. This may be relevant if you
-            only have one load case or element, but still want to have
-            results with predictable shape. Default is True.
 
         Returns
         -------
         numpy.ndarray or dict
             A dictionary if cell indices are specified, or a NumPy array.
         """
-        kwargs.update(flatten=flatten, squeeze=False)
+        kwargs.update(flatten=flatten)
         if cells is not None:
 
             def f(b: FemMesh, cid: int):
@@ -740,7 +706,7 @@ class FemMesh(PolyData, ABC_FemMesh):
         def foo(b: FemMesh):
             return b.cd.stresses_at_centers(*args, **kwargs)
 
-        return np.squeeze(np.vstack(list(map(foo, blocks))))
+        return np.vstack(list(map(foo, blocks)))
 
     def postprocess(self, *_, **__):
         """

@@ -5,7 +5,6 @@ from numpy import ndarray
 from scipy.sparse import coo_matrix
 
 from dewloosh.core.wrapping import Wrapper
-from neumann import squeeze
 from neumann import repeat
 
 from .mesh import FemMesh
@@ -118,10 +117,7 @@ class Structure(Wrapper):
         self._constraints = None
 
     @flatten_pd(False)
-    @squeeze(True)
-    def natural_modes_of_vibration(
-        self, *, flatten: bool = False, squeeze: bool = True, **kwargs
-    ) -> ndarray:
+    def natural_modes_of_vibration(self, *, flatten: bool = False, **kwargs) -> ndarray:
         """
         Returns natural modes of vibration.
 
@@ -129,11 +125,6 @@ class Structure(Wrapper):
         ----------
         flatten : bool, Optional
             If True, the result is a 1d array, otherwise 2d. Default is False.
-        squeeze : bool, Optional
-            Calls :func:`numpy.squeeze` on the result. This might be relevant for
-            single element operations, or if there is only one load case, etc. Then,
-            it depends on the enviroment if a standard shape is desirable to maintain
-            or not. Default is True.
 
         Returns
         -------
@@ -288,10 +279,7 @@ class Structure(Wrapper):
         return M_sparse.tocoo()
 
     @flatten_pd(False)
-    @squeeze(True)
-    def nodal_dof_solution(
-        self, *, flatten: bool = False, squeeze: bool = True, **__
-    ) -> ndarray:
+    def nodal_dof_solution(self, *, flatten: bool = False, **__) -> ndarray:
         """
         Returns the vector of nodal displacements and optionally stores the result
         with a specified key.
@@ -300,11 +288,6 @@ class Structure(Wrapper):
         ----------
         flatten : bool, Optional
             If True, the result is a 1d array, otherwise 2d. Default is False.
-        squeeze : bool, Optional
-            Calls :func:`numpy.squeeze` on the result. This might be relevant for
-            single element operations, or if there is only one load case, etc. Then,
-            it depends on the enviroment if a standard shape is desirable to maintain
-            or not. Default is True.
 
         Returns
         -------
@@ -313,10 +296,7 @@ class Structure(Wrapper):
         return self.mesh.pd.dofsol
 
     @flatten_pd(False)
-    @squeeze(True)
-    def reaction_forces(
-        self, *, flatten: bool = False, squeeze: bool = True, **__
-    ) -> ndarray:
+    def reaction_forces(self, *, flatten: bool = False, **__) -> ndarray:
         """
         Returns the vector of reaction forces.
 
@@ -324,11 +304,6 @@ class Structure(Wrapper):
         ----------
         flatten : bool, Optional
             If True, the result is a 1d array, otherwise 2d. Default is False.
-        squeeze : bool, Optional
-            Calls :func:`numpy.squeeze` on the result. This might be relevant for
-            single element operations, or if there is only one load case, etc. Then,
-            it depends on the enviroment if a standard shape is desirable to maintain
-            or not. Default is True.
 
         Returns
         -------
@@ -337,10 +312,7 @@ class Structure(Wrapper):
         return self.mesh.pd.reactions
 
     @flatten_pd(False)
-    @squeeze(True)
-    def nodal_forces(
-        self, *_, flatten: bool = False, squeeze: bool = True, **__
-    ) -> ndarray:
+    def nodal_forces(self, *_, flatten: bool = False, **__) -> ndarray:
         """
         Returns the vector of nodal forces from all sources. This is calculated
         during static analysis.
@@ -349,33 +321,20 @@ class Structure(Wrapper):
         ----------
         flatten : bool, Optional
             If True, the result is a 1d array, otherwise 2d. Default is False.
-        squeeze : bool, Optional
-            Calls :func:`numpy.squeeze` on the result. This might be relevant for
-            single element operations, or if there is only one load case, etc. Then,
-            it depends on the enviroment if a standard shape is desirable to maintain
-            or not. Default is True.
         """
         return self.mesh.pd.forces
 
-    @squeeze(True)
-    def internal_forces(
-        self, *args, flatten: bool = False, squeeze: bool = True, **kwargs
-    ) -> ndarray:
+    def internal_forces(self, *args, flatten: bool = False, **kwargs) -> ndarray:
         """
         Returns the internal forces for one or more elements.
         """
-        return self.mesh.internal_forces(
-            *args, flatten=flatten, squeeze=False, **kwargs
-        )
+        return self.mesh.internal_forces(*args, flatten=flatten, **kwargs)
 
-    @squeeze(True)
     def external_forces(self, *args, flatten: bool = False, **kwargs) -> ndarray:
         """
         Returns the external forces for one or more elements.
         """
-        return self.mesh.external_forces(
-            *args, flatten=flatten, squeeze=False, **kwargs
-        )
+        return self.mesh.external_forces(*args, flatten=flatten, **kwargs)
 
     def linsolve(self, *args, **kwargs) -> "Structure":
         """
@@ -480,27 +439,27 @@ class Structure(Wrapper):
 
         gnum = mesh.element_dof_numbering()
         # get raw data
-        mesh.nodal_load_vector(squeeze=False)
+        mesh.nodal_load_vector()
         if jagged:
-            mesh.cell_load_vector(assemble=True, transform=True, squeeze=False)
+            mesh.cell_load_vector(assemble=True, transform=True)
         else:
-            mesh.cell_load_vector(assemble=False, transform=False, squeeze=False)
+            mesh.cell_load_vector(assemble=False, transform=False)
         mesh.elastic_stiffness_matrix(sparse=False, transform=False, _jagged=jagged)
         # condensate
         mesh.condensate_cell_fixity()
         # get condensated data
-        f_nodal = mesh.nodal_load_vector(squeeze=False)
+        f_nodal = mesh.nodal_load_vector()
         if jagged:
-            f_bulk = mesh.cell_load_vector(assemble=True, transform=True, squeeze=False)
+            f_bulk = mesh.cell_load_vector(assemble=True, transform=True)
             K_bulk = mesh.elastic_stiffness_matrix(
-                sparse=False, transform=True, _jagged=jagged, squeeze=False,
+                sparse=False,
+                transform=True,
+                _jagged=jagged,
             )
         else:
-            f_bulk = mesh.cell_load_vector(
-                assemble=False, transform=False, squeeze=False
-            )
+            f_bulk = mesh.cell_load_vector(assemble=False, transform=False)
             K_bulk = mesh.elastic_stiffness_matrix(
-                sparse=False, transform=False, _jagged=jagged, squeeze=False
+                sparse=False, transform=False, _jagged=jagged
             )
 
         if not jagged:
@@ -527,17 +486,15 @@ class Structure(Wrapper):
             for i in range(f.shape[1]):
                 f[:, i] += fp
         # create solver
-        self._static_solver_ = StaticSolver(
-            K_bulk, Kp.tocoo(), f, gnum, mesh=mesh
-        )
+        self._static_solver_ = StaticSolver(K_bulk, Kp.tocoo(), f, gnum, mesh=mesh)
         return self
 
     def _assemble_free_vib_(self, *_, **__):
         mesh = self._wrapped
         gnum = mesh.element_dof_numbering()
         # get raw data
-        mesh.nodal_load_vector(squeeze=False)
-        mesh.cell_load_vector(assemble=False, transform=False, squeeze=False)
+        mesh.nodal_load_vector()
+        mesh.cell_load_vector(assemble=False, transform=False)
         mesh.elastic_stiffness_matrix(sparse=False, transform=False)
         mesh.consistent_mass_matrix(sparse=False, transform=False)
         # condensate

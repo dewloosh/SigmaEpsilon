@@ -165,7 +165,7 @@ Solve the problem
 
 .. code-block:: python3
 
-    Problem.postproc(centers[:, :2], squeeze=False, cleanup=False)
+    Problem.postproc(centers[:, :2], cleanup=False)
 
 
 

@@ -206,11 +206,16 @@ def element_compliances_bulk(K: ndarray, U: ndarray, gnum: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def element_compliances_flat(K: ndarray, U: ndarray, krows: ndarray, kcols: ndarray,
-                             kranges: ndarray, ) -> ndarray:
+def element_compliances_flat(
+    K: ndarray,
+    U: ndarray,
+    krows: ndarray,
+    kcols: ndarray,
+    kranges: ndarray,
+) -> ndarray:
     nE = len(kranges) - 1
     res = np.zeros(nE, dtype=K.dtype)
     for i in prange(nE):
         _r, r_ = kranges[i], kranges[i + 1]
-        res[i] = np.sum(U[krows[_r: r_]] * K[_r: r_] * U[kcols[_r: r_]])
+        res[i] = np.sum(U[krows[_r:r_]] * K[_r:r_] * U[kcols[_r:r_]])
     return res

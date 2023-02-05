@@ -6,7 +6,6 @@ from scipy.sparse import coo_matrix
 import numpy as np
 from numpy import ndarray
 
-from neumann import squeeze
 from neumann.linalg import ReferenceFrame
 from neumann import atleast1d, atleastnd, ascont
 from neumann.utils import to_range_1d
@@ -145,7 +144,6 @@ class FiniteElement(CellData, FemMixin):
                 raise NotImplementedError
         raise NotImplementedError
 
-    @squeeze(True)
     def dof_solution(
         self,
         *_,
@@ -251,7 +249,6 @@ class FiniteElement(CellData, FemMixin):
         # values -> (nE, nP, nDOF, nRHS) or (nE, nP * nDOF, nRHS)
         return values
 
-    @squeeze(True)
     def strains(
         self,
         *_,
@@ -282,7 +279,7 @@ class FiniteElement(CellData, FemMixin):
         numpy.ndarray
             An array of shape (nE, nP, nSTRE, nRHS).
         """
-        dofsol = self.dof_solution(squeeze=False, flatten=True, cells=cells)
+        dofsol = self.dof_solution(flatten=True, cells=cells)
         # (nE, nEVAB, nRHS)
 
         if cells is not None:
@@ -325,7 +322,6 @@ class FiniteElement(CellData, FemMixin):
         strains = ascont(np.moveaxis(strains, 1, -1))  # (nE, nP, nSTRE, nRHS)
         return strains
 
-    @squeeze(True)
     def kinetic_strains(
         self,
         *_,
@@ -389,7 +385,6 @@ class FiniteElement(CellData, FemMixin):
         else:
             return sloads[cells]
 
-    @squeeze(True)
     def external_forces(
         self,
         *_,
@@ -420,7 +415,7 @@ class FiniteElement(CellData, FemMixin):
             An array of shape (nE, nP * nDOF, nRHS) if 'flatten' is True else
             (nE, nP, nDOF, nRHS).
         """
-        dofsol = self.dof_solution(squeeze=False, flatten=True, cells=cells)
+        dofsol = self.dof_solution(flatten=True, cells=cells)
         # (nE, nNE * nDOF, nRHS)
 
         if cells is not None:
@@ -472,7 +467,6 @@ class FiniteElement(CellData, FemMixin):
         # forces : (nE, nP, nDOF, nRHS)
         return values
 
-    @squeeze(True)
     def internal_forces(
         self,
         *_,
@@ -512,7 +506,7 @@ class FiniteElement(CellData, FemMixin):
             An array of shape (nE, nP * nDOF, nRHS) if 'flatten' is True else
             (nE, nP, nDOF, nRHS).
         """
-        dofsol = self.dof_solution(squeeze=False, flatten=True, cells=cells)
+        dofsol = self.dof_solution(flatten=True, cells=cells)
         # (nE, nNE * nDOF, nRHS)
 
         if cells is not None:
@@ -555,7 +549,7 @@ class FiniteElement(CellData, FemMixin):
         dofsol = ascont(np.swapaxes(dofsol, 1, 2))  # (nE, nRHS, nEVAB)
         strains = approx_element_solution_bulk(dofsol, B)
         # -> (nE, nRHS, nP, nSTRE)
-        strains -= self.kinetic_strains(points=points, squeeze=False)[cells]
+        strains -= self.kinetic_strains(points=points)[cells]
         D = self.elastic_material_stiffness_matrix()[cells]
         forces = calculate_internal_forces_bulk(strains, D)
         # forces -> (nE, nRHS, nP, nSTRE)
@@ -610,8 +604,7 @@ class FiniteElement(CellData, FemMixin):
         except Exception:
             data = topo_to_gnum(topo, nDOFN)
             return JaggedArray(data)
-        
-    @squeeze(True)
+
     def elastic_stiffness_matrix(
         self,
         *,
@@ -727,7 +720,6 @@ class FiniteElement(CellData, FemMixin):
         D = kwargs.get("_D", self.elastic_material_stiffness_matrix())
         return stiffness_matrix_bulk2(D, B, djac, q.weight)
 
-    @squeeze(True)
     def consistent_mass_matrix(
         self,
         *args,
@@ -854,7 +846,6 @@ class FiniteElement(CellData, FemMixin):
         N = self.shape_function_matrix(q.pos, rng=rng)
         return mass_matrix_bulk(N, _dens, _areas, djac, q.weight)
 
-    @squeeze(True)
     def load_vector(
         self, transform: bool = True, assemble: bool = False, **__
     ) -> ndarray:
@@ -885,9 +876,7 @@ class FiniteElement(CellData, FemMixin):
         """
         dbkey = self._dbkey_nodal_load_vector_
         if dbkey not in self.db.fields:
-            options = dict(
-                transform=False, assemble=False, squeeze=False, return_zeroes=True
-            )
+            options = dict(transform=False, assemble=False, return_zeroes=True)
             f = self.body_load_vector(**options)
             f += self.strain_load_vector(**options)
             self.db[dbkey] = f
@@ -902,7 +891,6 @@ class FiniteElement(CellData, FemMixin):
             # (nX, nRHS)
         return f
 
-    @squeeze(True)
     def strain_load_vector(
         self,
         values: ndarray = None,
@@ -989,7 +977,7 @@ class FiniteElement(CellData, FemMixin):
     def _strain_load_vector_(self, values: ndarray) -> ndarray:
         dbkey = self._dbkey_strain_displacement_matrix_
         if dbkey not in self.db.fields:
-            self.elastic_stiffness_matrix(squeeze=False, transform=False)
+            self.elastic_stiffness_matrix(transform=False)
         B = self.db[dbkey].to_numpy()  # (nE, nSTRE, nNODE * nDOF)
         D = self.elastic_material_stiffness_matrix()  # (nE, nSTRE, nSTRE)
         BTD = unit_strain_load_vector_bulk(D, B)
@@ -997,7 +985,6 @@ class FiniteElement(CellData, FemMixin):
         nodal_loads = strain_load_vector_bulk(BTD, ascont(values))
         return nodal_loads  # (nE, nTOTV, nRHS)
 
-    @squeeze(True)
     def body_load_vector(
         self,
         values: ndarray = None,
