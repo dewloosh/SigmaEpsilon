@@ -6,10 +6,10 @@ from polymesh.space import StandardFrame, PointCloud
 from polymesh.utils.space import (index_of_closest_point,
                                   index_of_furthest_point)
 from polymesh.utils.topology import L2_to_L3
-from sigmaepsilon.solid.fem.cells import B2, B3
-from sigmaepsilon.solid import (Structure, LineMesh, PointData)
-from sigmaepsilon.solid.fem import NodalSupport
-from sigmaepsilon.solid.fem.dyn import (Rayleigh_quotient,
+from sigmaepsilon.fem.cells import B2, B3
+from sigmaepsilon import (Structure, LineMesh, PointData)
+from sigmaepsilon.fem import NodalSupport
+from sigmaepsilon.fem.dyn import (Rayleigh_quotient,
                                         effective_modal_masses)
 import numpy as np
 from numpy import pi as PI
@@ -92,9 +92,9 @@ class TestBernoulliLinearStatics(unittest.TestCase):
                            loads=nodal_loads, fixity=fixity)
             # celldata
             frames = repeat(TargetFrame.axes, topo.shape[0])
-            cd = celltype(topo=topo, frames=frames)
+            cd = celltype(topo=topo, material=Hooke, frames=frames)
             # set up mesh and structure
-            mesh = LineMesh(pd, cd, model=Hooke, frame=GlobalFrame)
+            mesh = LineMesh(pd, cd, frame=GlobalFrame)
             structure = Structure(mesh=mesh)
             structure.linear_static_analysis()
             dofsol = structure.nodal_dof_solution(store='dofsol')
@@ -111,8 +111,8 @@ class TestBernoulliLinearStatics(unittest.TestCase):
                            frame=GlobalFrame).show(TargetFrame)
             forces = structure.internal_forces()
             f = np.zeros(6)
-            f[:3] = forces[0, 0, :3]
-            f[3:] = forces[0, 0, 3:]
+            f[:3] = forces[0, 0, :3, 0]
+            f[3:] = forces[0, 0, 3:, 0]
             return u, r, f
 
         # ######################################################
@@ -288,9 +288,9 @@ class TestBernoulliLinearStatics(unittest.TestCase):
                            frame=GlobalFrame)
             # celldata
             frames = repeat(GlobalFrame.show(), topo.shape[0])
-            cd = B2(topo=topo, frames=frames, strain_loads=strain_loads)
+            cd = B2(topo=topo, frames=frames, material=Hooke, strain_loads=strain_loads)
             # set up mesh and structure
-            mesh = LineMesh(pd, cd, model=Hooke, frame=GlobalFrame)
+            mesh = LineMesh(pd, cd, frame=GlobalFrame)
             structure = Structure(mesh=mesh)
             return structure
 
@@ -377,11 +377,11 @@ class TestBernoulliLinearStatics(unittest.TestCase):
                            loads=nodal_loads, fixity=fixity)
             # celldata
             frames = repeat(np.eye(3), topo.shape[0])
-            cd = celltype(topo=topo, frames=frames)
-            cell_loads[:, :, 1] = cd.pull(data=fnc_loads)
+            cd = celltype(topo=topo, material=Hooke, frames=frames)
+            cell_loads[:, :, 1] = cd.pull(data=fnc_loads)[:, :, 0]
             cd.loads = cell_loads
             # set up mesh and structure
-            mesh = LineMesh(pd, cd, model=Hooke, frame=GlobalFrame)
+            mesh = LineMesh(pd, cd, frame=GlobalFrame)
             structure = Structure(mesh=mesh)
             structure.linear_static_analysis()
             return structure
@@ -459,9 +459,9 @@ class TestBernoulliLinearStatics(unittest.TestCase):
                        loads=nodal_loads, fixity=fixity)
         # celldata
         frames = repeat(GlobalFrame.show(), topo.shape[0])
-        cd = B2(topo=topo, frames=frames)
+        cd = B2(topo=topo, material=Hooke, frames=frames)
         # set up mesh and structure
-        mesh = LineMesh(pd, cd, model=Hooke, frame=GlobalFrame)
+        mesh = LineMesh(pd, cd, frame=GlobalFrame)
         structure = Structure(mesh=mesh)
         # solve
         structure.linear_static_analysis()
@@ -481,9 +481,9 @@ class TestBernoulliLinearStatics(unittest.TestCase):
                        loads=nodal_loads)
         # celldata
         frames = repeat(GlobalFrame.show(), topo.shape[0])
-        cd = B2(topo=topo, frames=frames)
+        cd = B2(topo=topo, material=Hooke, frames=frames)
         # set up mesh and structure
-        mesh = LineMesh(pd, cd, model=Hooke, frame=GlobalFrame)
+        mesh = LineMesh(pd, cd, frame=GlobalFrame)
         structure = Structure(mesh=mesh)
         # add the nodal constraints
         structure.constraints.append(support)
@@ -546,9 +546,9 @@ class TestBernoulliLinearStatics(unittest.TestCase):
                        loads=nodal_loads)
         # celldata
         frames = repeat(GlobalFrame.show(), topo.shape[0])
-        cd = B2(topo=topo, frames=frames)
+        cd = B2(topo=topo, material=Hooke, frames=frames)
         # set up mesh and structure
-        mesh = LineMesh(pd, cd, model=Hooke, frame=GlobalFrame)
+        mesh = LineMesh(pd, cd, frame=GlobalFrame)
         structure = Structure(mesh=mesh)
         # add the nodal constraints
         structure.constraints.append(support_left)
@@ -642,9 +642,9 @@ class TestBernoulliNaturalVibrations(unittest.TestCase):
                        fixity=fixity, mass=nodal_masses)
         # celldata
         frames = repeat(GlobalFrame.show(), topo.shape[0])
-        cd = B2(topo=topo, frames=frames, density=densities)
+        cd = B2(topo=topo, frames=frames, material=Hooke, density=densities)
         # set up mesh and structure
-        mesh = LineMesh(pd, cd, model=Hooke, frame=GlobalFrame)
+        mesh = LineMesh(pd, cd, frame=GlobalFrame)
         structure = Structure(mesh=mesh)
         # perform linear analysis
         structure.linear_static_analysis()
@@ -753,9 +753,9 @@ class TestBernoulliNaturalVibrations(unittest.TestCase):
         # celldata
         frames = repeat(GlobalFrame.show(), topo.shape[0])
         cd = celltype(topo=topo, frames=frames, density=densities,
-                      fixity=cell_fixity)
+                      fixity=cell_fixity, material=Hooke)
         # set up mesh and structure
-        mesh = LineMesh(pd, cd, model=Hooke, frame=GlobalFrame)
+        mesh = LineMesh(pd, cd, frame=GlobalFrame)
         structure = Structure(mesh=mesh, essential_penalty=1e12,
                               mass_penalty_ratio=1e5)
         structure.constraints.append(support)
