@@ -111,7 +111,7 @@ class BernoulliBeam(Solid):
     def strain_displacement_matrix(
         self,
         pcoords: Union[float, Iterable[float]] = None,
-        *args,
+        *_,
         rng: Iterable = None,
         jac: ndarray = None,
         dshp: ndarray = None,
