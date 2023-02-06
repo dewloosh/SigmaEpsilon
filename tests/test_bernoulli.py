@@ -3,24 +3,21 @@ from neumann.linalg import Vector, linspace
 from neumann import repeat, minmax
 from neumann.logical import allclose
 from polymesh.space import StandardFrame, PointCloud
-from polymesh.utils.space import (index_of_closest_point,
-                                  index_of_furthest_point)
+from polymesh.utils.space import index_of_closest_point, index_of_furthest_point
 from polymesh.utils.topology import L2_to_L3
 from sigmaepsilon.fem.cells import B2, B3
-from sigmaepsilon import (Structure, LineMesh, PointData)
+from sigmaepsilon import Structure, LineMesh, PointData
 from sigmaepsilon.fem import NodalSupport
-from sigmaepsilon.fem.dyn import (Rayleigh_quotient,
-                                        effective_modal_masses)
+from sigmaepsilon.fem.dyn import Rayleigh_quotient, effective_modal_masses
 import numpy as np
 from numpy import pi as PI
 
 
 class TestBernoulliLinearStatics(unittest.TestCase):
-
     def check_relative_error(self, v_analytic, v_fem, tol: float = 0.1):
         """
         Compares the absolute relative error between the analytic and fem
-        results against the given tolerance. The tolerance is understood 
+        results against the given tolerance. The tolerance is understood
         as maximum percentage.
         """
         if v_analytic < 0:
@@ -29,14 +26,14 @@ class TestBernoulliLinearStatics(unittest.TestCase):
         else:
             v_analytic += 1
             v_fem += 1
-        return np.abs(100*(v_analytic - v_fem)/v_analytic) < tol
+        return np.abs(100 * (v_analytic - v_fem) / v_analytic) < tol
 
     def test_conc_tr(self):
         """
-        Straight console, with starting point at (0, 0, 0), length L, and 
-        random orientation of axes. The same concentrated forces and moments 
-        are applied at the free end in the coordinate system of the console. 
-        The results should be the same when understood in the frame of the 
+        Straight console, with starting point at (0, 0, 0), length L, and
+        random orientation of axes. The same concentrated forces and moments
+        are applied at the free end in the coordinate system of the console.
+        The results should be the same when understood in the frame of the
         console, independently of the random orientation angles.
         """
         L, d, t = 1000.0, 100.0, 5.0  # geometry
@@ -44,29 +41,30 @@ class TestBernoulliLinearStatics(unittest.TestCase):
         penalty = 1e20  # penalty value for essential BCs
         np.random.RandomState()
         # section
-        w, h = 5., 100.  # width and height of the rectangular cross section
+        w, h = 5.0, 100.0  # width and height of the rectangular cross section
         A = w * h  # area
         Iy = w * h**3 / 12  # second moment of inertia around the y axis
         Iz = h * w**3 / 12  # second moment of inertia around the z axis
         Ix = Iy + Iz  # torsional inertia
         # material
         G = Ex / (2 * (1 + nu))
-        Hooke = np.array([
-            [Ex*A, 0, 0, 0],
-            [0, G*Ix, 0, 0],
-            [0, 0, Ex*Iy, 0],
-            [0, 0, 0, Ex*Iz]
-        ])
+        Hooke = np.array(
+            [
+                [Ex * A, 0, 0, 0],
+                [0, G * Ix, 0, 0],
+                [0, 0, Ex * Iy, 0],
+                [0, 0, 0, Ex * Iz],
+            ]
+        )
 
         def solve(n, angles, loads, celltype=B2):
             # space
             GlobalFrame = StandardFrame(dim=3)
-            TargetFrame = GlobalFrame.rotate('Body', angles, 'XYZ',
-                                             inplace=False)
+            TargetFrame = GlobalFrame.rotate("Body", angles, "XYZ", inplace=False)
             # mesh
-            p0 = np.array([0., 0., 0.])
-            p1 = np.array([L, 0., 0.])
-            coords = linspace(p0, p1, n+1)
+            p0 = np.array([0.0, 0.0, 0.0])
+            p1 = np.array([L, 0.0, 0.0])
+            coords = linspace(p0, p1, n + 1)
             points = PointCloud(coords, frame=TargetFrame)
             coords = points.show(GlobalFrame)
             topo = np.zeros((n, 2), dtype=int)
@@ -74,8 +72,8 @@ class TestBernoulliLinearStatics(unittest.TestCase):
             topo[:, 1] = np.arange(n) + 1
             if celltype.NNODE == 3:
                 coords, topo = L2_to_L3(coords, topo)
-            i_first = index_of_closest_point(coords, np.array([0., 0., 0.]))
-            i_last = index_of_furthest_point(coords, np.array([0., 0., 0.]))
+            i_first = index_of_closest_point(coords, np.array([0.0, 0.0, 0.0]))
+            i_last = index_of_furthest_point(coords, np.array([0.0, 0.0, 0.0]))
             # essential boundary conditions
             fixity = np.zeros((coords.shape[0], 6)).astype(bool)
             fixity[i_first, :] = True
@@ -88,8 +86,9 @@ class TestBernoulliLinearStatics(unittest.TestCase):
             nodal_loads[i_last, :3] = vF
             nodal_loads[i_last, 3:] = vM
             # pointdata
-            pd = PointData(coords=coords, frame=GlobalFrame,
-                           loads=nodal_loads, fixity=fixity)
+            pd = PointData(
+                coords=coords, frame=GlobalFrame, loads=nodal_loads, fixity=fixity
+            )
             # celldata
             frames = repeat(TargetFrame.axes, topo.shape[0])
             cd = celltype(topo=topo, material=Hooke, frames=frames)
@@ -97,18 +96,14 @@ class TestBernoulliLinearStatics(unittest.TestCase):
             mesh = LineMesh(pd, cd, frame=GlobalFrame)
             structure = Structure(mesh=mesh)
             structure.linear_static_analysis()
-            dofsol = structure.nodal_dof_solution(store='dofsol')
+            dofsol = structure.nodal_dof_solution(store="dofsol")
             u = np.zeros(6)
-            u[:3] = Vector(dofsol[i_last, :3],
-                           frame=GlobalFrame).show(TargetFrame)
-            u[3:] = Vector(dofsol[i_last, 3:],
-                           frame=GlobalFrame).show(TargetFrame)
+            u[:3] = Vector(dofsol[i_last, :3], frame=GlobalFrame).show(TargetFrame)
+            u[3:] = Vector(dofsol[i_last, 3:], frame=GlobalFrame).show(TargetFrame)
             reactions = structure.reaction_forces()
             r = np.zeros(6)
-            r[:3] = Vector(reactions[i_first, :3],
-                           frame=GlobalFrame).show(TargetFrame)
-            r[3:] = Vector(reactions[i_first, 3:],
-                           frame=GlobalFrame).show(TargetFrame)
+            r[:3] = Vector(reactions[i_first, :3], frame=GlobalFrame).show(TargetFrame)
+            r[3:] = Vector(reactions[i_first, 3:], frame=GlobalFrame).show(TargetFrame)
             forces = structure.internal_forces()
             f = np.zeros(6)
             f[:3] = forces[0, 0, :3, 0]
@@ -127,19 +122,19 @@ class TestBernoulliLinearStatics(unittest.TestCase):
         UX = Fx * L / (Ex * A)  # displacement at the free end
         UY = Fy * L**3 / (3 * Ex * Iz)  # displacement at the free end
         UZ = Fz * L**3 / (3 * Ex * Iy)  # displacement at the free end
-        UXX = 0.  # rotation at the free end
+        UXX = 0.0  # rotation at the free end
         UYY = -Fz * L**2 / (2 * Ex * Iy)  # rotation at the free end
         UZZ = Fy * L**2 / (2 * Ex * Iz)  # rotation at the free end
         RX = -Fx  # reaction force
         RY = -Fy  # reaction force
         RZ = -Fz  # reaction force
-        RXX = 0.  # reaction moment
+        RXX = 0.0  # reaction moment
         RYY = Fz * L  # reaction moment
         RZZ = -Fy * L  # reaction moment
         FX = Fx  # internal force at the support
         FY = Fy  # internal force at the support
         FZ = Fz  # internal force at the support
-        FXX = 0.  # internal moment at the support
+        FXX = 0.0  # internal moment at the support
         FYY = -Fz * L  # internal moment at the support
         FZZ = Fy * L  # internal moment at the support
         for cell in cells:
@@ -183,21 +178,21 @@ class TestBernoulliLinearStatics(unittest.TestCase):
         n = 2  # number of elements
         cells = [B2, B3]
         # analytical solutions
-        UX = 0.  # displacement at the free end
+        UX = 0.0  # displacement at the free end
         UY = Mz * L**2 / (2 * Ex * Iz)  # displacement at the free end
         UZ = -My * L**2 / (2 * Ex * Iy)  # displacement at the free end
         UXX = Mx * L / (G * Ix)  # rotation at the free end
         UYY = My * L / (Ex * Iy)  # rotation at the free end
         UZZ = Mz * L / (Ex * Iz)  # rotation at the free end
-        RX = 0.  # reaction force
-        RY = 0.  # reaction force
-        RZ = 0.  # reaction force
+        RX = 0.0  # reaction force
+        RY = 0.0  # reaction force
+        RZ = 0.0  # reaction force
         RXX = -Mx  # reaction moment
         RYY = -My  # reaction moment
         RZZ = -Mz  # reaction moment
-        FX = 0.  # internal force at the support
-        FY = 0.  # internal force at the support
-        FZ = 0.  # internal force at the support
+        FX = 0.0  # internal force at the support
+        FY = 0.0  # internal force at the support
+        FZ = 0.0  # internal force at the support
         FXX = Mx  # internal moment at the support
         FYY = My  # internal moment at the support
         FZZ = Mz  # internal moment at the support
@@ -244,27 +239,29 @@ class TestBernoulliLinearStatics(unittest.TestCase):
         dT = 20
         alpha = 1.2e-5
         # section
-        w, h = 5., 10.  # width and height of the rectangular cross section
+        w, h = 5.0, 10.0  # width and height of the rectangular cross section
         A = w * h  # area
         Iy = w * h**3 / 12  # second moment of inertia around the y axis
         Iz = h * w**3 / 12  # second moment of inertia around the z axis
         Ix = Iy + Iz  # torsional inertia
         # material
         G = Ex / (2 * (1 + nu))
-        Hooke = np.array([
-            [Ex*A, 0, 0, 0],
-            [0, G*Ix, 0, 0],
-            [0, 0, Ex*Iy, 0],
-            [0, 0, 0, Ex*Iz]
-        ])
+        Hooke = np.array(
+            [
+                [Ex * A, 0, 0, 0],
+                [0, G * Ix, 0, 0],
+                [0, 0, Ex * Iy, 0],
+                [0, 0, 0, Ex * Iz],
+            ]
+        )
 
         def build_structure(n: int):
             # space
             GlobalFrame = StandardFrame(dim=3)
             # mesh
-            p0 = np.array([0., 0., 0.])
-            p1 = np.array([L, 0., 0.])
-            coords = linspace(p0, p1, n+1)
+            p0 = np.array([0.0, 0.0, 0.0])
+            p1 = np.array([L, 0.0, 0.0])
+            coords = linspace(p0, p1, n + 1)
             coords = PointCloud(coords, frame=GlobalFrame).show()
             topo = np.zeros((n, 2), dtype=int)
             topo[:, 0] = np.arange(n)
@@ -282,10 +279,11 @@ class TestBernoulliLinearStatics(unittest.TestCase):
             # cell loads
             strain_loads = np.zeros((topo.shape[0], 4, nLoadCase))
             strain_loads[:, 0, 0] = dT * alpha
-            strain_loads[:, 0, 1] = - dT * alpha
+            strain_loads[:, 0, 1] = -dT * alpha
             # pointdata
-            pd = PointData(coords=coords, fixity=fixity, loads=nodal_loads,
-                           frame=GlobalFrame)
+            pd = PointData(
+                coords=coords, fixity=fixity, loads=nodal_loads, frame=GlobalFrame
+            )
             # celldata
             frames = repeat(GlobalFrame.show(), topo.shape[0])
             cd = B2(topo=topo, frames=frames, material=Hooke, strain_loads=strain_loads)
@@ -305,7 +303,7 @@ class TestBernoulliLinearStatics(unittest.TestCase):
 
     def test_vs_Navier_LinStat(self):
         """
-        Tests all result components against Navier's solution for a 
+        Tests all result components against Navier's solution for a
         sinusoidal distributed load. The beam is bent in the x-y plane.
         """
         L, w, h = 1000.0, 20.0, 80.0  # geometry
@@ -313,17 +311,19 @@ class TestBernoulliLinearStatics(unittest.TestCase):
         # section properties
         Iy = h * w**3 / 12
         Iz = w * h**3 / 12
-        Ix = (Iy + Iz)/2
+        Ix = (Iy + Iz) / 2
         A = w * h
         EI = Ex * Iz
         # material
         G = Ex / (2 * (1 + nu))
-        Hooke = np.array([
-            [Ex*A, 0, 0, 0],
-            [0, G*Ix, 0, 0],
-            [0, 0, Ex*Iy, 0],
-            [0, 0, 0, Ex*Iz]
-        ])
+        Hooke = np.array(
+            [
+                [Ex * A, 0, 0, 0],
+                [0, G * Ix, 0, 0],
+                [0, 0, Ex * Iy, 0],
+                [0, 0, 0, Ex * Iz],
+            ]
+        )
         # load
         qy_max = 1.0  # max intensity
         ny = 1  # number of half waves, should be odd
@@ -332,16 +332,22 @@ class TestBernoulliLinearStatics(unittest.TestCase):
             return np.sin(PI * ny * x / L) * qy_max
 
         def uy(x):
-            return qy_max * (L**4 / (EI * PI**4 * ny**4)) * np.sin(PI * ny * x / L)
+            return (
+                qy_max * (L**4 / (EI * PI**4 * ny**4)) * np.sin(PI * ny * x / L)
+            )
 
         def rotz(x):
-            return qy_max * (L**3 / (EI * PI**3 * ny**3)) * np.cos(PI * ny * x / L)
+            return (
+                qy_max * (L**3 / (EI * PI**3 * ny**3)) * np.cos(PI * ny * x / L)
+            )
 
         def kz(x):
-            return - qy_max * (L**2 / (EI * PI**2 * ny**2)) * np.sin(PI * ny * x / L)
+            return (
+                -qy_max * (L**2 / (EI * PI**2 * ny**2)) * np.sin(PI * ny * x / L)
+            )
 
         def mz(x):
-            return - qy_max * (L**2 / (PI**2 * ny**2)) * np.sin(PI * ny * x / L)
+            return -qy_max * (L**2 / (PI**2 * ny**2)) * np.sin(PI * ny * x / L)
 
         def vy(x):
             return qy_max * (L / (PI * ny)) * np.cos(PI * ny * x / L)
@@ -350,17 +356,17 @@ class TestBernoulliLinearStatics(unittest.TestCase):
             # space
             GlobalFrame = StandardFrame(dim=3)
             # mesh
-            p0 = np.array([0., 0., 0.])
-            p1 = np.array([L, 0., 0.])
-            coords = linspace(p0, p1, n+1)
+            p0 = np.array([0.0, 0.0, 0.0])
+            p1 = np.array([L, 0.0, 0.0])
+            coords = linspace(p0, p1, n + 1)
             topo = np.zeros((n, 2), dtype=int)
             topo[:, 0] = np.arange(n)
             topo[:, 1] = np.arange(n) + 1
             if celltype.NNODE == 3:
                 coords, topo = L2_to_L3(coords, topo)
             # mark some points
-            i_first = index_of_closest_point(coords, np.array([0., 0., 0.]))
-            i_last = index_of_furthest_point(coords, np.array([0., 0., 0.]))
+            i_first = index_of_closest_point(coords, np.array([0.0, 0.0, 0.0]))
+            i_last = index_of_furthest_point(coords, np.array([0.0, 0.0, 0.0]))
             # generate load function
             fnc_loads = fnc(coords[:, 0])
             # essential boundary conditions
@@ -373,8 +379,9 @@ class TestBernoulliLinearStatics(unittest.TestCase):
             nodal_loads = np.zeros((coords.shape[0], 6))
             cell_loads = np.zeros((topo.shape[0], topo.shape[1], 6))
             # pointdata
-            pd = PointData(coords=coords, frame=GlobalFrame,
-                           loads=nodal_loads, fixity=fixity)
+            pd = PointData(
+                coords=coords, frame=GlobalFrame, loads=nodal_loads, fixity=fixity
+            )
             # celldata
             frames = repeat(np.eye(3), topo.shape[0])
             cd = celltype(topo=topo, material=Hooke, frames=frames)
@@ -387,11 +394,12 @@ class TestBernoulliLinearStatics(unittest.TestCase):
             return structure
 
         structure = solve(10, qy, B3)
-        ui = structure.mesh.cell_dof_solution(points=[1/4, 3/4], rng=[0, 1],
-                                              target='global', flatten=False)
-        fi = structure.internal_forces(points=[1/4, 3/4], rng=[0, 1])
-        k = structure.mesh.strains(points=[1/4, 3/4], rng=[0, 1])
-        xi = structure.mesh.cells_coords(points=[1/4, 3/4], rng=[0, 1])
+        ui = structure.mesh.cell_dof_solution(
+            points=[1 / 4, 3 / 4], rng=[0, 1], target="global", flatten=False
+        )
+        fi = structure.internal_forces(points=[1 / 4, 3 / 4], rng=[0, 1])
+        k = structure.mesh.strains(points=[1 / 4, 3 / 4], rng=[0, 1])
+        xi = structure.mesh.cells_coords(points=[1 / 4, 3 / 4], rng=[0, 1])
         u_navier = uy(xi[:, :, 0].flatten())
         u_fem = ui[:, :, 1].flatten()
         self.assertTrue(allclose(u_fem, u_navier, atol=1e-2, rtol=1e-1))
@@ -414,9 +422,9 @@ class TestBernoulliLinearStatics(unittest.TestCase):
         are formulated with 'fixity' or by using objects. It is checked if
         the displacement results from the two approaches are the same or not.
         """
-        L = 100.  # length of the console
-        w, h = 10., 10.  # width and height of the rectangular cross section
-        F = -100.  # value of the vertical load at the free end
+        L = 100.0  # length of the console
+        w, h = 10.0, 10.0  # width and height of the rectangular cross section
+        F = -100.0  # value of the vertical load at the free end
         E = 210000.0  # Young's modulus
         nu = 0.3  # Poisson's ratio
         # cross section
@@ -426,19 +434,16 @@ class TestBernoulliLinearStatics(unittest.TestCase):
         Ix = Iy + Iz  # torsional inertia
         # model stiffness matrix
         G = E / (2 * (1 + nu))
-        Hooke = np.array([
-            [E*A, 0, 0, 0],
-            [0, G*Ix, 0, 0],
-            [0, 0, E*Iy, 0],
-            [0, 0, 0, E*Iz]
-        ])
+        Hooke = np.array(
+            [[E * A, 0, 0, 0], [0, G * Ix, 0, 0], [0, 0, E * Iy, 0], [0, 0, 0, E * Iz]]
+        )
         # space
         GlobalFrame = StandardFrame(dim=3)
         # mesh
         nElem = 2  # number of finite elements to use
-        p0 = np.array([0., 0., 0.])
-        p1 = np.array([L, 0., 0.])
-        coords = linspace(p0, p1, nElem+1)
+        p0 = np.array([0.0, 0.0, 0.0])
+        p1 = np.array([L, 0.0, 0.0])
+        coords = linspace(p0, p1, nElem + 1)
         coords = PointCloud(coords, frame=GlobalFrame).show()
         topo = np.zeros((nElem, 2), dtype=int)
         topo[:, 0] = np.arange(nElem)
@@ -455,8 +460,9 @@ class TestBernoulliLinearStatics(unittest.TestCase):
         fixity = np.zeros((coords.shape[0], 6)).astype(bool)
         fixity[0, :] = True
         # pointdata
-        pd = PointData(coords=coords, frame=GlobalFrame,
-                       loads=nodal_loads, fixity=fixity)
+        pd = PointData(
+            coords=coords, frame=GlobalFrame, loads=nodal_loads, fixity=fixity
+        )
         # celldata
         frames = repeat(GlobalFrame.show(), topo.shape[0])
         cd = B2(topo=topo, material=Hooke, frames=frames)
@@ -473,12 +479,11 @@ class TestBernoulliLinearStatics(unittest.TestCase):
         # ####################################################
 
         # support at the leftmost node
-        support = NodalSupport(x=[0, 0, 0],
-                               UX=0., UY=0., UZ=0.,
-                               UXX=0., UYY=0., UZZ=0.)
+        support = NodalSupport(
+            x=[0, 0, 0], UX=0.0, UY=0.0, UZ=0.0, UXX=0.0, UYY=0.0, UZZ=0.0
+        )
         # pointdata
-        pd = PointData(coords=coords, frame=GlobalFrame,
-                       loads=nodal_loads)
+        pd = PointData(coords=coords, frame=GlobalFrame, loads=nodal_loads)
         # celldata
         frames = repeat(GlobalFrame.show(), topo.shape[0])
         cd = B2(topo=topo, material=Hooke, frames=frames)
@@ -497,53 +502,50 @@ class TestBernoulliLinearStatics(unittest.TestCase):
     def test_temperature_inclined(self):
         """
         Simply supported beam with an inclined support at the right end
-        and a vertical concentrated force at the middle. The values of 
+        and a vertical concentrated force at the middle. The values of
         the normal forces are measured against analytic solution.
         """
-        L = 100.  # length of the console
+        L = 100.0  # length of the console
         E = 210000.0  # Young's modulus
         nu = 0.3  # Poisson's ratio
-        F = -100.  # value of the vertical load at the middle
+        F = -100.0  # value of the vertical load at the middle
         # cross section
-        w, h = 10., 10.  # width and height of the rectangular cross section
+        w, h = 10.0, 10.0  # width and height of the rectangular cross section
         A = w * h  # area
         Iy = w * h**3 / 12  # second moment of inertia around the y axis
         Iz = h * w**3 / 12  # second moment of inertia around the z axis
         Ix = Iy + Iz  # torsional inertia
         # model stiffness matrix
         G = E / (2 * (1 + nu))
-        Hooke = np.array([
-            [E*A, 0, 0, 0],
-            [0, G*Ix, 0, 0],
-            [0, 0, E*Iy, 0],
-            [0, 0, 0, E*Iz]
-        ])
+        Hooke = np.array(
+            [[E * A, 0, 0, 0], [0, G * Ix, 0, 0], [0, 0, E * Iy, 0], [0, 0, 0, E * Iz]]
+        )
         # space
         GlobalFrame = StandardFrame(dim=3)
         # mesh
         nElem = 2  # number of finite elements to use
-        p0 = np.array([0., 0., 0.])
-        p1 = np.array([L, 0., 0.])
-        coords = linspace(p0, p1, nElem+1)
+        p0 = np.array([0.0, 0.0, 0.0])
+        p1 = np.array([L, 0.0, 0.0])
+        coords = linspace(p0, p1, nElem + 1)
         coords = PointCloud(coords, frame=GlobalFrame).show()
         topo = np.zeros((nElem, 2), dtype=int)
         topo[:, 0] = np.arange(nElem)
         topo[:, 1] = np.arange(nElem) + 1
         # concentrated load at the middle
-        x_middle = np.array([L/2, 0, 0], dtype=float)
+        x_middle = np.array([L / 2, 0, 0], dtype=float)
         i = index_of_closest_point(coords, x_middle)
         nodal_loads = np.zeros((coords.shape[0], 6))
         nodal_loads[i, 2] = F
         # hinged support at the leftmost node
-        support_left = NodalSupport(x=[0, 0, 0], UX=0., UY=0.,
-                                    UZ=0., UZZ=0., UXX=0.)
+        support_left = NodalSupport(
+            x=[0, 0, 0], UX=0.0, UY=0.0, UZ=0.0, UZZ=0.0, UXX=0.0
+        )
         # inclined roller support at the rightmost node
-        angle = - 30 * PI / 180
-        frame = GlobalFrame.rotate_new('Body', [0, angle, 0], 'XYZ')
-        support_right = NodalSupport(x=[L, 0, 0], frame=frame, UZ=0.)
+        angle = -30 * PI / 180
+        frame = GlobalFrame.rotate_new("Body", [0, angle, 0], "XYZ")
+        support_right = NodalSupport(x=[L, 0, 0], frame=frame, UZ=0.0)
         # pointdata
-        pd = PointData(coords=coords, frame=GlobalFrame,
-                       loads=nodal_loads)
+        pd = PointData(coords=coords, frame=GlobalFrame, loads=nodal_loads)
         # celldata
         frames = repeat(GlobalFrame.show(), topo.shape[0])
         cd = B2(topo=topo, material=Hooke, frames=frames)
@@ -562,7 +564,6 @@ class TestBernoulliLinearStatics(unittest.TestCase):
 
 
 class TestBernoulliNaturalVibrations(unittest.TestCase):
-
     def test_console(self):
         """
         Simple console with distributed mass. The finite element approximation
@@ -570,11 +571,11 @@ class TestBernoulliNaturalVibrations(unittest.TestCase):
         estimation. The integrated mass is also verified.
         """
         # all units in kN and cm
-        L = 150.  # length of the console [cm]
-        F = 1.  # value of the vertical load at the free end [kN]
+        L = 150.0  # length of the console [cm]
+        F = 1.0  # value of the vertical load at the free end [kN]
         E = 21000.0  # Young's modulus [kN/cm3]
         nu = 0.3  # Poisson's ratio [-]
-        w, h = 5., 15.  # width and height of the rectangular cross section
+        w, h = 5.0, 15.0  # width and height of the rectangular cross section
         g = 9.81  # gravitational acceleration [m/s2]
         density = 7750.0 * 1e-6  # mass density [g/cm3]
         nElem = 20  # number of subdivisons to use
@@ -596,39 +597,36 @@ class TestBernoulliNaturalVibrations(unittest.TestCase):
             acc_x = i1 * mi * h / (E * A)
             acc_y = i3 * mi * h**3 / (3 * E * Iz)
             acc_z = i3 * mi * h**3 / (3 * E * Iy)
-            return np.sqrt(1/acc_x), np.sqrt(1/acc_y), np.sqrt(1/acc_z)
+            return np.sqrt(1 / acc_x), np.sqrt(1 / acc_y), np.sqrt(1 / acc_z)
 
         def Rayleigh(structure: Structure):
             M = structure.mass_matrix(penalize=True)
             u = structure.nodal_dof_solution(flatten=True)
             f = structure.nodal_forces(flatten=True)
             return np.sqrt(Rayleigh_quotient(M, u=u, f=f))
-        
+
         # model stiffness matrix
         G = E / (2 * (1 + nu))
-        Hooke = np.array([
-            [E*A, 0, 0, 0],
-            [0, G*Ix, 0, 0],
-            [0, 0, E*Iy, 0],
-            [0, 0, 0, E*Iz]
-        ])
+        Hooke = np.array(
+            [[E * A, 0, 0, 0], [0, G * Ix, 0, 0], [0, 0, E * Iy, 0], [0, 0, 0, E * Iz]]
+        )
         # space
         GlobalFrame = StandardFrame(dim=3)
         # mesh
-        p0 = np.array([0., 0., 0.])
-        p1 = np.array([L, 0., 0.])
-        coords = linspace(p0, p1, nElem+1)
+        p0 = np.array([0.0, 0.0, 0.0])
+        p1 = np.array([L, 0.0, 0.0])
+        coords = linspace(p0, p1, nElem + 1)
         coords = PointCloud(coords, frame=GlobalFrame).show()
         topo = np.zeros((nElem, 2), dtype=int)
         topo[:, 0] = np.arange(nElem)
         topo[:, 1] = np.arange(nElem) + 1
         # load at the rightmost node in Y and Z directions
         nodal_loads = np.zeros((coords.shape[0], 6, 3))
-        global_load_vector = Vector([F,  0, 0.], frame=GlobalFrame).show()
+        global_load_vector = Vector([F, 0, 0.0], frame=GlobalFrame).show()
         nodal_loads[-1, :3, 0] = global_load_vector
-        global_load_vector = Vector([0., F, 0.], frame=GlobalFrame).show()
+        global_load_vector = Vector([0.0, F, 0.0], frame=GlobalFrame).show()
         nodal_loads[-1, :3, 1] = global_load_vector
-        global_load_vector = Vector([0., 0, F], frame=GlobalFrame).show()
+        global_load_vector = Vector([0.0, 0, F], frame=GlobalFrame).show()
         nodal_loads[-1, :3, 2] = global_load_vector
         # support at the leftmost node (all degrees)
         fixity = np.zeros((coords.shape[0], 6)).astype(bool)
@@ -638,8 +636,9 @@ class TestBernoulliNaturalVibrations(unittest.TestCase):
         nodal_masses = np.zeros((coords.shape[0],))
         densities = np.full((topo.shape[0],), dpa)
         # pointdata
-        pd = PointData(coords=coords, loads=nodal_loads,
-                       fixity=fixity, mass=nodal_masses)
+        pd = PointData(
+            coords=coords, loads=nodal_loads, fixity=fixity, mass=nodal_masses
+        )
         # celldata
         frames = repeat(GlobalFrame.show(), topo.shape[0])
         cd = B2(topo=topo, frames=frames, material=Hooke, density=densities)
@@ -666,8 +665,7 @@ class TestBernoulliNaturalVibrations(unittest.TestCase):
         actions = np.stack([action_x, action_y, action_z], axis=1)
         M = structure.mass_matrix(penalize=False)
         m_eff = effective_modal_masses(M, actions, v)
-        mass_fem = np.sum(m_eff[:, 0]), np.sum(
-            m_eff[:, 1]), np.sum(m_eff[:, 2])
+        mass_fem = np.sum(m_eff[:, 0]), np.sum(m_eff[:, 1]), np.sum(m_eff[:, 2])
         mass_percentages = np.array([100 * m / mass for m in mass_fem])
         self.assertTrue(np.all(mass_percentages > 98.0))
         # check values
@@ -688,11 +686,11 @@ class TestBernoulliNaturalVibrations(unittest.TestCase):
         objects. Mass calculation is checked.
         """
         # all units in kN and cm
-        L = 150.  # length of the console [cm]
-        F = 1.  # value of the vertical load at the free end [kN]
+        L = 150.0  # length of the console [cm]
+        F = 1.0  # value of the vertical load at the free end [kN]
         E = 21000.0  # Young's modulus [kN/cm3]
         nu = 0.3  # Poisson's ratio [-]
-        w, h = 5., 15.  # width and height of the rectangular cross section
+        w, h = 5.0, 15.0  # width and height of the rectangular cross section
         g = 9.81  # gravitational acceleration [m/s2]
         density = 7750.0 * 1e-6  # mass density [g/cm3]
         nElem = 4  # number of subdivisons to use
@@ -707,18 +705,15 @@ class TestBernoulliNaturalVibrations(unittest.TestCase):
         mass = L * dpa  # total mass
         # model stiffness matrix
         G = E / (2 * (1 + nu))
-        Hooke = np.array([
-            [E*A, 0, 0, 0],
-            [0, G*Ix, 0, 0],
-            [0, 0, E*Iy, 0],
-            [0, 0, 0, E*Iz]
-        ])
+        Hooke = np.array(
+            [[E * A, 0, 0, 0], [0, G * Ix, 0, 0], [0, 0, E * Iy, 0], [0, 0, 0, E * Iz]]
+        )
         # space
         GlobalFrame = StandardFrame(dim=3)
         # mesh
-        p0 = np.array([0., 0., 0.])
-        p1 = np.array([L, 0., 0.])
-        coords = linspace(p0, p1, nElem+1)
+        p0 = np.array([0.0, 0.0, 0.0])
+        p1 = np.array([L, 0.0, 0.0])
+        coords = linspace(p0, p1, nElem + 1)
         coords = PointCloud(coords, frame=GlobalFrame).show()
         topo = np.zeros((nElem, 2), dtype=int)
         topo[:, 0] = np.arange(nElem)
@@ -727,37 +722,42 @@ class TestBernoulliNaturalVibrations(unittest.TestCase):
             coords, topo = L2_to_L3(coords, topo)
         # load at the rightmost node in Y and Z directions
         nodal_loads = np.zeros((coords.shape[0], 6, 3))
-        global_load_vector = Vector([F,  0, 0.], frame=GlobalFrame).show()
+        global_load_vector = Vector([F, 0, 0.0], frame=GlobalFrame).show()
         nodal_loads[-1, :3, 0] = global_load_vector
-        global_load_vector = Vector([0., F, 0.], frame=GlobalFrame).show()
+        global_load_vector = Vector([0.0, F, 0.0], frame=GlobalFrame).show()
         nodal_loads[-1, :3, 1] = global_load_vector
-        global_load_vector = Vector([0., 0, F], frame=GlobalFrame).show()
+        global_load_vector = Vector([0.0, 0, F], frame=GlobalFrame).show()
         nodal_loads[-1, :3, 2] = global_load_vector
         # support at the leftmost node (all degrees)
         fixity = np.zeros((coords.shape[0], 6)).astype(bool)
         fixity[0, :] = True
         fixity = fixity.astype(float) * 1e12
         # support at the rightmost node
-        support = NodalSupport(x=[L, 0, 0],
-                               UX=0., UY=0., UZ=0.,
-                               UXX=0., UYY=0., UZZ=0.)
+        support = NodalSupport(
+            x=[L, 0, 0], UX=0.0, UY=0.0, UZ=0.0, UXX=0.0, UYY=0.0, UZZ=0.0
+        )
         # mass and density
         nodal_masses = np.zeros((coords.shape[0],))
         densities = np.full((topo.shape[0],), dpa)
         # pointdata
-        pd = PointData(coords=coords, loads=nodal_loads,
-                       fixity=fixity, mass=nodal_masses)
+        pd = PointData(
+            coords=coords, loads=nodal_loads, fixity=fixity, mass=nodal_masses
+        )
         # cell fixity / end releases
         cell_fixity = np.full((topo.shape[0], topo.shape[1], 6), True)
-        cell_fixity[int(nElem/2 - 1), -1, 4] = False
+        cell_fixity[int(nElem / 2 - 1), -1, 4] = False
         # celldata
         frames = repeat(GlobalFrame.show(), topo.shape[0])
-        cd = celltype(topo=topo, frames=frames, density=densities,
-                      fixity=cell_fixity, material=Hooke)
+        cd = celltype(
+            topo=topo,
+            frames=frames,
+            density=densities,
+            fixity=cell_fixity,
+            material=Hooke,
+        )
         # set up mesh and structure
         mesh = LineMesh(pd, cd, frame=GlobalFrame)
-        structure = Structure(mesh=mesh, essential_penalty=1e12,
-                              mass_penalty_ratio=1e5)
+        structure = Structure(mesh=mesh, essential_penalty=1e12, mass_penalty_ratio=1e5)
         structure.constraints.append(support)
         # perform vinration analysis
         structure.free_vibration_analysis(normalize=True, as_dense=True)
@@ -768,5 +768,4 @@ class TestBernoulliNaturalVibrations(unittest.TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main()
