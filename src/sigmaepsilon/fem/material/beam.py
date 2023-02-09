@@ -49,7 +49,7 @@ def strain_displacement_matrix(gdshp: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def strain_displacement_matrix_bulk(gdshp: ndarray):
+def strain_displacement_matrix_bulk(gdshp: ndarray) -> ndarray:
     """
     Calculates the strain-displacement matrix for several elements.
 
@@ -74,7 +74,7 @@ def strain_displacement_matrix_bulk(gdshp: ndarray):
 @njit(nogil=True, parallel=True, cache=__cache)
 def calculate_shear_forces(
     dofsol: ndarray, forces: ndarray, D: ndarray, gdshp: ndarray
-):
+) -> ndarray:
     # dofsol (nE, nNE, nDOF=6, nRHS)
     # forces (nE, nP, 4, nRHS)
     # gdshp (nE, nP, nNE=2, nDOF=6, 3)

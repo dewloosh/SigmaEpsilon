@@ -6,11 +6,8 @@ from polymesh.cell import PolyCell
 
 from ..dofmap import DOF
 from ..utils import (
-    topo_to_gnum,
     expand_shape_function_matrix_bulk,
     element_dofmap_bulk,
-    topo_to_gnum_jagged,
-    expand_load_vector_bulk,
 )
 
 
@@ -125,6 +122,12 @@ class FemMixin:
     def masses(self, *args, **kwargs):
         raise NotImplementedError
 
+    def areas(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def lengths(self, *args, **kwargs):
+        raise NotImplementedError
+    
     def volumes(self, *args, **kwargs):
         raise NotImplementedError
 

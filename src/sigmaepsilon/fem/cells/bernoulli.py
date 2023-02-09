@@ -62,15 +62,14 @@ class BernoulliBase(BernoulliBeam):
 
     See Also
     --------
-    :class:`sigmaepsilon.fem.cells.bernoulli2.Bernoulli2`
-    :class:`sigmaepsilon.fem.cells.bernoulli3.Bernoulli3`
+    :class:`~sigmaepsilon.fem.cells.bernoulli2.Bernoulli2`
+    :class:`~sigmaepsilon.fem.cells.bernoulli3.Bernoulli3`
 
     Note
     ----
     Among normal circumstances, you do not have to interact with this class
     directly. Only use it if you know what you are doing and understand the
     meaning of the inputs precisely.
-
     """
 
     qrule: str = None
@@ -81,10 +80,10 @@ class BernoulliBase(BernoulliBeam):
     def shape_function_values(
         self,
         pcoords: Union[float, Iterable[float]],
-        *args,
+        *_,
         rng: Iterable = None,
         lengths: Iterable[float] = None,
-        **kwargs
+        **__
     ) -> ndarray:
         """
         Evaluates the shape functions at the points specified by 'pcoords'.
@@ -105,7 +104,6 @@ class BernoulliBase(BernoulliBeam):
             The returned array has a shape of (nP, nNE=2, nDOF=6), where nP,
             nNE and nDOF stand for the number of evaluation points, nodes
             per element and number of degrees of freedom, respectively.
-
         """
         rng = np.array([-1, 1]) if rng is None else np.array(rng)
         pcoords = atleast1d(np.array(pcoords))
@@ -116,12 +114,12 @@ class BernoulliBase(BernoulliBeam):
     def shape_function_derivatives(
         self,
         pcoords: Union[float, Iterable[float]] = None,
-        *args,
+        *_,
         rng: Iterable = None,
         jac: ndarray = None,
         dshp: ndarray = None,
         lengths: Iterable[float] = None,
-        **kwargs
+        **__
     ) -> ndarray:
         """
         Evaluates the shape function derivatives (up to third) at the points specified
@@ -166,7 +164,6 @@ class BernoulliBase(BernoulliBeam):
         -----
         The returned array is always 4 dimensional, even if there is only one
         evaluation point.
-
         """
         if pcoords is not None:
             lengths = self.lengths() if lengths is None else lengths
@@ -188,10 +185,10 @@ class BernoulliBase(BernoulliBeam):
     def shape_function_matrix(
         self,
         pcoords: Union[float, Iterable[float]] = None,
-        *args,
+        *_,
         rng: Iterable = None,
         lengths: Iterable[float] = None,
-        **kwargs
+        **__
     ) -> ndarray:
         """
         Evaluates the shape function matrix at the points specified by 'pcoords'.
@@ -223,7 +220,6 @@ class BernoulliBase(BernoulliBeam):
         -----
         The returned array is always 4 dimensional, even if there is only one
         evaluation point.
-
         """
         pcoords = atleast1d(np.array(pcoords))
         rng = np.array([-1.0, 1.0]) if rng is None else np.array(rng)
@@ -261,9 +257,8 @@ class BernoulliBase(BernoulliBeam):
         See Also
         --------
         :func:`~body_load_vector_bulk`
-
         """
-        values = atleastnd(values, 3, back=True)
+        values = atleastnd(values, 3, back=True).astype(float)
         # (nE, nNE * nDOF, nRHS) -> (nE, nRHS, nNE * nDOF)
         values = np.swapaxes(values, 1, 2)
         values = ascont(values)
@@ -279,13 +274,11 @@ class BernoulliBase(BernoulliBeam):
         djac = self.jacobian(jac=jac)  # (nE, nG)
         gdshp = self.shape_function_derivatives(jac=jac, dshp=dshp)
         # (nE, nP, nNE=2, nDOF=6, 3)
-        return body_load_vector_Bernoulli(values, shp, gdshp, djac, qweights).astype(
-            float
-        )
+        return body_load_vector_Bernoulli(values, shp, gdshp, djac, qweights)
 
     def _postproc_local_internal_forces_(
-        self, values: np.ndarray, *args, rng, points, cells, dofsol, **kwargs
-    ):
+        self, values: np.ndarray, *_, rng, points, cells, dofsol, **__
+    ) -> ndarray:
         """
         Documentation is at the base element at '...solid\\fem\\elem.py'
         values (nE, nP, 4, nRHS)
@@ -307,12 +300,12 @@ class BernoulliBase(BernoulliBeam):
 
     def lumped_mass_matrix(
         self,
-        *args,
+        *_,
         lumping: str = "direct",
         alpha: float = 1 / 50,
         frmt: str = "full",
-        **kwargs
-    ):
+        **__
+    ) -> ndarray:
         """
         Returns the lumped mass matrix of the block.
 
