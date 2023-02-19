@@ -181,7 +181,7 @@ class FiniteElement(CellData, FemMixin):
             An array of shape (nE, nEVAB, nRHS) if 'flatten' is True
             else (nE, nNE, nDOF, nRHS).
         """
-        if cells is not None:
+        if isinstance(cells, Iterable):
             cells = atleast1d(cells)
             conds = np.isin(cells, self.id)
             cells = atleast1d(cells[conds])
@@ -282,7 +282,7 @@ class FiniteElement(CellData, FemMixin):
         dofsol = self.dof_solution(flatten=True, cells=cells)
         # (nE, nEVAB, nRHS)
 
-        if cells is not None:
+        if isinstance(cells, Iterable):
             cells = atleast1d(cells)
             conds = np.isin(cells, self.id)
             cells = atleast1d(cells[conds])
@@ -370,7 +370,7 @@ class FiniteElement(CellData, FemMixin):
         finally:
             sloads = atleastnd(sloads, 3, back=True)  # (nE, nSTRE=4, nRHS)
 
-        if cells is not None:
+        if isinstance(cells, Iterable):
             cells = atleast1d(cells)
             conds = np.isin(cells, self.id)
             cells = atleast1d(cells[conds])
@@ -418,7 +418,7 @@ class FiniteElement(CellData, FemMixin):
         dofsol = self.dof_solution(flatten=True, cells=cells)
         # (nE, nNE * nDOF, nRHS)
 
-        if cells is not None:
+        if isinstance(cells, Iterable):
             cells = atleast1d(cells)
             conds = np.isin(cells, self.id)
             cells = atleast1d(cells[conds])
@@ -466,6 +466,37 @@ class FiniteElement(CellData, FemMixin):
 
         # forces : (nE, nP, nDOF, nRHS)
         return values
+    
+    def _internal_forces_(
+        self,
+        *_,
+        cells: Union[int, Iterable[int]] = None,
+        points: Union[float, Iterable] = None,
+    ) -> ndarray:
+        dofsol = self.dof_solution(flatten=True, cells=cells)
+        # dofsol -> (nE, nNE * nDOF, nRHS)
+        
+        shp = self.shape_function_values(points)[cells]
+        dshp = self.shape_function_derivatives(points)[cells]
+        ecoords = self.local_coordinates()[cells]
+        jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)
+        # jac -> (nE, nP, 1, 1)
+        B = self.strain_displacement_matrix(shp=shp, dshp=dshp, jac=jac)
+        # B -> (nE, nP, nSTRE, nNODE * 6)
+
+        dofsol = ascont(np.swapaxes(dofsol, 1, 2))  # (nE, nRHS, nEVAB)
+        strains = approx_element_solution_bulk(dofsol, B)
+        # strains -> (nE, nRHS, nP, nSTRE)
+        strains -= self.kinetic_strains(points=points)[cells]
+        D = self.elastic_material_stiffness_matrix()[cells]
+        
+        forces = np.zeros_like(strains)
+        inds = np.arange(forces.shape[-1])
+        calculate_internal_forces_bulk(strains, D, forces, inds)
+        # forces -> (nE, nRHS, nP, nSTRE)
+        forces = ascont(np.moveaxis(forces, 1, -1))
+        # forces -> (nE, nP, nSTRE, nRHS)
+        return forces
 
     def internal_forces(
         self,
@@ -506,10 +537,7 @@ class FiniteElement(CellData, FemMixin):
             An array of shape (nE, nP * nDOF, nRHS) if 'flatten' is True else
             (nE, nP, nDOF, nRHS).
         """
-        dofsol = self.dof_solution(flatten=True, cells=cells)
-        # (nE, nNE * nDOF, nRHS)
-
-        if cells is not None:
+        if isinstance(cells, Iterable):
             cells = atleast1d(cells)
             conds = np.isin(cells, self.id)
             cells = atleast1d(cells[conds])
@@ -532,35 +560,8 @@ class FiniteElement(CellData, FemMixin):
             if points is None:
                 points = np.array(self.lcoords())
 
-        # approximate at points
-        # values : (nE, nEVAB, nRHS)
-        if nDIM == 1:
-            shp = self.shape_function_values(points, rng=rng)[cells]
-            dshp = self.shape_function_derivatives(points, rng=rng)[cells]
-        else:
-            shp = self.shape_function_values(points)[cells]
-            dshp = self.shape_function_derivatives(points)[cells]
-        ecoords = self.local_coordinates()[cells]
-        jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)
-        # jac -> (nE, nP, 1, 1)
-        B = self.strain_displacement_matrix(shp=shp, dshp=dshp, jac=jac)
-        # B -> (nE, nP, nSTRE, nNODE * 6)
-
-        dofsol = ascont(np.swapaxes(dofsol, 1, 2))  # (nE, nRHS, nEVAB)
-        strains = approx_element_solution_bulk(dofsol, B)
-        # -> (nE, nRHS, nP, nSTRE)
-        strains -= self.kinetic_strains(points=points)[cells]
-        D = self.elastic_material_stiffness_matrix()[cells]
-        forces = calculate_internal_forces_bulk(strains, D)
-        # forces -> (nE, nRHS, nP, nSTRE)
-        # (nE, nP, nSTRE, nRHS)
-        forces = ascont(np.moveaxis(forces, 1, -1))
-        dofsol = ascont(np.swapaxes(dofsol, 1, 2))  # (nE, nEVAB, nRHS)
+        forces = self._internal_forces_(cells=cells, points=points)
         # forces -> (nE, nP, nSTRE, nRHS)
-        forces = self._postproc_local_internal_forces_(
-            forces, points=points, rng=rng, cells=cells, dofsol=dofsol
-        )
-        # forces -> (nE, nP, nDOF, nRHS)
 
         if target is not None:
             if isinstance(target, str) and target == "local":

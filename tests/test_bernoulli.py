@@ -116,7 +116,7 @@ class TestBernoulliLinearStatics(unittest.TestCase):
 
         Fx, Fy, Fz = 1.0, 1.0, 1.0
         loads = [Fx, Fy, Fz, 0, 0, 0]
-        n = 2  # number of elements
+        n = 20  # number of elements
         cells = [B2, B3]
         # analytical solutions
         UX = Fx * L / (Ex * A)  # displacement at the free end
@@ -393,7 +393,7 @@ class TestBernoulliLinearStatics(unittest.TestCase):
             structure.linear_static_analysis()
             return structure
 
-        structure = solve(10, qy, B3)
+        structure = solve(20, qy, B3)
         ui = structure.mesh.cell_dof_solution(
             points=[1 / 4, 3 / 4], rng=[0, 1], target="global", flatten=False
         )

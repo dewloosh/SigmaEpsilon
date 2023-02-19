@@ -2,6 +2,8 @@ import numpy as np
 from numpy import ndarray
 from typing import Union, Callable, Iterable
 
+from scipy import interpolate
+
 from neumann import atleast1d, atleastnd, ascont
 from neumann.utils import to_range_1d
 
@@ -11,45 +13,17 @@ from .utils.bernoulli import (
     global_shape_function_derivatives_bulk as gdshpB,
     lumped_mass_matrices_direct as dlump,
 )
-
-from .meta import MetaFiniteElement
-from ..material.beam import BernoulliBeam, calculate_shear_forces
-
+from ..postproc import (
+    approx_element_solution_bulk,
+    calculate_internal_forces_bulk
+)
+from ..material.beam import (
+    BernoulliBeam, 
+    _postproc_bernoulli_internal_forces_H_, 
+    _postproc_bernoulli_internal_forces_L_
+)
 
 __all__ = ["BernoulliBase"]
-
-
-class MetaBernoulli(MetaFiniteElement):
-    """
-    Python metaclass for safe inheritance. Throws a TypeError
-    if a method tries to shadow a definition in any of the base
-    classes.
-    """
-
-    def __init__(self, name, bases, namespace, *args, **kwargs):
-        super().__init__(name, bases, namespace, *args, **kwargs)
-
-    def __new__(metaclass, name, bases, namespace, *args, **kwargs):
-        cls = super().__new__(metaclass, name, bases, namespace, *args, **kwargs)
-
-        if hasattr(cls, "shpfnc"):
-            if cls.shpfnc is None and isinstance(cls.NNODE, int):
-                # generate functions
-                N = cls.NNODE
-
-    @classmethod
-    def generate_functions(cls, N):
-        pass
-
-
-class ABCBernoulli(metaclass=MetaBernoulli):
-    """
-    Helper class.
-    """
-
-    __slots__ = ()
-    dofs = ()
-    dofmap = ()
 
 
 class BernoulliBase(BernoulliBeam):
@@ -76,6 +50,7 @@ class BernoulliBase(BernoulliBeam):
     quadrature: dict = None
     shpfnc: Callable = None
     dshpfnc: Callable = None
+    dshpfnc_geom: Callable = None
 
     def shape_function_values(
         self,
@@ -129,10 +104,10 @@ class BernoulliBase(BernoulliBeam):
         Valid combination of inputs are:
 
             * 'pcoords' and optionally 'jac' : this can be used to calculate the derivatives
-              in both the local ('jac' is provided) and the parametric frame ('jac' is not provided).
+              in both the global ('jac' is provided) and the master frame ('jac' is not provided).
 
             * 'dshp' and 'jac' : this combination can only be used to return the derivatives
-              wrt. to any frame.
+              wrt. to the global frame.
 
         Parameters
         ----------
@@ -169,15 +144,15 @@ class BernoulliBase(BernoulliBeam):
             lengths = self.lengths() if lengths is None else lengths
             # calculate derivatives wrt. the parametric coordinates in the range [-1, 1]
             pcoords = atleast1d(np.array(pcoords))
-            rng = np.array([-1, 1]) if rng is None else np.array(rng)
-            pcoords = to_range_1d(pcoords, source=rng, target=[-1, 1])
+            rng = np.array([-1., 1.]) if rng is None else np.array(rng)
+            pcoords = to_range_1d(pcoords, source=rng, target=[-1., 1.])
             dshp = self.__class__.dshpfnc(pcoords, lengths)
             if jac is None:
-                # return derivatives wrt. the parametric frame
+                # return derivatives wrt. the master frame
                 return dshp.astype(float)
             else:
-                # return derivatives wrt. the local frame
-                gdshpB(dshp, jac).astype(float)
+                # return derivatives wrt. the global frame
+                return gdshpB(dshp, jac).astype(float)
         elif dshp is not None and jac is not None:
             # return derivatives wrt. the local frame
             return gdshpB(dshp, jac).astype(float)
@@ -276,27 +251,92 @@ class BernoulliBase(BernoulliBeam):
         # (nE, nP, nNE=2, nDOF=6, 3)
         return body_load_vector_Bernoulli(values, shp, gdshp, djac, qweights)
 
-    def _postproc_local_internal_forces_(
-        self, values: np.ndarray, *_, rng, points, cells, dofsol, **__
-    ) -> ndarray:
-        """
-        Documentation is at the base element at '...solid\\fem\\elem.py'
-        values (nE, nP, 4, nRHS)
-        dofsol (nE, nEVAB, nRHS)
-        points (nP,)
-        (nE, nP, 6, nRHS) out
-        """
+    def _internal_forces_H_(
+        self,
+        *_,
+        cells: Union[int, Iterable[int]] = None,
+        points: Union[float, Iterable] = None,  # [-1, 1]
+    ) -> ndarray:        
+        shp = self.shape_function_values(points, rng=[-1, 1])[cells]
+        dshp = self.shape_function_derivatives(points, rng=[-1, 1])[cells]
         ecoords = self.local_coordinates()[cells]
-        dshp = self.shape_function_derivatives(points, rng=rng)[cells]
         jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)
-        # (nE, nP, 1, 1)
+        # jac -> (nE, nP, 1, 1)
+        B = self.strain_displacement_matrix(shp=shp, dshp=dshp, jac=jac)
+        # B -> (nE, nP, nSTRE, nNODE * 6)
+
+        dofsol = self.dof_solution(flatten=True, cells=cells)
+        # dofsol -> (nE, nNE * nDOF, nRHS)
+        dofsol = ascont(np.swapaxes(dofsol, 1, 2))  
+        # dofsol -> (nE, nRHS, nEVAB)
+        strains = approx_element_solution_bulk(dofsol, B)
+        # strains -> (nE, nRHS, nP, nSTRE)
+        strains -= self.kinetic_strains(points=points)[cells]
+        D = self.elastic_material_stiffness_matrix()[cells]
+        forces = calculate_internal_forces_bulk(strains, D)
+        # forces -> (nE, nRHS, nP, nSTRE)
+        forces = ascont(np.moveaxis(forces, 1, -1))
+        dofsol = ascont(np.swapaxes(dofsol, 1, 2))  
+        # dofsol -> (nE, nEVAB, nRHS)
+        # forces -> (nE, nP, nSTRE, nRHS)
         gdshp = self.shape_function_derivatives(jac=jac, dshp=dshp)
         nE, _, nRHS = dofsol.shape
         nNE, nDOF = self.__class__.NNODE, self.__class__.NDOFN
         dofsol = dofsol.reshape(nE, nNE, nDOF, nRHS)
         D = self.elastic_material_stiffness_matrix()[cells]
-        values = calculate_shear_forces(dofsol, values, D, gdshp)
-        return values  # (nE, nP, 6, nRHS)
+        forces = _postproc_bernoulli_internal_forces_H_(dofsol, forces, D, gdshp)
+        return forces  # (nE, nP, 6, nRHS)
+
+    def _internal_forces_L_(
+        self,
+        *_,
+        cells: Union[int, Iterable[int]] = None,
+        points: Union[float, Iterable] = None,  # [-1, 1]
+    ) -> ndarray:
+        local_points = np.array(self.lcoords()).flatten()
+
+        shp = self.shape_function_values(local_points, rng=[-1, 1])[cells]
+        dshp = self.shape_function_derivatives(
+            local_points, rng=[-1, 1])[cells]
+        ecoords = self.local_coordinates()[cells]
+        jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)
+        # jac -> (nE, nNE, 1, 1)
+        B = self.strain_displacement_matrix(shp=shp, dshp=dshp, jac=jac)
+        # B -> (nE, nNE, nSTRE, nNODE * 6)
+
+        dofsol = self.dof_solution(flatten=True, cells=cells)
+        # dofsol -> (nE, nNE * nDOF, nRHS)
+        dofsol = ascont(np.swapaxes(dofsol, 1, 2))
+        # dofsol -> (nE, nRHS, nEVAB)
+        strains = approx_element_solution_bulk(dofsol, B)
+        # strains -> (nE, nRHS, nNE, nSTRE)
+        strains -= self.kinetic_strains(points=local_points)[cells]
+        D = self.elastic_material_stiffness_matrix()[cells]
+
+        nE, nRHS, nP = strains.shape[:3]
+        forces = np.zeros((nE, nRHS, nP, 6), dtype=float)
+        inds = np.array([0, 3, 4, 5], dtype=int)
+        calculate_internal_forces_bulk(strains, D, forces, inds)
+        # forces -> (nE, nRHS, nNE, nSTRE)
+        forces = np.moveaxis(forces, 1, -1)
+        # forces -> (nE, nNE, nSTRE, nRHS)
+
+        *_, dshpf = self.Geometry.generate(update=False, return_symbolic=False)
+        dshp_geom = np.squeeze(dshpf([[i] for i in local_points]))
+        # dshp_geom -> (nNE, nNE)
+        _postproc_bernoulli_internal_forces_L_(forces, dshp_geom, jac)
+        # forces -> (nE, nNE, nSTRE, nRHS)
+        
+        if isinstance(points, Iterable):
+            approx = interpolate.interp1d(local_points, forces, axis=1,
+                                          assume_sorted=True)
+            forces = approx(points)
+
+        return ascont(forces)
+    
+    def _internal_forces_(self, *args, **kwargs):
+        return self._internal_forces_L_(self, *args, **kwargs)
+        #return self._internal_forces_H_(self, *args, **kwargs)
 
     def lumped_mass_matrix(
         self,
@@ -311,13 +351,13 @@ class BernoulliBase(BernoulliBeam):
 
         Parameters
         ----------
-        alpha : float, Optional
+        alpha: float, Optional
             A nonnegative parameter, typically between 0 and 1/50 (see notes).
             Default is 1/20.
-        lumping : str, Optional
+        lumping: str, Optional
             Controls lumping. Currently only direct lumping is available.
             Default is 'direct'.
-        frmt : str, Optional
+        frmt: str, Optional
             Possible values are 'full' or 'diag'. If 'diag', only the diagonal
             entries are returned, if 'full' a full matrix is returned.
             Default is 'full'.

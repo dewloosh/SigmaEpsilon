@@ -1,4 +1,7 @@
+from typing import Iterable
+
 import numpy as np
+from numpy import ndarray
 
 from neumann import atleastnd
 from polymesh.abcdata import ABCMeta_MeshData
@@ -53,121 +56,95 @@ class FemMixin:
     def db(self):
         return self._wrapped
 
-    def topology(self):
+    def topology(self) -> ndarray:
         raise NotImplementedError
 
     # !TODO : this should be implemented at geometry
     @classmethod
-    def lcoords(cls, *args, **kwargs):
+    def lcoords(cls, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
     # !TODO : this should be implemented at geometry
     @classmethod
-    def lcenter(cls, *args, **kwargs):
+    def lcenter(cls, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
-    def local_coordinates(self):
+    def local_coordinates(self) -> ndarray:
         # implemented at PolyCell
         raise NotImplementedError
 
-    def points_of_cells(self):
+    def points_of_cells(self) -> ndarray:
         # implemented at PolyCell
         raise NotImplementedError
 
     # !TODO : this should be implemented at geometry
     # !TODO : can be reimplemented if the element is not IsoP
-    def jacobian_matrix(self, *args, **kwargs):
+    def jacobian_matrix(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
     # !TODO : this should be implemented at geometry
     # !TODO : can be reimplemented if the element is not IsoP
-    def jacobian(self, *args, **kwargs):
+    def jacobian(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
     # !TODO : this should be implemented at material
-    def strain_displacement_matrix(self, *args, **kwargs):
+    def strain_displacement_matrix(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
     # !TODO : this should be implemented at geometry
-    def shape_function_values(self, *args, **kwargs):
+    def shape_function_values(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
     # !TODO : this should be implemented at geometry
     # !TODO : can be reimplemented if the element is not IsoP
-    def shape_function_matrix(self, *args, **kwargs):
+    def shape_function_matrix(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
     # !TODO : this should be implemented at geometry
-    def shape_function_derivatives(self, *args, **kwargs):
+    def shape_function_derivatives(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
     # !TODO : this should be implemented at material
-    def elastic_material_stiffness_matrix(self) -> np.ndarray:
+    def elastic_material_stiffness_matrix(self) -> ndarray:
         raise NotImplementedError
 
     # !TODO : this should be implemented at material
-    def stresses_at_centers(self, *args, **kwargs):
+    def stresses_at_centers(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
     # !TODO : this should be implemented at material
-    def stresses_at_cells_nodes(self, *args, **kwargs):
+    def stresses_at_cells_nodes(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
-    def direction_cosine_matrix(self):
+    def direction_cosine_matrix(self) -> ndarray:
         return None
 
-    def integrate_body_loads(self, *args, **kwargs):
+    def integrate_body_loads(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
-    def masses(self, *args, **kwargs):
+    def masses(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
-    def areas(self, *args, **kwargs):
+    def areas(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
-    def lengths(self, *args, **kwargs):
+    def lengths(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
     
-    def volumes(self, *args, **kwargs):
+    def volumes(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
-    def densities(self, *args, **kwargs):
+    def densities(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
-    def weights(self, *args, **kwargs):
+    def weights(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
-
-    def _postproc_local_internal_forces_(
-        self, forces, *args, points, rng, cells, **kwargs
-    ):
-        """
-        The aim of this function os to guarantee a standard shape of output, that contains
-        values for each of the 6 internal force compoents, irrespective of the kinematical
-        model being used.
-
-        Example use case : the Bernoulli beam element, where, as a consequence of the absence
-        of shear forces, there are only 4 internal force components, and the shear forces
-        must be calculated a posteriori.
-
-        Parameters
-        ----------
-        forces : numpy array of shape (nE, nP, nSTRE, nRHS)
-            4d float array of internal forces for many elements, evaluation points,
-            and load cases. The number of force components (nSTRE) is dictated by the
-            reduced kinematical model (eg. 4 for the Bernoulli beam).
-
-        dofsol (nE, nEVAB, nRHS)
-
-        Notes
-        -----
-        Arguments are based on the reimplementation in the Bernoulli base element.
-
-        Returns
-        -------
-        numpy.ndarray
-            shape : (nE, nP, 6, nRHS)
-        """
-        return forces
+    
+    def dof_solution(self, *, cells: Iterable, flatten: bool) -> ndarray:
+        raise NotImplementedError
+    
+    def kinetic_strains(self, *, cells: Iterable, points: Iterable) -> ndarray:
+        raise NotImplementedError
 
 
 class FemMaterial(FemMixin):

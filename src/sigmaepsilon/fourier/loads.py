@@ -1,15 +1,17 @@
 import json
 import numpy as np
-from numpy import ndarray
+from numpy import ndarray, average as avg
 from typing import Union, Iterable, Any
+from numbers import Number
 
 from dewloosh.core.tools import float_to_str_sig
 from linkeddeepdict import LinkedDeepDict
 from linkeddeepdict.tools.dtk import parsedicts_addr
+from neumann.function import Function
 
 from .problem import NavierProblem
 from .preproc import rhs_rect_const, rhs_conc_1d, rhs_conc_2d, rhs_line_const
-from .utils import points_to_rectangle_region
+from .utils import points_to_rectangle_region, sin1d, cos1d
 
 
 class NavierLoadError(Exception):
@@ -195,7 +197,7 @@ class LoadGroup(LinkedDeepDict):
                 d = json.load(f)
             return cls.from_dict(d)
 
-    def _encode_(self, *args, **kwargs) -> dict:
+    def _encode_(self, *_, **__) -> dict:
         """
         Returns the group as a dictionary. Overwrite this in child
         implementations.
@@ -209,7 +211,7 @@ class LoadGroup(LinkedDeepDict):
         return res
 
     @classmethod
-    def _decode_(cls, d: dict = None, *args, **kwargs):
+    def _decode_(cls, d: dict = None, *_, **kwargs):
         """
         Returns a LoadGroup object from a dictionary.
         Overwrite this in child implementations.
@@ -351,7 +353,7 @@ class RectangleLoad(LoadGroup):
 
 class LineLoad(LoadGroup):
     """
-    A class to handle loads over lines.
+    A class to handle loads over lines for both beam and plate problems.
 
     Parameters
     ----------
@@ -370,7 +372,7 @@ class LineLoad(LoadGroup):
         super().__init__(*args, x=x, v=v, **kwargs)
 
     @classmethod
-    def _decode_(cls, d: dict = None, *args, **kwargs):
+    def _decode_(cls, d: dict = None, *_, **kwargs):
         if d is None:
             d = kwargs
             kwargs = None
@@ -412,8 +414,38 @@ class LineLoad(LoadGroup):
         """
         p = problem if problem is not None else self.problem
         x = np.array(self["x"], dtype=float)
-        v = np.array(self["v"], dtype=float)
-        return rhs_line_const(p.length, p.N, v, x)
+        v = self["v"]
+        if len(x.shape) == 1:
+            assert len(v) == 2, \
+                f"Invalid shape {v.shape} for load intensities."
+            if isinstance(v[0], Number) and isinstance(v[1], Number):
+                v = np.array(v, dtype=float)
+                return rhs_line_const(p.length, p.N, v, x)
+            else:
+                rhs = np.zeros((1, p.N, 2), dtype=x.dtype)
+                if isinstance(v[0], str):
+                    f = Function(v[0], variables=['x'], dim=1)
+                    L = p.length
+                    points = np.linspace(x[0], x[1], 1000)
+                    d = x[1] - x[0]
+                    rhs[0, :, 0] = \
+                        list(map(lambda i: (2/L) * d * avg(sin1d(points, i, L) * f([points])),
+                                 np.arange(1, p.N + 1)))
+                elif isinstance(v[0], Number):
+                    _v = np.array([v[0], 0], dtype=float)
+                    rhs[0, :, 0] = rhs_line_const(p.length, p.N, _v, x)[0, :, 0]
+                if isinstance(v[1], str):
+                    f = Function(v[1], variables=['x'], dim=1)
+                    L = p.length
+                    points = np.linspace(x[0], x[1], 1000)
+                    d = x[1] - x[0]
+                    rhs[0, :, 1] = \
+                        list(map(lambda i: (2/L) * d * avg(cos1d(points, i, L) * f([points])),
+                                 np.arange(1, p.N + 1)))
+                elif isinstance(v[1], Number):
+                    _v = np.array([0, v[1]], dtype=float)
+                    rhs[0, :, 1] = rhs_line_const(p.length, p.N, _v, x)[0, :, 1] 
+                return rhs
 
     def __repr__(self):
         return "LineLoad(%s)" % (dict.__repr__(self))
@@ -441,7 +473,7 @@ class PointLoad(LoadGroup):
         super().__init__(*args, x=x, v=v, **kwargs)
 
     @classmethod
-    def _decode_(cls, d: dict = None, *args, **kwargs):
+    def _decode_(cls, d: dict = None, *_, **kwargs):
         if d is None:
             d = kwargs
             kwargs = None

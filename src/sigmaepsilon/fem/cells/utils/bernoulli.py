@@ -29,7 +29,6 @@ def global_shape_function_derivatives_bulk(dshp: ndarray, jac: ndarray):
     -------
     numpy.ndarray
         5d float array of shape (nE, nP, nNE, nDOF=6, 3).
-
     """
     nE, nP, nNE = dshp.shape[:3]
     res = np.zeros((nE, nP, nNE, __NDOFN__, 3), dtype=dshp.dtype)
@@ -72,7 +71,6 @@ def shape_function_matrix(shp: ndarray, gdshp: ndarray):
     See Also
     --------
     :func:`shape_function_matrix_bulk`
-
     """
     nNE = shp.shape[0]
     res = np.zeros((__NDOFN__, nNE * __NDOFN__), dtype=gdshp.dtype)
@@ -122,7 +120,6 @@ def shape_function_matrix_bulk(shp: ndarray, gdshp: ndarray):
     See Also
     --------
     :func:`shape_function_matrix`
-
     """
     nE, nP, nNE = gdshp.shape[:3]
     res = np.zeros((nE, nP, __NDOFN__, nNE * __NDOFN__), dtype=gdshp.dtype)
@@ -199,7 +196,6 @@ def body_load_vector_Bernoulli(
     -------
     numpy.ndarray
         3d float array of shape (nE, nNE * 6, nRHS).
-
     """
     nRHS = values.shape[1]
     nE, nG, nNE = shp.shape[:3]
@@ -263,7 +259,6 @@ def lumped_mass_matrices_direct(
     .. [1] Introduction to Finite Element Methods, Carlos A. Felippa.
            Department of Aerospace Engineering Sciences and Center for
            Aerospace Structures, University of Colorado. 2004.
-
     """
     nE, nNE = topo.shape
     diags = np.zeros((nE, 6 * nNE), dtype=dens.dtype)

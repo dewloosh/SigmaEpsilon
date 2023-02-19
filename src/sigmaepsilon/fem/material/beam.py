@@ -72,12 +72,33 @@ def strain_displacement_matrix_bulk(gdshp: ndarray) -> ndarray:
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def calculate_shear_forces(
+def _postproc_bernoulli_internal_forces_L_(
+    forces: ndarray, dshp_geom: ndarray, jac: ndarray
+) -> ndarray:
+    # forces (nE, nNE, nSTRS, nRHS)
+    # dshp_geom (nNE, nNE)
+    nE, nNE, _, nRHS = forces.shape
+    nNE = forces.shape[1]
+    for i in prange(nE):
+        for j in prange(nNE):
+            jac_inv = 1 / jac[i, j, 0, 0]
+            for k in prange(nRHS):
+                for m in range(nNE):
+                    # Vy
+                    forces[i, j, 1, k] -= forces[i, m, 5, k] * dshp_geom[j, m] * jac_inv
+                    # Vz 
+                    forces[i, j, 2, k] += forces[i, m, 4, k] * dshp_geom[j, m] * jac_inv 
+    return forces
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def _postproc_bernoulli_internal_forces_H_(
     dofsol: ndarray, forces: ndarray, D: ndarray, gdshp: ndarray
 ) -> ndarray:
     # dofsol (nE, nNE, nDOF=6, nRHS)
     # forces (nE, nP, 4, nRHS)
-    # gdshp (nE, nP, nNE=2, nDOF=6, 3)
+    # gdshp (nE, nP, nNE, nDOF=6, 3)
+    # D (nE, nSTRE, nSTRE)
     nE, nP, _, nRHS = forces.shape
     nNE = dofsol.shape[1]
     res = np.zeros((nE, nP, 6, nRHS), dtype=forces.dtype)

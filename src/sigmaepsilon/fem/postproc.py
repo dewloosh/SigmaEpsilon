@@ -121,7 +121,9 @@ def calculate_external_forces_bulk(K: ndarray, dofsol: ndarray) -> ndarray:
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def calculate_internal_forces_bulk(strains: ndarray, D: ndarray) -> ndarray:
+def calculate_internal_forces_bulk(
+    strains: ndarray, D: ndarray, out: ndarray, imap: ndarray
+) -> ndarray:
     """
     strain (nE, nRHS, nP, nX)
     D (nE, nX, nX)
@@ -129,12 +131,14 @@ def calculate_internal_forces_bulk(strains: ndarray, D: ndarray) -> ndarray:
     (nE, nRHS, nP, nX)
     """
     nE, nRHS, nP, _ = strains.shape
-    res = np.zeros_like(strains)
+    nI = imap.shape[0]
     for i in prange(nE):
         for j in prange(nRHS):
             for k in prange(nP):
-                res[i, j, k] = D[i] @ strains[i, j, k]
-    return res
+                strs = D[i] @ strains[i, j, k]
+                for l in prange(nI):
+                    out[i, j, k, imap[l]] = strs[l]
+    return out
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
