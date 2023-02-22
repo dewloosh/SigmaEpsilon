@@ -38,12 +38,6 @@ class BernoulliBase(BernoulliBeam):
     --------
     :class:`~sigmaepsilon.fem.cells.bernoulli2.Bernoulli2`
     :class:`~sigmaepsilon.fem.cells.bernoulli3.Bernoulli3`
-
-    Note
-    ----
-    Among normal circumstances, you do not have to interact with this class
-    directly. Only use it if you know what you are doing and understand the
-    meaning of the inputs precisely.
     """
 
     qrule: str = None

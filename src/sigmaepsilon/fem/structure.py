@@ -20,7 +20,7 @@ from .constants import DEFAULT_DIRICHLET_PENALTY, DEFAULT_MASS_PENALTY_RATIO
 __all__ = ["Structure"]
 
 
-class Structure(Wrapper):
+class Structure:
     """
     A higher level class to manage solid structures.
 
@@ -42,7 +42,7 @@ class Structure(Wrapper):
 
     def __init__(
         self,
-        mesh: FemMesh = None,
+        mesh: FemMesh,
         essential_penalty: float = DEFAULT_DIRICHLET_PENALTY,
         mass_penalty_ratio: float = DEFAULT_MASS_PENALTY_RATIO,
     ):
@@ -54,7 +54,8 @@ class Structure(Wrapper):
             )
         if not mesh.locked:
             mesh.lock(create_mappers=True)
-        super().__init__(wrap=mesh)
+        super().__init__()
+        self._mesh = mesh
         self._static_solver = None
         self._dynamic_solver_ = None
         self._natural_circular_frequencies = None
@@ -67,7 +68,7 @@ class Structure(Wrapper):
         """
         Returns the underlying mesh object.
         """
-        return self._wrapped
+        return self._mesh
 
     @mesh.setter
     def mesh(self, value: FemMesh):
@@ -82,7 +83,7 @@ class Structure(Wrapper):
             )
         if not value.locked:
             value.lock(create_mappers=True)
-        self._wrapped = value
+        self._mesh = value
 
     @property
     def constraints(self) -> List[EBC]:
@@ -434,7 +435,7 @@ class Structure(Wrapper):
         return self
 
     def _assemble_linstat_(self, *_, **__):
-        mesh = self._wrapped
+        mesh = self.mesh
         jagged = mesh.is_jagged()
 
         gnum = mesh.element_dof_numbering()
@@ -490,7 +491,7 @@ class Structure(Wrapper):
         return self
 
     def _assemble_free_vib_(self, *_, **__):
-        mesh = self._wrapped
+        mesh = self.mesh
         gnum = mesh.element_dof_numbering()
         # get raw data
         mesh.nodal_load_vector()

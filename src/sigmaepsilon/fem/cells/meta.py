@@ -190,18 +190,18 @@ class ABCFiniteElement(FemMixin, metaclass=MetaFiniteElement):
     def shape_function_matrix(self, *args, expand: bool = False, **kwargs):
         N = super().shape_function_matrix(*args, **kwargs)
         if expand:
-            constans_metric = len(N.shape) == 3
+            constant_metric = len(N.shape) == 3
+            N = atleastnd(N, 4, front=True)    
             nDOFN = self.container.NDOFN
             dofmap = self.__class__.dofmap
             if len(dofmap) < nDOFN:
                 # the model has more dofs than the element
-                N = atleastnd(N, 4, front=True)
                 nE, nP, nX = N.shape[:3]
                 nTOTV = nDOFN * self.NNODE
                 # nE, nP, nX, nDOF * nNE
                 N_ = np.zeros((nE, nP, nX, nTOTV), dtype=float)
                 dofmap = element_dofmap_bulk(dofmap, nDOFN, self.NNODE)
                 N = expand_shape_function_matrix_bulk(N, N_, dofmap)
-            return N if constans_metric else N[0]
+            return N[0] if constant_metric else N
         else:
             return N

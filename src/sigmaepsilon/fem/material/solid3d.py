@@ -17,6 +17,7 @@ _NDOFN_ = 3
 
 @njit(nogil=True, parallel=True, cache=__cache)
 def strain_displacement_matrix(dshp: ndarray, jac: ndarray) -> ndarray:
+    # sxx, syy, szz, syz, sxz, sxy
     nE = jac.shape[0]
     nP, nN = dshp.shape[:2]
     nTOTV = nN * _NDOFN_
@@ -28,10 +29,10 @@ def strain_displacement_matrix(dshp: ndarray, jac: ndarray) -> ndarray:
                 B[iE, iP, 0, 0 + i * _NDOFN_] = gdshp[i, 0]
                 B[iE, iP, 1, 1 + i * _NDOFN_] = gdshp[i, 1]
                 B[iE, iP, 2, 2 + i * _NDOFN_] = gdshp[i, 2]
-                B[iE, iP, 3, 0 + i * _NDOFN_] = gdshp[i, 2]
-                B[iE, iP, 3, 2 + i * _NDOFN_] = gdshp[i, 0]
-                B[iE, iP, 4, 1 + i * _NDOFN_] = gdshp[i, 2]
-                B[iE, iP, 4, 2 + i * _NDOFN_] = gdshp[i, 1]
+                B[iE, iP, 3, 1 + i * _NDOFN_] = gdshp[i, 2]
+                B[iE, iP, 3, 2 + i * _NDOFN_] = gdshp[i, 1]
+                B[iE, iP, 4, 0 + i * _NDOFN_] = gdshp[i, 2]
+                B[iE, iP, 4, 2 + i * _NDOFN_] = gdshp[i, 0]
                 B[iE, iP, 5, 0 + i * _NDOFN_] = gdshp[i, 1]
                 B[iE, iP, 5, 1 + i * _NDOFN_] = gdshp[i, 0]
     return B

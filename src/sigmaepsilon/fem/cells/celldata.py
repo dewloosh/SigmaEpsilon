@@ -265,8 +265,12 @@ class CellData(MeshCellData):
 
     @strain_loads.setter
     def strain_loads(self, value: ndarray):
-        assert isinstance(value, ndarray)
-        self._wrapped[self._dbkey_strain_loads_] = value
+        if value is None:
+            if self.has_strain_loads:
+                del self._wrapped[self._dbkey_strain_loads_]
+        else:
+            assert isinstance(value, ndarray)
+            self._wrapped[self._dbkey_strain_loads_] = value
 
     @property
     def loads(self) -> ndarray:

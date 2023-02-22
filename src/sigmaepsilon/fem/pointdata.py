@@ -17,18 +17,14 @@ class PointData(MeshPointData):
     fixity : numpy.ndarray, Optional
         A 2d boolean or float array describing essential boundary conditions.
         Default is None.
-
     loads : numpy.ndarray, Optional
         A 2d or 3d float array of nodal loads.
         Default is None.
-
     mass : numpy.ndarray, Optional
         2d array of nodal masses for each degree of freedom of a node.
         Default is None.
-
     fields : dict, Optional
         Every value of this dictionary is added to the dataset. Default is `None`.
-
     **kwargs : dict, Optional
         For every key and value pair where the value is a numpy array
         with a matching shape (has entries for all points), the key
@@ -76,7 +72,6 @@ class PointData(MeshPointData):
     :class:`polymesh.PolyData`
     :class:`polymesh.CellData`
     :class:`awkward.Record`
-
     """
 
     _attr_map_ = {
