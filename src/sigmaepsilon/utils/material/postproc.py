@@ -4,8 +4,8 @@ from collections import Iterable
 
 from neumann import ascont, atleast1d, atleast2d, atleast3d, atleast4d
 
-from ..utils import layers_of_points, points_of_layers
-from .utils import (
+from .surface import layers_of_points, points_of_layers
+from .mindlin import (
     z_to_shear_factors,
     shear_correction_data,
     material_stiffness_matrices,

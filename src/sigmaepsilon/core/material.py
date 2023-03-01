@@ -1,7 +1,10 @@
 from abc import abstractmethod
 
 
-class MaterialModel:
+class MaterialLike:
     @abstractmethod
     def elastic_stiffness_matrix(self):
         raise NotImplementedError
+    
+
+class SectionLike(MaterialLike): ...

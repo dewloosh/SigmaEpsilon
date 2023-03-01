@@ -11,36 +11,36 @@ from neumann import atleast1d, atleastnd, ascont
 from neumann.utils import to_range_1d
 from neumann.linalg.sparse.jaggedarray import JaggedArray
 
-from ..preproc import (
+from ...utils.fem.preproc import (
     fem_coeff_matrix_coo,
     assert_min_diagonals_bulk,
     assemble_load_vector,
     condensate_Kf_bulk,
     condensate_M_bulk,
 )
-from ..postproc import (
+from ...utils.fem.postproc import (
     approx_element_solution_bulk,
     calculate_external_forces_bulk,
     calculate_internal_forces_bulk,
     explode_kinetic_strains,
     element_dof_solution_bulk,
 )
-from ..utils import (
+from ...utils.fem.tr import (
+    nodal_dcm,
+    nodal_dcm_bulk,
+    element_dcm,
+    element_dcm_bulk,
+    tr_element_vectors_bulk_multi as tr_vectors,
+    tr_element_matrices_bulk as tr2d,
+)
+from ...utils.fem.fem import (
     topo_to_gnum,
     expand_coeff_matrix_bulk,
     element_dofmap_bulk,
     topo_to_gnum_jagged,
     expand_load_vector_bulk,
 )
-from ..tr import (
-    nodal_dcm,
-    nodal_dcm_bulk,
-    element_dcm,
-    element_dcm_bulk,
-    tr_element_vectors_bulk_multi as tr1d,
-    tr_element_matrices_bulk as tr2d,
-)
-from .utils import (
+from ...utils.fem.cells import (
     stiffness_matrix_bulk2,
     strain_displacement_matrix_bulk2,
     unit_strain_load_vector_bulk,
@@ -200,7 +200,7 @@ class FiniteElement(CellData, FemMixin):
         dcm = self.direction_cosine_matrix(source="global")[cells]
         values = element_dof_solution_bulk(dofsol, gnum)  # (nE, nEVAB, nRHS)
         values = ascont(np.swapaxes(values, 1, 2))  # (nE, nRHS, nEVAB)
-        values = tr1d(values, dcm)
+        values = tr_vectors(values, dcm)
         values = ascont(np.swapaxes(values, 1, 2))  # (nE, nEVAB, nRHS)
 
         if nDIM == 1:
@@ -237,7 +237,7 @@ class FiniteElement(CellData, FemMixin):
                 nE, nRHS, nP, nDOF = values.shape
                 values = values.reshape(nE, nRHS, nP * nDOF)
                 dcm = self.direction_cosine_matrix(N=nP, target=target)[cells]
-                values = tr1d(values, dcm)
+                values = tr_vectors(values, dcm)
                 values = values.reshape(nE, nRHS, nP, nDOF)
 
         values = np.moveaxis(values, 1, -1)  # (nE, nP, nDOF, nRHS)
@@ -454,7 +454,7 @@ class FiniteElement(CellData, FemMixin):
                 nE, nRHS, nP, nDOF = values.shape
                 values = values.reshape(nE, nRHS, nP * nDOF)
                 dcm = self.direction_cosine_matrix(N=nP, target=target)[cells]
-                values = tr1d(values, dcm)
+                values = tr_vectors(values, dcm)
                 values = values.reshape(nE, nRHS, nP, nDOF)
                 values = np.moveaxis(forces, 1, -1)
         else:
@@ -482,7 +482,7 @@ class FiniteElement(CellData, FemMixin):
         jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)
         # jac -> (nE, nP, 1, 1)
         B = self.strain_displacement_matrix(shp=shp, dshp=dshp, jac=jac)
-        # B -> (nE, nP, nSTRE, nNODE * 6)
+        # B -> (nE, nP, nSTRE, nNODE * nDOFN)
 
         dofsol = ascont(np.swapaxes(dofsol, 1, 2))  # (nE, nRHS, nEVAB)
         strains = approx_element_solution_bulk(dofsol, B)
@@ -567,14 +567,14 @@ class FiniteElement(CellData, FemMixin):
             if isinstance(target, str) and target == "local":
                 values = forces
             else:
-                # transform values to a destination frame, otherwise return
-                # the forces are in the local frames of the cells
+                # transform values to a destination frame, or return
+                # the forces in the local frames of the cells
                 values = np.moveaxis(forces, -1, 1)
-                nE, nRHS, nP, nDOF = values.shape
-                values = values.reshape(nE, nRHS, nP * nDOF)
+                nE, nRHS, nP, nSTRE = values.shape
+                values = values.reshape(nE, nRHS, nP * nSTRE)
                 dcm = self.direction_cosine_matrix(N=nP, target=target)[cells]
-                values = tr1d(values, dcm)
-                values = values.reshape(nE, nRHS, nP, nDOF)
+                values = tr_vectors(values, dcm)
+                values = values.reshape(nE, nRHS, nP, nSTRE)
                 values = np.moveaxis(values, 1, -1)
         else:
             values = forces
@@ -1218,7 +1218,7 @@ class FiniteElement(CellData, FemMixin):
         # (nE, nNE * nDOF, nRHS) -> (nE, nRHS, nNE * nDOF)
         nodal_loads = np.swapaxes(nodal_loads, 1, 2)
         nodal_loads = ascont(nodal_loads)
-        nodal_loads = tr1d(nodal_loads, dcm)
+        nodal_loads = tr_vectors(nodal_loads, dcm)
         nodal_loads = np.swapaxes(nodal_loads, 1, 2)
         # (nE, nRHS, nNE * nDOF) -> (nE, nNE * nDOF, nRHS)
         return nodal_loads

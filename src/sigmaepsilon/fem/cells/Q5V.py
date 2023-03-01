@@ -6,9 +6,9 @@ from polymesh.cells import Q9 as Quadrilateral
 from polymesh.utils.tri import area_tri, glob_to_nat_tri, loc_to_nat_tri
 from polymesh.utils import nodal_distribution_factors
 
-from ....fem.cells import FiniteElement
-from ....fem.material.membrane import Membrane
-from ....fem.utils import topo_to_gnum
+from .elem import FiniteElement
+from ..material.membrane import Membrane
+from ...utils.fem.fem import topo_to_gnum
 
 
 __cache = True
@@ -224,8 +224,7 @@ def nodal_data_T2(celldata: ndarray):
 
 
 class Q5MV(Quadrilateral, Membrane, FiniteElement):
-    compatible = False
-
+    
     def stiffness_matrix(self, *args, topo=None, **kwargs):
         topo = self.nodes.to_numpy() if topo is None else topo
         ecoords = self.local_coordinates(topo=topo)

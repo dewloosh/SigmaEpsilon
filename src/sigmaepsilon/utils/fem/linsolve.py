@@ -13,7 +13,7 @@ from neumann import matrixform
 
 from .imap import unbox_lhs
 from .preproc import fem_coeff_matrix_coo, box_fem_data_sparse
-from ..config import __haspardiso__
+from ...config import __haspardiso__
 
 if __haspardiso__:
     import pypardiso as ppd
@@ -34,7 +34,7 @@ def solve_standard_form(
     solver: str = None,
     mtype: int = 11,
     assume_regular: bool = False,
-    **kwargs
+    **_
 ):
     """
     Solves the discrete equilibrium equations :math:`\mathbf{K} \mathbf{u} = \mathbf{f}`

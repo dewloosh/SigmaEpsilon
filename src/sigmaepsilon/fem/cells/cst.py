@@ -1,9 +1,8 @@
-import numpy as np
-
 from polymesh.cells import T3 as Triangle
 
 from ..material.membrane import Membrane
 from ..material.mindlinplate import MindlinPlate
+from ..material.mindlinshell import MindlinShell
 
 from .elem import FiniteElement
 from .meta import ABCFiniteElement as ABC
@@ -12,8 +11,8 @@ from .meta import ABCFiniteElement as ABC
 class CST_M(ABC, Membrane, Triangle, FiniteElement):
     """
     The constant-strain triangle a.k.a., CST triangle, Turner triangle or
-    linear triangle. Developed as a plane stress element by John Turner,
-    Ray Clough and Harold Martin in 1952-53 [1], published in 1956 [2].
+    linear triangle for membranes. Developed as a plane stress element by 
+    John Turner, Ray Clough and Harold Martin in 1952-53 [1], published in 1956 [2].
 
     Notes
     -----
@@ -28,19 +27,15 @@ class CST_M(ABC, Membrane, Triangle, FiniteElement):
     .. [2] M. J. Turner, R. W. Clough, H. C. Martin, and L. J. Topp, Stiffness and
        deflection analysis of complex structures, J. Aero. Sco., 23, pp. 805-824, 1956.
     """
-
     qrule = "full"
-    quadrature = {
-        "full": (np.array([[1 / 3, 1 / 3]]), np.array([1 / 2])),
-    }
-
+    
 
 class CST_P_MR(ABC, MindlinPlate, Triangle, FiniteElement):
     """
     The constant-strain triangle (a.k.a., CST triangle, Turner triangle)
     """
-
     qrule = "full"
-    quadrature = {
-        "full": (np.array([[1 / 3, 1 / 3]]), np.array([1 / 2])),
-    }
+    
+
+class CST_S_MR(ABC, MindlinShell, Triangle, FiniteElement):
+    qrule = "full"

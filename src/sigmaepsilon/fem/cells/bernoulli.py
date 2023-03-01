@@ -7,13 +7,14 @@ from scipy import interpolate
 from neumann import atleast1d, atleastnd, ascont
 from neumann.utils import to_range_1d
 
-from .utils.bernoulli import (
-    shape_function_matrix_bulk,
+from ...utils.fem.cells.bernoulli import (
+    shape_function_matrix_Bernoulli_bulk,
     body_load_vector_Bernoulli,
-    global_shape_function_derivatives_bulk as gdshpB,
-    lumped_mass_matrices_direct as dlump,
+    global_shape_function_derivatives_Bernoulli_bulk as gdshpB,
+    lumped_mass_matrices_direct_Bernoulli as dlump,
 )
-from ..postproc import (
+
+from ...utils.fem.postproc import (
     approx_element_solution_bulk,
     calculate_internal_forces_bulk
 )
@@ -199,7 +200,7 @@ class BernoulliBase(BernoulliBeam):
         jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)
         shp = self.shape_function_values(pcoords, rng=rng)
         gdshp = self.shape_function_derivatives(jac=jac, dshp=dshp)
-        return shape_function_matrix_bulk(shp, gdshp).astype(float)
+        return shape_function_matrix_Bernoulli_bulk(shp, gdshp).astype(float)
 
     def integrate_body_loads(self, values: ndarray) -> ndarray:
         """

@@ -8,7 +8,7 @@ from polymesh.abcdata import ABCMeta_MeshData
 from polymesh.cell import PolyCell
 
 from ..dofmap import DOF
-from ..utils import (
+from ...utils.fem.fem import (
     expand_shape_function_matrix_bulk,
     element_dofmap_bulk,
 )

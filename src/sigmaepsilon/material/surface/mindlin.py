@@ -4,10 +4,10 @@ from numpy import ndarray
 from numpy.linalg import inv
 import sympy as sy
 
-from ...hooke.utils import _get_elastic_params
-from ...hooke.sym import smat_sym_ortho_3d
+from ..hooke.utils import _get_elastic_params
+from ..hooke.sym import smat_sym_ortho_3d
 
-from ..meta import Surface, SurfaceLayer
+from .meta import Surface, SurfaceLayer
 
 
 __all__ = ["MindlinShell", "MindlinPlate", "MindlinShellLayer", "MindlinPlateLayer"]

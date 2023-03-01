@@ -15,7 +15,7 @@ from .utils import (
     weighted_stiffness_flat as weighted_stiffness,
     element_stiffness_ranges,
 )
-from ...fem.postproc import element_compliances_flat as element_compliances
+from ...utils.fem.postproc import element_compliances_flat as element_compliances
 
 
 class OptRes(NamedTuple):

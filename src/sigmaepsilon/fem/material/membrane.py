@@ -2,7 +2,7 @@ from numba import njit, prange
 import numpy as np
 from numpy import ndarray
 
-from ...material.utils import HMH_M
+from ...utils.material.hmh import HMH_M
 from .surface import Surface
 
 

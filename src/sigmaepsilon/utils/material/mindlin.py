@@ -2,7 +2,7 @@ import numpy as np
 from numpy.linalg import inv
 from numba import njit, prange
 
-from ..utils import points_of_layers
+from .surface import points_of_layers
 
 __cache = True
 

@@ -9,7 +9,7 @@ from neumann.logical import is1dfloatarray, isboolarray
 from polymesh.celldata import CellData as MeshCellData
 
 
-from ...material.meta import MaterialModel
+from ...core.material import MaterialLike
 
 
 class CellData(MeshCellData):
@@ -97,7 +97,7 @@ class CellData(MeshCellData):
     def __init__(
         self,
         *args,
-        material: Union[MaterialModel, ndarray] = None,
+        material: Union[MaterialLike, ndarray] = None,
         activity: ndarray = None,
         density: ndarray = None,
         loads: ndarray = None,
@@ -178,7 +178,7 @@ class CellData(MeshCellData):
                 self.db[self._dbkey_thickness_] = t
 
         self._material = None
-        if isinstance(material, MaterialModel):
+        if isinstance(material, MaterialLike):
             self._material = material
             self.material_stiffness = material.elastic_stiffness_matrix()
         elif isinstance(material, ndarray):

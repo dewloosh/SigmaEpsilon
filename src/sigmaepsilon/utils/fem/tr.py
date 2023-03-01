@@ -16,7 +16,6 @@ def nodal_dcm(dcm: ndarray, N: int = 2) -> ndarray:
     ----------
     dcm : numpy.ndarray
         A 3x3 direction cosine matrix.
-
     N : int, Optional
         The number of triplets that make up a nodal vector.
         Default is 2, which means 6 dofs per node.
@@ -30,7 +29,6 @@ def nodal_dcm(dcm: ndarray, N: int = 2) -> ndarray:
     ----
     The template 'dcm' should be the matrix you would use to transform a
     position vector in 3d Euclidean space.
-
     """
     return repeat_diagonal_2d(dcm, N)
 
@@ -44,7 +42,6 @@ def nodal_dcm_bulk(dcm: ndarray, N: int = 2) -> ndarray:
     ----------
     dcm : numpy.ndarray
         A 3x3 direction cosine matrix for each element (4d).
-
     N : int, Optional
         The number of triplets that make up a nodal vector.
         Default is 2, which means 6 dofs per node.
@@ -58,7 +55,6 @@ def nodal_dcm_bulk(dcm: ndarray, N: int = 2) -> ndarray:
     ----
     Typically, 'dcm' should be the matrix you would use to transform a
     position vector in 3d Euclidean space.
-
     """
     nE = dcm.shape[0]
     res = np.zeros((nE, 3 * N, 3 * N), dtype=dcm.dtype)
@@ -102,11 +98,9 @@ def tr_element_vectors_bulk_multi(
     ----------
     values : numpy.ndarray
         The values to transform as an array of shape (nE, nRHS, nX).
-
     dcm : numpy.ndarray
         The direct cosine matrix of the transformation as an
         array of shape (nE, nX).
-
     invert : bool, Optional
         If True, the DCM matrices are transposed before transformation.
         This makes this function usable in both directions.
@@ -116,7 +110,6 @@ def tr_element_vectors_bulk_multi(
     -------
     numpy.ndarray
         An array with the same shape as 'values'.
-
     """
     res = np.zeros_like(values)
     if not invert:

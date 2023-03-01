@@ -8,7 +8,7 @@ from polymesh.utils.topology import L2_to_L3
 from sigmaepsilon.fem.cells import B2, B3
 from sigmaepsilon import Structure, LineMesh, PointData
 from sigmaepsilon.fem import NodalSupport
-from sigmaepsilon.fem.dyn import Rayleigh_quotient, effective_modal_masses
+from sigmaepsilon.utils.fem.dyn import Rayleigh_quotient, effective_modal_masses
 import numpy as np
 from numpy import pi as PI
 

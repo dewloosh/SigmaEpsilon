@@ -2,7 +2,8 @@ from numba import njit, prange
 import numpy as np
 from numpy import ndarray
 
-from ..cells.utils import element_dof_solution_bulk, element_dof_solution_bulk_multi
+
+from ..fem.cells import element_dof_solution_bulk, element_dof_solution_bulk_multi
 
 __cache = True
 

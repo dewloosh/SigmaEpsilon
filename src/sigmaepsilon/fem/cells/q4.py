@@ -1,7 +1,9 @@
-from neumann.numint import gauss_points as gp
-
 from polymesh.utils.cells.q4 import area_Q4_bulk
 from polymesh.cells import Q4 as Quadrilateral
+from polymesh.utils.cells.gauss import (
+    Gauss_Legendre_Quad_1,
+    Gauss_Legendre_Quad_4,
+)
 
 from ..material.membrane import Membrane
 from ..material.mindlinplate import MindlinPlate
@@ -14,9 +16,9 @@ from .meta import ABCFiniteElement as ABC
 class Q4_M(ABC, Membrane, Quadrilateral, FiniteElement):
     qrule = "full"
     quadrature = {
-        "full": gp(2, 2),
+        "full": Gauss_Legendre_Quad_4(),
         "selective": {(0, 1): "full", (2,): "reduced"},
-        "reduced": gp(1, 1),
+        "reduced": Gauss_Legendre_Quad_1(),
     }
 
     def areas(self, *args, **kwargs):
@@ -28,16 +30,16 @@ class Q4_M(ABC, Membrane, Quadrilateral, FiniteElement):
 class Q4_P_MR(ABC, MindlinPlate, Quadrilateral, FiniteElement):
     qrule = "selective"
     quadrature = {
-        "full": gp(2, 2),
+        "full": Gauss_Legendre_Quad_4(),
         "selective": {(0, 1, 2): "full", (3, 4): "reduced"},
-        "reduced": gp(1, 1),
+        "reduced": Gauss_Legendre_Quad_1(),
     }
 
 
 class Q4_S_MR(ABC, MindlinShell, Quadrilateral, FiniteElement):
     qrule = "selective"
     quadrature = {
-        "full": gp(2, 2),
+        "full": Gauss_Legendre_Quad_4(),
         "selective": {(0, 1, 3, 4, 5): "full", (2, 6, 7): "reduced"},
-        "reduced": gp(1, 1),
+        "reduced": Gauss_Legendre_Quad_1(),
     }

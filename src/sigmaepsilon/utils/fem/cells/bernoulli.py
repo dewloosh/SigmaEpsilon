@@ -9,7 +9,7 @@ __NDOFN__ = 6
 
 
 @njit(nogil=True, parallel=True, cache=__cache__)
-def global_shape_function_derivatives_bulk(dshp: ndarray, jac: ndarray):
+def global_shape_function_derivatives_Bernoulli_bulk(dshp: ndarray, jac: ndarray):
     """
     Calculates derivatives of shape functions w.r.t. the global axes
     using derivatives along local axes evaulated at some points in
@@ -42,7 +42,7 @@ def global_shape_function_derivatives_bulk(dshp: ndarray, jac: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache__)
-def shape_function_matrix(shp: ndarray, gdshp: ndarray):
+def shape_function_matrix_Bernoulli(shp: ndarray, gdshp: ndarray):
     """
     Returns the shape function matrix of a single Bernoulli beam.
 
@@ -96,7 +96,7 @@ def shape_function_matrix(shp: ndarray, gdshp: ndarray):
 
 
 @njit(nogil=True, parallel=True, cache=__cache__)
-def shape_function_matrix_bulk(shp: ndarray, gdshp: ndarray):
+def shape_function_matrix_Bernoulli_bulk(shp: ndarray, gdshp: ndarray):
     """
     Returns the shape function matrix for several Bernoulli beams.
 
@@ -125,12 +125,12 @@ def shape_function_matrix_bulk(shp: ndarray, gdshp: ndarray):
     res = np.zeros((nE, nP, __NDOFN__, nNE * __NDOFN__), dtype=gdshp.dtype)
     for iE in prange(nE):
         for iP in prange(nP):
-            res[iE, iP] = shape_function_matrix(shp[iE, iP], gdshp[iE, iP])
+            res[iE, iP] = shape_function_matrix_Bernoulli(shp[iE, iP], gdshp[iE, iP])
     return res
 
 
 @njit(nogil=True, parallel=True, cache=__cache__)
-def _shape_function_matrix_L(shp: ndarray):
+def _shape_function_matrix_Bernoulli_L(shp: ndarray):
     """
     Returns the shape function matrix for a line.
     The input contains evaluations of the shape functions.
@@ -165,7 +165,7 @@ def _shape_function_matrix_L_multi(shp: ndarray):
     nP, nNE = shp.shape[:2]
     res = np.zeros((nP, __NDOFN__, nNE * __NDOFN__), dtype=shp.dtype)
     for iP in prange(nP):
-        res[iP] = _shape_function_matrix_L(shp[iP])
+        res[iP] = _shape_function_matrix_Bernoulli_L(shp[iP])
     return res
 
 
@@ -199,7 +199,7 @@ def body_load_vector_Bernoulli(
     """
     nRHS = values.shape[1]
     nE, nG, nNE = shp.shape[:3]
-    NH = shape_function_matrix_bulk(shp, gdshp)  # (nE, nG, nDOF, nDOF * nNODE)
+    NH = shape_function_matrix_Bernoulli_bulk(shp, gdshp)  # (nE, nG, nDOF, nDOF * nNODE)
     NL = _shape_function_matrix_L_multi(shp[0])  # (nG, nDOF, nDOF * nNODE)
     res = np.zeros((nE, nNE * __NDOFN__, nRHS), dtype=values.dtype)
     for iG in range(nG):
@@ -212,7 +212,7 @@ def body_load_vector_Bernoulli(
 
 
 @njit(nogil=True, parallel=True, cache=__cache__)
-def lumped_mass_matrices_direct(
+def lumped_mass_matrices_direct_Bernoulli(
     dens: ndarray,
     lengths: ndarray,
     areas: ndarray,

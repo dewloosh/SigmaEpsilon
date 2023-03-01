@@ -10,14 +10,14 @@ from neumann.logical import isintegerarray, isfloatarray, isboolarray
 from neumann import bool_to_float, atleastnd, matrixform
 from neumann.linalg.sparse.utils import lower_spdata, upper_spdata
 
-from .utils import (
+from .fem import (
     nodes2d_to_dofs1d,
     irows_icols_bulk,
     nodal_mass_matrix_data,
     min_stiffness_diagonal,
 )
 from .imap import index_mappers, box_spmatrix, box_rhs, box_dof_numbering
-from .constants import DEFAULT_DIRICHLET_PENALTY
+from ...fem.constants import DEFAULT_DIRICHLET_PENALTY
 
 __cache = True
 

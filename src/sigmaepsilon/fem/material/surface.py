@@ -1,9 +1,9 @@
 from neumann import atleast2d, atleastnd
 
-from ..utils import topo_to_gnum
-
+from ...utils.material import stresses_from_strains
+from ...utils.fem.fem import topo_to_gnum
 from .solid import Solid
-from .utils import stresses_from_strains
+
 
 
 class Surface(Solid):

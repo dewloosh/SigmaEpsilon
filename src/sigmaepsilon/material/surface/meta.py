@@ -6,10 +6,10 @@ from linkeddeepdict import LinkedDeepDict
 from linkeddeepdict.tools.kwargtools import getasany, allinkwargs, anyinkwargs
 from linkeddeepdict.tools.dtk import parsedicts_addr
 
-from ..meta import MaterialModel
+from ...core.material import MaterialLike
 
 
-class MetaSurface(MaterialModel, LinkedDeepDict):
+class MetaSurface(MaterialLike, LinkedDeepDict):
     """
     Base object implementing methods that both a folder (a shell) and a
     file (a layer) can posess.

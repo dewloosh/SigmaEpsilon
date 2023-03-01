@@ -2,8 +2,8 @@ from numpy import ndarray
 
 from neumann import atleast2d, atleast3d
 
-from .utils import model_strains, model_strains_multi, stresses_from_strains
-from ..utils import topo_to_gnum
+from ...utils.material import model_strains, model_strains_multi, stresses_from_strains
+from ...utils.fem.fem import topo_to_gnum
 from ..cells.meta import FemMaterial
 
 

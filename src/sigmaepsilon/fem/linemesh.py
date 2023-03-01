@@ -9,7 +9,6 @@ from polymesh.config import __hasplotly__, __hasmatplotlib__
 if __hasplotly__:
     from dewloosh.plotly import plot_lines_3d
 
-from ..material import BeamSection
 from .mesh import FemMesh
 from .cells import B2, B3
 
@@ -22,67 +21,12 @@ class LineMesh(FemMesh):
     See Also
     --------
     :class:`sigmaepsilon.fem.mesh.FemMesh`
-
     """
 
     _cell_classes_ = {
         2: B2,
         3: B3,
     }
-
-    def __init__(
-        self,
-        *args,
-        areas: ndarray = None,
-        model: ndarray = None,
-        section: BeamSection = None,
-        **kwargs
-    ):
-        if section is None:
-            if isinstance(model, Section):
-                section = BeamSection(wrap=model)
-        if isinstance(section, BeamSection):
-            section.calculate_geometric_properties()
-            model = section.model_stiffness_matrix()
-        self._section = section
-
-        super().__init__(*args, model=model, **kwargs)
-
-        if self.celldata is not None:
-            nE = len(self.celldata)
-            if areas is None:
-                if isinstance(self.section, BeamSection):
-                    areas = np.full(nE, self.section.A)
-                else:
-                    areas = np.ones(nE)
-            else:
-                assert (
-                    len(areas.shape) == 1
-                ), "'areas' must be a 1d float or integer numpy array!"
-            dbkey = self.celldata._dbkey_areas_
-            self.celldata.db[dbkey] = areas
-
-    def simplify(self, inplace=True) -> "LineMesh":
-        pass
-
-    @property
-    def section(self) -> BeamSection:
-        """
-        Returns the section of the cells or None if there is no associated data.
-
-        Returns
-        -------
-        BeamSection
-            The section instance associated with the beams of the block.
-
-        """
-        if self._section is not None:
-            return self._section
-        else:
-            if self.is_root():
-                return self._section
-            else:
-                return self.parent.section
 
     def plot(self, *args, scalars=None, backend="plotly", scalar_labels=None, **kwargs):
         """
@@ -139,17 +83,13 @@ class LineMesh(FemMesh):
         ----------
         scalars : numpy.ndarray, Optional
             Data to plot. Default is None.
-
         case : int, Optional
             The index of the load case. Default is 0.
-
         component : int, Optional
             The index of the DOF component. Default is 0.
-
         labels : Iterable, Optional
             Labels of the DOFs. Only if Plotly is selected as the backend.
             Defaeult is None.
-
         **kwargs : dict, Optional
             Keyqord arguments forwarded to :func:`pvplot`.
 
@@ -157,7 +97,6 @@ class LineMesh(FemMesh):
         -------
         Any
             A figure object or None, depending on the selected backend.
-
         """
         if backend == "vtk":
             scalars = self.nodal_dof_solution()[:, component, case]

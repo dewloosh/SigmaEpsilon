@@ -1,5 +1,5 @@
-from neumann.numint import gauss_points as gp
 from polymesh.cells import L2 as Line
+from polymesh.utils.cells.gauss import Gauss_Legendre_Line_Grid
 
 from .bernoulli import BernoulliBase as Bernoulli
 from .gen.b2 import (
@@ -21,10 +21,10 @@ class Bernoulli2(ABC, Bernoulli, Line, FiniteElement):
 
     qrule = "full"
     quadrature = {
-        "full": gp(2),
+        "full": Gauss_Legendre_Line_Grid(2),
         "selective": {(0, 1): "full", (2): "reduced"},
-        "reduced": gp(1),
-        "mass": gp(4),
+        "reduced": Gauss_Legendre_Line_Grid(1),
+        "mass": Gauss_Legendre_Line_Grid(4),
     }
     shpfnc = shape_function_values_bulk
     dshpfnc = shape_function_derivatives_bulk

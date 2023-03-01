@@ -7,13 +7,15 @@ from scipy.sparse import coo_matrix as coo
 from neumann.linalg import ReferenceFrame
 from neumann import atleast1d, atleast2d, repeat_diagonal_2d
 from polymesh.utils.space import index_of_closest_point
+from polymesh.space import PointCloud
 
 from .mesh import FemMesh
 from .dofmap import DOF
 from .constants import DEFAULT_DIRICHLET_PENALTY
+from ..utils.fem.ebc import link_opposite_sides, link_points_to_points
 
 
-__all__ = ["NodalSupport"]
+__all__ = ["NodalSupport", "NodeToNode", "FaceToFace"]
 
 
 class EssentialBoundaryCondition:
@@ -34,7 +36,7 @@ class NodeToNode(EssentialBoundaryCondition):
     Parameters
     ----------
     imap : Union[dict, ndarray, list]
-        An iterable to describe pairs of nodes.
+        An iterable describeing pairs of nodes.
     penalty : float, Optional
         Penalty value for Courant-type penalization.
         Default is `~sigmaepsilon.fem.constants.DEFAULT_DIRICHLET_PENALTY`.
@@ -42,7 +44,7 @@ class NodeToNode(EssentialBoundaryCondition):
     Example
     -------
     The following lines tie together all DOFs of nodes 1 with node 2 and node 3 with 4.
-    The large penalty value means that the tied nodes should exhibit the same displacements.
+    The large penalty value means that the tied nodes should have the same displacements.
 
     >>> from sigmaepsilon.fem import NodeToNode
     >>> n2n = NodeToNode([[1, 2], [3, 4]], penalty=1e12)
@@ -54,10 +56,16 @@ class NodeToNode(EssentialBoundaryCondition):
 
     def __init__(
         self,
-        imap: Union[dict, ndarray, list],
+        imap: Union[dict, ndarray, list]=None,
+        *,
+        source: PointCloud = None,
+        target: PointCloud = None,
         dofs: Iterable = None,
         penalty: float = DEFAULT_DIRICHLET_PENALTY,
     ):
+        if imap is None:
+            if isinstance(source, PointCloud) and isinstance(target, PointCloud):
+                imap = link_points_to_points(source, target)
         self.imap = imap
         self.penalty = penalty
         if isinstance(dofs, Iterable):
@@ -162,7 +170,7 @@ class NodalSupport(EssentialBoundaryCondition):
         data: dict = None,
         *,
         x: Iterable = None,
-        i: int = None,
+        i: Union[int, Iterable[int]] = None,
         frame: Union[ndarray, ReferenceFrame] = None,
         penalty: float = DEFAULT_DIRICHLET_PENALTY,
         **kwargs
@@ -175,7 +183,7 @@ class NodalSupport(EssentialBoundaryCondition):
         if data is None:
             self.data = kwargs
         self.dofmap = DOF.dofmap(self.data.keys())
-        if not isinstance(self.i, int):
+        if not isinstance(self.i, (int, Iterable)):
             assert self.x is not None, "Index or position must be defined!"
         if self.frame is not None:
             if not isinstance(self.frame, ReferenceFrame):
@@ -218,3 +226,11 @@ class NodalSupport(EssentialBoundaryCondition):
         fp[inds] = self.penalty * fdata
         Kp.eliminate_zeros()
         return Kp, fp
+
+
+def periodic_essential_bc(
+    mesh: FemMesh,
+    axis: Union[int, Iterable[int]] = 0
+) -> NodeToNode:
+    imap = link_opposite_sides(mesh.points(), axis)
+    return NodeToNode(imap)

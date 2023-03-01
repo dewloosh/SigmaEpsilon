@@ -1,5 +1,8 @@
 from polymesh.cells import TET10 as Tetra
-from polymesh.utils.cells.tet import Gauss_Legendre_Tet_1, Gauss_Legendre_Tet_4
+from polymesh.utils.cells.gauss import (
+    Gauss_Legendre_Tet_1, 
+    Gauss_Legendre_Tet_4
+)
 
 from ..material.solid3d import Solid3d
 from .elem import FiniteElement

@@ -10,9 +10,9 @@ from neumann import repeat
 from .mesh import FemMesh
 from .ebc import EssentialBoundaryCondition as EBC
 from .femsolver import StaticSolver, DynamicSolver
-from .preproc import assemble_load_vector
-from .tr import tr_element_matrices_bulk, tr_nodal_loads_bulk
-from .dyn import effective_modal_masses, Rayleigh_quotient
+from ..utils.fem.preproc import assemble_load_vector
+from ..utils.fem.tr import tr_element_matrices_bulk, tr_nodal_loads_bulk
+from ..utils.fem.dyn import effective_modal_masses, Rayleigh_quotient
 from .pointdata import flatten_pd
 from .constants import DEFAULT_DIRICHLET_PENALTY, DEFAULT_MASS_PENALTY_RATIO
 

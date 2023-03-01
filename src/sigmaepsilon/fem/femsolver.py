@@ -11,10 +11,10 @@ from neumann import matrixform
 from neumann.linalg.sparse import JaggedArray
 
 from .mesh import FemMesh
-from .utils import irows_icols
-from .linsolve import solve_standard_form, unbox_lhs
-from .imap import index_mappers, box_spmatrix, box_rhs, box_dof_numbering
-from .dyn import natural_circular_frequencies
+from ..utils.fem.fem import irows_icols
+from ..utils.fem.linsolve import solve_standard_form, unbox_lhs
+from ..utils.fem.imap import index_mappers, box_spmatrix, box_rhs, box_dof_numbering
+from ..utils.fem.dyn import natural_circular_frequencies
 from .constants import DEFAULT_MASS_PENALTY_RATIO
 
 

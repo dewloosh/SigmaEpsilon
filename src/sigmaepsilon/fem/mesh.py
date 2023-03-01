@@ -11,7 +11,7 @@ from neumann.linalg.sparse import JaggedArray
 from polymesh import PolyData
 
 from .pointdata import PointData
-from .preproc import nodal_load_vector, essential_penalty_matrix, nodal_mass_matrix
+from ..utils.fem.preproc import nodal_load_vector, essential_penalty_matrix, nodal_mass_matrix
 from .cells import TET4, TET10, H8, H27, Q4_M, Q9_M, CST_M, LST_M, FiniteElement
 from .metamesh import ABC_FemMesh
 from .constants import DEFAULT_DIRICHLET_PENALTY

@@ -21,8 +21,9 @@ from polymesh.utils import centralize
 from polymesh.trimesh import TriMesh
 from polymesh.tetmesh import TetMesh
 from polymesh.utils.topology import T6_to_T3, detach_mesh_bulk
-from .utils import calc_beam_stresses_2d, calc_beam_stresses_4d
-from ...meta import MaterialModel
+
+from ....utils.material.bernoulli import calc_beam_stresses_2d, calc_beam_stresses_4d
+from ....core.material import MaterialLike
 
 
 def generate_mesh(
@@ -176,7 +177,7 @@ def get_section(
     raise RuntimeError("Unable to get section.")
 
 
-class BeamSection(Wrapper, MaterialModel):
+class BeamSection(Wrapper, MaterialLike):
     """
     Wraps an instance of `sectionproperties.analysis.section.Section` and
     adds a little here and there to make some of the functionality more

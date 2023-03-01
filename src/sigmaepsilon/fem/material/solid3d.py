@@ -3,7 +3,7 @@ import numpy as np
 from numpy import ndarray
 
 from .solid import Solid
-from ...material.utils import HMH_3d
+from ...utils.material.hmh import HMH_3d
 
 __cache = True
 
