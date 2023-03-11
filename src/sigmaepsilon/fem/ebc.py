@@ -56,7 +56,7 @@ class NodeToNode(EssentialBoundaryCondition):
 
     def __init__(
         self,
-        imap: Union[dict, ndarray, list]=None,
+        imap: Union[dict, ndarray, list] = None,
         *,
         source: PointCloud = None,
         target: PointCloud = None,
@@ -173,7 +173,7 @@ class NodalSupport(EssentialBoundaryCondition):
         i: Union[int, Iterable[int]] = None,
         frame: Union[ndarray, ReferenceFrame] = None,
         penalty: float = DEFAULT_DIRICHLET_PENALTY,
-        **kwargs
+        **kwargs,
     ):
         self.x = x if x is None else np.array(x, dtype=float)
         self.i = i if i is None else np.array(i, dtype=int)
@@ -229,8 +229,7 @@ class NodalSupport(EssentialBoundaryCondition):
 
 
 def periodic_essential_bc(
-    mesh: FemMesh,
-    axis: Union[int, Iterable[int]] = 0
+    mesh: FemMesh, axis: Union[int, Iterable[int]] = 0
 ) -> NodeToNode:
     imap = link_opposite_sides(mesh.points(), axis)
     return NodeToNode(imap)

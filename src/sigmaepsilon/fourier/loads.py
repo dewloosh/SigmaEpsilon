@@ -101,7 +101,7 @@ class LoadGroup(LinkedDeepDict):
         inclusive: bool = False,
         blocktype: Any = None,
         deep: bool = True,
-        **kwargs
+        **kwargs,
     ) -> Iterable["LoadGroup"]:
         """
         Returns a generator object that yields all the subgroups.
@@ -416,35 +416,44 @@ class LineLoad(LoadGroup):
         x = np.array(self["x"], dtype=float)
         v = self["v"]
         if len(x.shape) == 1:
-            assert len(v) == 2, \
-                f"Invalid shape {v.shape} for load intensities."
+            assert len(v) == 2, f"Invalid shape {v.shape} for load intensities."
             if isinstance(v[0], Number) and isinstance(v[1], Number):
                 v = np.array(v, dtype=float)
                 return rhs_line_const(p.length, p.N, v, x)
             else:
                 rhs = np.zeros((1, p.N, 2), dtype=x.dtype)
                 if isinstance(v[0], str):
-                    f = Function(v[0], variables=['x'], dim=1)
+                    f = Function(v[0], variables=["x"], dim=1)
                     L = p.length
                     points = np.linspace(x[0], x[1], 1000)
                     d = x[1] - x[0]
-                    rhs[0, :, 0] = \
-                        list(map(lambda i: (2/L) * d * avg(sin1d(points, i, L) * f([points])),
-                                 np.arange(1, p.N + 1)))
+                    rhs[0, :, 0] = list(
+                        map(
+                            lambda i: (2 / L)
+                            * d
+                            * avg(sin1d(points, i, L) * f([points])),
+                            np.arange(1, p.N + 1),
+                        )
+                    )
                 elif isinstance(v[0], Number):
                     _v = np.array([v[0], 0], dtype=float)
                     rhs[0, :, 0] = rhs_line_const(p.length, p.N, _v, x)[0, :, 0]
                 if isinstance(v[1], str):
-                    f = Function(v[1], variables=['x'], dim=1)
+                    f = Function(v[1], variables=["x"], dim=1)
                     L = p.length
                     points = np.linspace(x[0], x[1], 1000)
                     d = x[1] - x[0]
-                    rhs[0, :, 1] = \
-                        list(map(lambda i: (2/L) * d * avg(cos1d(points, i, L) * f([points])),
-                                 np.arange(1, p.N + 1)))
+                    rhs[0, :, 1] = list(
+                        map(
+                            lambda i: (2 / L)
+                            * d
+                            * avg(cos1d(points, i, L) * f([points])),
+                            np.arange(1, p.N + 1),
+                        )
+                    )
                 elif isinstance(v[1], Number):
                     _v = np.array([0, v[1]], dtype=float)
-                    rhs[0, :, 1] = rhs_line_const(p.length, p.N, _v, x)[0, :, 1] 
+                    rhs[0, :, 1] = rhs_line_const(p.length, p.N, _v, x)[0, :, 1]
                 return rhs
 
     def __repr__(self):

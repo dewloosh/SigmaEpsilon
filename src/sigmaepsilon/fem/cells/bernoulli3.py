@@ -3,10 +3,10 @@ from polymesh.utils.cells.gauss import Gauss_Legendre_Line_Grid
 
 from .bernoulli import BernoulliBase as Bernoulli
 from .gen.b3 import (
-    shape_function_values_bulk, 
+    shape_function_values_bulk,
     shape_function_derivatives_bulk,
     shape_function_derivatives_multi_L,
-    )
+)
 
 from .elem import FiniteElement
 from .meta import ABCFiniteElement as ABC
@@ -22,7 +22,7 @@ class Bernoulli3(ABC, Bernoulli, Line, FiniteElement):
 
     qrule = "full"
     quadrature = {
-        "full": Gauss_Legendre_Line_Grid(6), 
+        "full": Gauss_Legendre_Line_Grid(6),
         "mass": Gauss_Legendre_Line_Grid(8),
     }
     shpfnc = shape_function_values_bulk

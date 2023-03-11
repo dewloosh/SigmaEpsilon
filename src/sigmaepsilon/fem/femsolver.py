@@ -104,7 +104,7 @@ class StaticSolver(Solver):
             return
         _t0 = time.time()
         self.u = None
-        self.N = np.max(self.gnum) + 1
+        self.N = int(np.max(self.gnum) + 1)
         if self.config.get("sparsify", False):
             if not isinstance(self.f, npcsc):
                 self.f = npcsc(self.f)

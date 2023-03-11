@@ -5,6 +5,7 @@ class MaterialLike:
     @abstractmethod
     def elastic_stiffness_matrix(self):
         raise NotImplementedError
-    
 
-class SectionLike(MaterialLike): ...
+
+class SectionLike(MaterialLike):
+    ...

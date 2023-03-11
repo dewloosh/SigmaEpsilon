@@ -130,7 +130,7 @@ class FemMixin:
 
     def lengths(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
-    
+
     def volumes(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
@@ -139,10 +139,10 @@ class FemMixin:
 
     def weights(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
-    
+
     def dof_solution(self, *, cells: Iterable, flatten: bool) -> ndarray:
         raise NotImplementedError
-    
+
     def kinetic_strains(self, *, cells: Iterable, points: Iterable) -> ndarray:
         raise NotImplementedError
 
@@ -191,7 +191,7 @@ class ABCFiniteElement(FemMixin, metaclass=MetaFiniteElement):
         N = super().shape_function_matrix(*args, **kwargs)
         if expand:
             constant_metric = len(N.shape) == 3
-            N = atleastnd(N, 4, front=True)    
+            N = atleastnd(N, 4, front=True)
             nDOFN = self.container.NDOFN
             dofmap = self.__class__.dofmap
             if len(dofmap) < nDOFN:

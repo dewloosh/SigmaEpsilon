@@ -16,12 +16,12 @@ from ...utils.fem.cells.bernoulli import (
 
 from ...utils.fem.postproc import (
     approx_element_solution_bulk,
-    calculate_internal_forces_bulk
+    calculate_internal_forces_bulk,
 )
 from ..material.beam import (
-    BernoulliBeam, 
-    _postproc_bernoulli_internal_forces_H_, 
-    _postproc_bernoulli_internal_forces_L_
+    BernoulliBeam,
+    _postproc_bernoulli_internal_forces_H_,
+    _postproc_bernoulli_internal_forces_L_,
 )
 
 __all__ = ["BernoulliBase"]
@@ -53,7 +53,7 @@ class BernoulliBase(BernoulliBeam):
         *_,
         rng: Iterable = None,
         lengths: Iterable[float] = None,
-        **__
+        **__,
     ) -> ndarray:
         """
         Evaluates the shape functions at the points specified by 'pcoords'.
@@ -89,7 +89,7 @@ class BernoulliBase(BernoulliBeam):
         jac: ndarray = None,
         dshp: ndarray = None,
         lengths: Iterable[float] = None,
-        **__
+        **__,
     ) -> ndarray:
         """
         Evaluates the shape function derivatives (up to third) at the points specified
@@ -139,8 +139,8 @@ class BernoulliBase(BernoulliBeam):
             lengths = self.lengths() if lengths is None else lengths
             # calculate derivatives wrt. the parametric coordinates in the range [-1, 1]
             pcoords = atleast1d(np.array(pcoords))
-            rng = np.array([-1., 1.]) if rng is None else np.array(rng)
-            pcoords = to_range_1d(pcoords, source=rng, target=[-1., 1.])
+            rng = np.array([-1.0, 1.0]) if rng is None else np.array(rng)
+            pcoords = to_range_1d(pcoords, source=rng, target=[-1.0, 1.0])
             dshp = self.__class__.dshpfnc(pcoords, lengths)
             if jac is None:
                 # return derivatives wrt. the master frame
@@ -158,7 +158,7 @@ class BernoulliBase(BernoulliBeam):
         *_,
         rng: Iterable = None,
         lengths: Iterable[float] = None,
-        **__
+        **__,
     ) -> ndarray:
         """
         Evaluates the shape function matrix at the points specified by 'pcoords'.
@@ -251,7 +251,7 @@ class BernoulliBase(BernoulliBeam):
         *_,
         cells: Union[int, Iterable[int]] = None,
         points: Union[float, Iterable] = None,  # [-1, 1]
-    ) -> ndarray:        
+    ) -> ndarray:
         shp = self.shape_function_values(points, rng=[-1, 1])[cells]
         dshp = self.shape_function_derivatives(points, rng=[-1, 1])[cells]
         ecoords = self.local_coordinates()[cells]
@@ -262,7 +262,7 @@ class BernoulliBase(BernoulliBeam):
 
         dofsol = self.dof_solution(flatten=True, cells=cells)
         # dofsol -> (nE, nNE * nDOF, nRHS)
-        dofsol = ascont(np.swapaxes(dofsol, 1, 2))  
+        dofsol = ascont(np.swapaxes(dofsol, 1, 2))
         # dofsol -> (nE, nRHS, nEVAB)
         strains = approx_element_solution_bulk(dofsol, B)
         # strains -> (nE, nRHS, nP, nSTRE)
@@ -271,7 +271,7 @@ class BernoulliBase(BernoulliBeam):
         forces = calculate_internal_forces_bulk(strains, D)
         # forces -> (nE, nRHS, nP, nSTRE)
         forces = ascont(np.moveaxis(forces, 1, -1))
-        dofsol = ascont(np.swapaxes(dofsol, 1, 2))  
+        dofsol = ascont(np.swapaxes(dofsol, 1, 2))
         # dofsol -> (nE, nEVAB, nRHS)
         # forces -> (nE, nP, nSTRE, nRHS)
         gdshp = self.shape_function_derivatives(jac=jac, dshp=dshp)
@@ -291,8 +291,7 @@ class BernoulliBase(BernoulliBeam):
         local_points = np.array(self.lcoords()).flatten()
 
         shp = self.shape_function_values(local_points, rng=[-1, 1])[cells]
-        dshp = self.shape_function_derivatives(
-            local_points, rng=[-1, 1])[cells]
+        dshp = self.shape_function_derivatives(local_points, rng=[-1, 1])[cells]
         ecoords = self.local_coordinates()[cells]
         jac = self.jacobian_matrix(dshp=dshp, ecoords=ecoords)
         # jac -> (nE, nNE, 1, 1)
@@ -321,17 +320,18 @@ class BernoulliBase(BernoulliBeam):
         # dshp_geom -> (nNE, nNE)
         _postproc_bernoulli_internal_forces_L_(forces, dshp_geom, jac)
         # forces -> (nE, nNE, nSTRE, nRHS)
-        
+
         if isinstance(points, Iterable):
-            approx = interpolate.interp1d(local_points, forces, axis=1,
-                                          assume_sorted=True)
+            approx = interpolate.interp1d(
+                local_points, forces, axis=1, assume_sorted=True
+            )
             forces = approx(points)
 
         return ascont(forces)
-    
+
     def _internal_forces_(self, *args, **kwargs):
         return self._internal_forces_L_(self, *args, **kwargs)
-        #return self._internal_forces_H_(self, *args, **kwargs)
+        # return self._internal_forces_H_(self, *args, **kwargs)
 
     def lumped_mass_matrix(
         self,
@@ -339,7 +339,7 @@ class BernoulliBase(BernoulliBeam):
         lumping: str = "direct",
         alpha: float = 1 / 50,
         frmt: str = "full",
-        **__
+        **__,
     ) -> ndarray:
         """
         Returns the lumped mass matrix of the block.

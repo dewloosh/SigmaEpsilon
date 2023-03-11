@@ -5,7 +5,6 @@ from ...utils.fem.fem import topo_to_gnum
 from .solid import Solid
 
 
-
 class Surface(Solid):
     strn = ("exx", "eyy", "exy", "kxx", "kyy", "kxy", "exz", "eyz")
 

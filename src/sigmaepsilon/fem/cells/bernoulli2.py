@@ -3,10 +3,10 @@ from polymesh.utils.cells.gauss import Gauss_Legendre_Line_Grid
 
 from .bernoulli import BernoulliBase as Bernoulli
 from .gen.b2 import (
-    shape_function_values_bulk, 
+    shape_function_values_bulk,
     shape_function_derivatives_bulk,
     shape_function_derivatives_multi_L,
-    )
+)
 
 from .elem import FiniteElement
 from .meta import ABCFiniteElement as ABC

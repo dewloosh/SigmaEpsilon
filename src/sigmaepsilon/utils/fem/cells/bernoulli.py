@@ -199,7 +199,9 @@ def body_load_vector_Bernoulli(
     """
     nRHS = values.shape[1]
     nE, nG, nNE = shp.shape[:3]
-    NH = shape_function_matrix_Bernoulli_bulk(shp, gdshp)  # (nE, nG, nDOF, nDOF * nNODE)
+    NH = shape_function_matrix_Bernoulli_bulk(
+        shp, gdshp
+    )  # (nE, nG, nDOF, nDOF * nNODE)
     NL = _shape_function_matrix_L_multi(shp[0])  # (nG, nDOF, nDOF * nNODE)
     res = np.zeros((nE, nNE * __NDOFN__, nRHS), dtype=values.dtype)
     for iG in range(nG):

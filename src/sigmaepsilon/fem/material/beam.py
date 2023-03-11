@@ -86,8 +86,8 @@ def _postproc_bernoulli_internal_forces_L_(
                 for m in range(nNE):
                     # Vy
                     forces[i, j, 1, k] -= forces[i, m, 5, k] * dshp_geom[j, m] * jac_inv
-                    # Vz 
-                    forces[i, j, 2, k] += forces[i, m, 4, k] * dshp_geom[j, m] * jac_inv 
+                    # Vz
+                    forces[i, j, 2, k] += forces[i, m, 4, k] * dshp_geom[j, m] * jac_inv
     return forces
 
 

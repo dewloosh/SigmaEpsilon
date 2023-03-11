@@ -4,7 +4,6 @@ import numpy as np
 from numpy import ndarray
 from scipy.sparse import coo_matrix
 
-from dewloosh.core.wrapping import Wrapper
 from neumann import repeat
 
 from .mesh import FemMesh

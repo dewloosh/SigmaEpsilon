@@ -69,8 +69,8 @@ def rectangle_coordinates(
 
 
 def sin1d(x, i=1, L=1):
-    return np.sin(x*np.pi*i/L)
+    return np.sin(x * np.pi * i / L)
 
 
 def cos1d(x, i=1, L=1):
-    return np.cos(x*np.pi*i/L)
+    return np.cos(x * np.pi * i / L)

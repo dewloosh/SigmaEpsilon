@@ -24,6 +24,7 @@ class LST_M(ABC, Membrane, Triangle, FiniteElement):
        Analysis, ed. by O. C. Zienkiewicz and G. Hollister, Wiley, London, 1965, 145-197.
        Reprinted in Int. J. Numer. Meth. Engrg., 52, 287-342, 2001.
     """
+
     qrule = "selective"
     quadrature = {
         "full": Gauss_Legendre_Tri_3a(),
@@ -41,7 +42,7 @@ class LST_P_MR(ABC, MindlinPlate, Triangle, FiniteElement):
         "selective": {(0, 1, 2): "full", (3, 4): "reduced"},
         "reduced": Gauss_Legendre_Tri_1(),
     }
-    
+
 
 class LST_S_MR(ABC, MindlinShell, Triangle, FiniteElement):
     qrule = "selective"

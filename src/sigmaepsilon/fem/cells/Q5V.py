@@ -224,7 +224,6 @@ def nodal_data_T2(celldata: ndarray):
 
 
 class Q5MV(Quadrilateral, Membrane, FiniteElement):
-    
     def stiffness_matrix(self, *args, topo=None, **kwargs):
         topo = self.nodes.to_numpy() if topo is None else topo
         ecoords = self.local_coordinates(topo=topo)

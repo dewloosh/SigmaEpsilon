@@ -8,16 +8,16 @@ from polymesh.space import PointCloud
 
 
 def link_opposite_sides(
-    points: PointCloud,
-    axis: Union[int, Iterable[int]] = 0
+    points: PointCloud, axis: Union[int, Iterable[int]] = 0
 ) -> ndarray:
     coords = points.show()
     bounds = points.bounds()
     links = []
     if isinstance(axis, int):
         axis = [axis]
-    assert isinstance(axis, Iterable), \
-        "'axis' must be an integer or an 1d iterable of integers."
+    assert isinstance(
+        axis, Iterable
+    ), "'axis' must be an integer or an 1d iterable of integers."
     for iD in axis:
         bmin, bmax = bounds[iD]
         mask_source = coords[:, iD] < (bmin + 1e-12)
@@ -34,10 +34,8 @@ def link_opposite_sides(
 
 
 def link_points_to_points(
-    source: PointCloud, 
-    target: PointCloud, 
-    i_source:ndarray=None, 
-    i_target:ndarray=None
+    source: PointCloud,
+    target: PointCloud,
 ) -> ndarray:
     i = index_of_closest_point(source.show(), target.show())
     link = np.stack([source.id[i], target.id], axis=1)

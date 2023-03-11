@@ -7,7 +7,7 @@ from .meta import ABCFiniteElement as ABC
 
 class W6(ABC, Solid3d, Wedge6, FiniteElement):
     qrule = "full"
-    
+
 
 class W18(ABC, Solid3d, Wedge18, FiniteElement):
     qrule = "full"

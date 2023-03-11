@@ -74,7 +74,7 @@ class FiniteElement(CellData, FemMixin):
         source: Union[ndarray, str] = None,
         target: Union[ndarray, str] = None,
         N: int = None,
-        **__
+        **__,
     ) -> ndarray:
         """
         Returns the DCM matrix from local to global for all elements
@@ -152,7 +152,7 @@ class FiniteElement(CellData, FemMixin):
         points: Union[float, Iterable] = None,
         rng: Iterable = None,
         flatten: bool = True,
-        **__
+        **__,
     ) -> ndarray:
         """
         Returns nodal displacements for the cells, wrt. their local frames.
@@ -255,7 +255,7 @@ class FiniteElement(CellData, FemMixin):
         cells: Union[int, Iterable[int]] = None,
         rng: Iterable = None,
         points: Union[float, Iterable] = None,
-        **__
+        **__,
     ) -> ndarray:
         """
         Returns strains for one or more cells.
@@ -327,7 +327,7 @@ class FiniteElement(CellData, FemMixin):
         *_,
         cells: Union[int, Iterable[int]] = None,
         points: Union[float, Iterable] = None,
-        **__
+        **__,
     ) -> ndarray:
         """
         Returns kinetic strains for one or more cells.
@@ -391,7 +391,7 @@ class FiniteElement(CellData, FemMixin):
         cells: Union[int, Iterable[int]] = None,
         target: Union[str, ReferenceFrame] = "local",
         flatten: bool = True,
-        **__
+        **__,
     ) -> ndarray:
         """
         Evaluates :math:`\mathbf{f}_e = \mathbf{K}_e @ \mathbf{u}_e` for one
@@ -466,7 +466,7 @@ class FiniteElement(CellData, FemMixin):
 
         # forces : (nE, nP, nDOF, nRHS)
         return values
-    
+
     def _internal_forces_(
         self,
         *_,
@@ -475,7 +475,7 @@ class FiniteElement(CellData, FemMixin):
     ) -> ndarray:
         dofsol = self.dof_solution(flatten=True, cells=cells)
         # dofsol -> (nE, nNE * nDOF, nRHS)
-        
+
         shp = self.shape_function_values(points)[cells]
         dshp = self.shape_function_derivatives(points)[cells]
         ecoords = self.local_coordinates()[cells]
@@ -489,7 +489,7 @@ class FiniteElement(CellData, FemMixin):
         # strains -> (nE, nRHS, nP, nSTRE)
         strains -= self.kinetic_strains(points=points)[cells]
         D = self.elastic_material_stiffness_matrix()[cells]
-        
+
         forces = np.zeros_like(strains)
         inds = np.arange(forces.shape[-1])
         calculate_internal_forces_bulk(strains, D, forces, inds)
@@ -506,7 +506,7 @@ class FiniteElement(CellData, FemMixin):
         points: Union[float, Iterable] = None,
         flatten: bool = True,
         target: Union[str, ReferenceFrame] = "local",
-        **__
+        **__,
     ) -> ndarray:
         """
         Returns internal forces for many cells and evaluation points.
@@ -612,7 +612,7 @@ class FiniteElement(CellData, FemMixin):
         transform: bool = True,
         minval: float = 1e-12,
         sparse: bool = False,
-        **kwargs
+        **kwargs,
     ) -> Union[ndarray, coo_matrix]:
         """
         Returns the elastic stiffness matrix of the cells.
@@ -727,7 +727,7 @@ class FiniteElement(CellData, FemMixin):
         sparse: bool = False,
         transform: bool = True,
         minval: float = 1e-12,
-        **kwargs
+        **kwargs,
     ) -> Union[ndarray, coo_matrix]:
         """
         Returns the stiffness-consistent mass matrix of the cells.
@@ -823,7 +823,7 @@ class FiniteElement(CellData, FemMixin):
                         frames=frames,
                         _q=q,
                         values=_dens,
-                        _ecoords=_ecoords
+                        _ecoords=_ecoords,
                     )
             else:
                 qpos, qweight = self.quadrature["mass"]
@@ -834,7 +834,7 @@ class FiniteElement(CellData, FemMixin):
                     frames=frames,
                     _q=q,
                     values=_dens,
-                    _ecoords=_ecoords
+                    _ecoords=_ecoords,
                 )
             key = self._dbkey_mass_matrix_
             self.db[key] = res
@@ -899,7 +899,7 @@ class FiniteElement(CellData, FemMixin):
         return_zeroes: bool = False,
         transform: bool = True,
         assemble: bool = False,
-        **__
+        **__,
     ) -> ndarray:
         """
         Generates a load vector from strain loads specified for all cells.
@@ -995,7 +995,7 @@ class FiniteElement(CellData, FemMixin):
         return_zeroes: bool = False,
         transform: bool = True,
         assemble: bool = False,
-        **__
+        **__,
     ) -> ndarray:
         """
         Builds the equivalent discrete representation of body loads

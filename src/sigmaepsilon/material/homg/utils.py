@@ -8,10 +8,7 @@ __cache = True
 
 
 def _strain_field_3d_bulk(
-    centers: ndarray,
-    *,
-    out: ndarray = None,
-    NSTRE: int=8
+    centers: ndarray, *, out: ndarray = None, NSTRE: int = 8
 ) -> ndarray:
     if out is None:
         out = np.zeros((centers.shape[0], 6, NSTRE), dtype=float)
@@ -29,7 +26,7 @@ def _strain_field_3d_bulk(
     out[:, 1, 4] = centers[:, 2]  # eyy
     # case 6 - kxy
     out[:, 5, 5] = centers[:, 2]  # exy
-    if NSTRE==8:
+    if NSTRE == 8:
         # case 7 - exz_0
         out[:, 4, 6] = 1.0  # exz
         # case 8 - eyz_0
@@ -82,9 +79,11 @@ def _strain_arrays_3d_to_Kirchhoff(loads: ndarray) -> ndarray:
     res[:, 1, :] = loads[:, 1, :]
     res[:, 2, :] = loads[:, 5, :]
     return res
-    
 
-def _transform_3d_strain_loads_to_surfaces(loads: ndarray, target:ReferenceFrame) -> ndarray:
+
+def _transform_3d_strain_loads_to_surfaces(
+    loads: ndarray, target: ReferenceFrame
+) -> ndarray:
     nS2d = loads.shape[-1]
     arrays = _expand_strain_arrays_3d(loads)
     source = CartesianFrame(dim=3)
@@ -92,19 +91,19 @@ def _transform_3d_strain_loads_to_surfaces(loads: ndarray, target:ReferenceFrame
         tensors = Tensor2x3(arrays[:, :, :, i], frame=source, bulk=True)
         arrays[:, :, :, i] = tensors.show(target)
     arrays = _collapse_strain_arrays_3d(arrays)
-    if nS2d==8:
+    if nS2d == 8:
         arrays = _strain_arrays_3d_to_Mindlin(arrays)
     else:
         arrays = _strain_arrays_3d_to_Kirchhoff(arrays)
     return arrays
-    
+
 
 @njit(nogil=True, parallel=True, fastmath=True, cache=__cache)
 def _postproc_shell_gauss_dynams(
     cell_dynams: ndarray,  # cell dynams
     weights: ndarray,  # gauss weights
     djac: ndarray,  # jacobian determinants
-    out: ndarray  # ABD or ABDS matrix of shape (6, 6) or (8, 8)
+    out: ndarray,  # ABD or ABDS matrix of shape (6, 6) or (8, 8)
 ) -> ndarray:
     nE = cell_dynams.shape[0]
     nP = weights.shape[0]
@@ -134,7 +133,7 @@ def _postproc_3d_gauss_stresses(
     cell_gauss_coords: ndarray,  # cell gauss coordinates
     weights: ndarray,  # gauss weights
     djac: ndarray,  # jacobian determinants
-    out: ndarray  # ABD or ABDS matrix of shape (6, 6) or (8, 8)
+    out: ndarray,  # ABD or ABDS matrix of shape (6, 6) or (8, 8)
 ) -> ndarray:
     nE, nP = cell_gauss_coords.shape[:2]
     NSTRE = out.shape[0]
@@ -162,7 +161,7 @@ def _postproc_3d_gauss_stresses(
 def _calc_avg_hooke_shell(
     hooke: ndarray,  # cell material stiffness matrices
     areas: ndarray,  # gauss weights
-    out: ndarray  # ABD or ABDS matrix of shape (6, 6) or (8, 8)
+    out: ndarray,  # ABD or ABDS matrix of shape (6, 6) or (8, 8)
 ) -> ndarray:
     nE = areas.shape()[0]
     for iE in range(nE):
@@ -176,7 +175,7 @@ def _calc_avg_hooke_3d_to_shell(
     cell_gauss_coords: ndarray,  # cell gauss coordinates
     weights: ndarray,  # gauss weights
     djac: ndarray,  # jacobian determinants
-    out: ndarray  # ABD or ABDS matrix of shape (6, 6) or (8, 8)
+    out: ndarray,  # ABD or ABDS matrix of shape (6, 6) or (8, 8)
 ) -> ndarray:
     C_126 = np.zeros((3, 3), dtype=hooke.dtype)
     C_45 = np.zeros((2, 2), dtype=hooke.dtype)
