@@ -1,4 +1,6 @@
 pyvista
 tetgen
 networkx
+coverage
 pytest
+pytest-cov
