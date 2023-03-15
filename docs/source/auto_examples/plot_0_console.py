@@ -8,9 +8,9 @@ Linear Elastostatics of a Console in 1d
 # A short comparison of different modeling techniques of a simple console. The beam has a rectangular prismatic cross-section and a linear elastic material model, governed by the following parameters:
 
 # %%
-L = 100.  # length of the console
-w, h = 10., 10.  # width and height of the rectangular cross section
-F = -100.  # value of the vertical load at the free end
+L = 100.0  # length of the console
+w, h = 10.0, 10.0  # width and height of the rectangular cross section
+F = -100.0  # value of the vertical load at the free end
 E = 210000.0  # Young's modulus
 nu = 0.3  # Poisson's ratio
 
@@ -35,6 +35,7 @@ Ix = Iy + Iz  # torsional inertia
 # %%
 # Bernoulli solution
 import numpy as np
+
 EI = E * Iy
 sol_exact = F * L**3 / (3 * EI)
 tol = np.abs(sol_exact / 1000)
@@ -54,21 +55,18 @@ import numpy as np
 
 # model stiffness matrix
 G = E / (2 * (1 + nu))
-Hooke = np.array([
-    [E*A, 0, 0, 0],
-    [0, G*Ix, 0, 0],
-    [0, 0, E*Iy, 0],
-    [0, 0, 0, E*Iz]
-])
+Hooke = np.array(
+    [[E * A, 0, 0, 0], [0, G * Ix, 0, 0], [0, 0, E * Iy, 0], [0, 0, 0, E * Iz]]
+)
 
 # space
 GlobalFrame = StandardFrame(dim=3)
 
 # mesh
 nElem = 20  # number of finite elements to use
-p0 = np.array([0., 0., 0.])
-p1 = np.array([L, 0., 0.])
-coords = linspace(p0, p1, nElem+1)
+p0 = np.array([0.0, 0.0, 0.0])
+p1 = np.array([L, 0.0, 0.0])
+coords = linspace(p0, p1, nElem + 1)
 coords = PointCloud(coords, frame=GlobalFrame).show()
 topo = np.zeros((nElem, 2), dtype=int)
 topo[:, 0] = np.arange(nElem)
@@ -77,13 +75,12 @@ topo[:, 1] = np.arange(nElem) + 1
 # support at the leftmost, load at the rightmost node
 loads = np.zeros((coords.shape[0], 6))
 fixity = np.zeros((coords.shape[0], 6)).astype(bool)
-global_load_vector = Vector([0., 0, F], frame=GlobalFrame).show()
+global_load_vector = Vector([0.0, 0, F], frame=GlobalFrame).show()
 loads[-1, :3] = global_load_vector
 fixity[0, :] = True
 
 # pointdata
-pd = PointData(coords=coords, frame=GlobalFrame,
-               loads=loads, fixity=fixity)
+pd = PointData(coords=coords, frame=GlobalFrame, loads=loads, fixity=fixity)
 
 # celldata
 frames = frames_of_lines(coords, topo)
@@ -96,15 +93,20 @@ structure.linsolve()
 
 # postproc
 # 1) displace the mesh
-structure.nodal_dof_solution(store='dofsol')
-dofsol = structure.mesh.pd['dofsol'].to_numpy()[:, :3]
+structure.nodal_dof_solution(store="dofsol")
+dofsol = structure.mesh.pd["dofsol"].to_numpy()[:, :3]
 local_dof_solution = dofsol[-1, :3]
 sol_fem_1d_B2 = local_dof_solution[2]
 sol_fem_1d_B2
 
 
 # %%
-mesh.config['pyvista', 'plot', 'scalars'] = dofsol[:, 2]
-mesh.config['pyvista', 'plot', 'line_width'] = 4
-mesh.pvplot(notebook=True, jupyter_backend='static', window_size=(600, 400),
-            config_key=('pyvista', 'plot'), cmap='plasma')
+mesh.config["pyvista", "plot", "scalars"] = dofsol[:, 2]
+mesh.config["pyvista", "plot", "line_width"] = 4
+mesh.pvplot(
+    notebook=True,
+    jupyter_backend="static",
+    window_size=(600, 400),
+    config_key=("pyvista", "plot"),
+    cmap="plasma",
+)

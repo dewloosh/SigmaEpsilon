@@ -1,37 +1,51 @@
-# -*- coding: utf-8 -*-
 import numpy as np
+from numpy import ndarray
 from copy import deepcopy
 from typing import NamedTuple, Iterable
 
-from neumann.linalg.sparse.csr import csr_matrix as csr
+from neumann.linalg.sparse import csr_matrix as csr
 from polymesh.utils import cells_around
-from sigmaepsilon.solid.fem.structure import Structure
+from sigmaepsilon.fem.structure import Structure
+from sigmaepsilon.fem.femsolver import StaticSolver
 
 from .filter import sensitivity_filter, sensitivity_filter_csr
-from .utils import (compliances_bulk, get_filter_factors,
-                    get_filter_factors_csr,
-                    weighted_stiffness_bulk as weighted_stiffness)
+from .utils import (
+    get_filter_factors,
+    get_filter_factors_csr,
+    weighted_stiffness_flat as weighted_stiffness,
+    element_stiffness_ranges,
+)
+from ...utils.fem.postproc import element_compliances_flat as element_compliances
 
 
 class OptRes(NamedTuple):
-    """
-    A tuple collecting information about an iteration block.
-            
-    """
-    x : Iterable
-    obj : float
-    vol : float
-    pen : float
-    n : int
+    x: Iterable  # the design variables
+    obj: float  # the actual value of the objective function
+    vol: float  # the actual volume
+    pen: float  # the actual value of the penalty
+    n: int  # the number of iterations completed
 
 
-def maximize_stiffness(structure: Structure, *args,
-                       miniter:int=50, maxiter:int=100, p_start:float=1.0, 
-                       p_stop:float=3.0, p_inc:float=0.2, p_step:int=5, 
-                       q:float=0.5, vfrac:float=0.6, dtol:float=0.1, 
-                       r_max:float=None, penalty:float=None, nostop:bool=True, 
-                       neighbours:Iterable=None, guess:Iterable=None, 
-                       i_start:int=0, **kwargs) -> OptRes:
+def maximize_stiffness(
+    structure: Structure,
+    *_,
+    miniter: int = 50,
+    maxiter: int = 100,
+    p_start: float = 1.0,
+    p_stop: float = 3.0,
+    p_inc: float = 0.2,
+    p_step: int = 5,
+    q: float = 0.5,
+    vfrac: float = 0.6,
+    dtol: float = 0.1,
+    r_max: float = None,
+    penalty: float = None,
+    nostop: bool = True,
+    neighbours: Iterable = None,
+    guess: Iterable = None,
+    i_start: int = 0,
+    **__
+) -> OptRes:
     """
     Performs topology optimization using an Optimality Criteria Method to
     maximize the stiffness of a structure, given a design space and a certain 
@@ -53,7 +67,7 @@ def maximize_stiffness(structure: Structure, *args,
     Parameters
     ----------
     structure : Structure
-        An instance of sigmaepsilon.solid.fem.Structure.
+        An instance of sigmaepsilon.fem.Structure.
     miniter : int, Optional
         The minimum number of iterations to perform. Default is 50.
     maxiter : int, Optional
@@ -103,19 +117,20 @@ def maximize_stiffness(structure: Structure, *args,
     - The function returns a generator expression.
     - This function can be used for both size and topology optimization,
       depending on the inputs.
-    
     """
     do_filter = r_max is not None
 
-    # if i_start==0:
-    if structure.Solver is None:
-        structure.preprocess()
-    femsolver = structure.Solver.core
+    if structure._static_solver_ is None:
+        structure.linear_static_analysis()
+    femsolver: StaticSolver = structure._static_solver_.core
     assert femsolver.regular
-    gnum = femsolver.gnum
-    K_bulk_0 = np.copy(femsolver.K)
-    vols = structure.volumes()
-    centers = structure.centers()
+    krows, kcols = femsolver.krows, femsolver.kcols
+    kshape = femsolver.kshape
+    kranges = element_stiffness_ranges(kshape)
+    K_virgin = np.copy(femsolver.K_bulk.flatten())
+    mesh = structure.mesh
+    vols = mesh.volumes()
+    centers = mesh.centers()
 
     # initial solution to set up parameters
     dens = np.zeros_like(vols)
@@ -129,18 +144,15 @@ def maximize_stiffness(structure: Structure, *args,
         dU = len(U.shape)
         if dU == 2:
             # multiple load cases
-            return U[:,  0]
+            return U[:, 0]
         return U
 
-    def compliance(update_stiffness=False):
-        """
-        Init == True means that we are in the initialization phase.
-        """
+    def compliance(update_stiffness: bool = False) -> ndarray:
         if update_stiffness:
-            femsolver.update_stiffness(weighted_stiffness(K_bulk_0, dens))
-        femsolver.proc()
+            femsolver.update_stiffness(weighted_stiffness(K_virgin, dens, kranges))
+        femsolver._proc_()
         U = get_dof_solution()
-        comps[:] = compliances_bulk(K_bulk_0, U, gnum)
+        comps[:] = element_compliances(K_virgin, U, krows, kcols, kranges)
         np.clip(comps, 1e-7, None, out=comps)
         return np.sum(comps)
 
@@ -153,7 +165,7 @@ def maximize_stiffness(structure: Structure, *args,
     # initialite filter
     if do_filter:
         if neighbours is None:
-            neighbours = cells_around(centers, r_max, frmt='dict')
+            neighbours = cells_around(centers, r_max, frmt="dict")
         if isinstance(neighbours, csr):
             factors = get_filter_factors_csr(centers, neighbours, r_max)
             fltr = sensitivity_filter_csr
@@ -179,12 +191,11 @@ def maximize_stiffness(structure: Structure, *args,
     yield OptRes(dens, comp, vol, p, cIter)
 
     # ------------------- ITERATION -------------------
-    dt = 0
     terminate = False
     while not terminate:
         if (p < p_stop) and (np.mod(cIter, p_step) == 0):
             p += p_inc
-        
+
         # estimate lagrangian
         lagr = p * comp / vol
 
@@ -195,7 +206,7 @@ def maximize_stiffness(structure: Structure, *args,
         np.clip(dens_, 1e-5, 1.0, out=dens_)
 
         # sensitivity [*(-1)]
-        dCdx[:] = p * comps * dens ** (p-1)
+        dCdx[:] = p * comps * dens ** (p - 1)
 
         # sensitivity filter
         if do_filter:
@@ -212,7 +223,7 @@ def maximize_stiffness(structure: Structure, *args,
             if _ntries == _maxtries:
                 raise RuntimeError("Couldn't find multiplier :(.")
             _lagr_ = (_lagr + lagr_) / 2
-            dens_tmp[:] = dens_tmp_ / (_lagr_ ** q)
+            dens_tmp[:] = dens_tmp_ / (_lagr_**q)
             np.clip(dens_tmp, _dens, dens_, out=dens_tmp)
             vol_tmp = np.sum(dens_tmp * vols)
             if vol_tmp < vol_min:
@@ -225,7 +236,6 @@ def maximize_stiffness(structure: Structure, *args,
 
         # resolve equilibrium equations and calculate compliance
         comp = compliance(update_stiffness=True)
-        dt += femsolver._summary['proc', 'time']
         vol = np.sum(dens * vols)
         cIter += 1
         res = OptRes(dens, comp, vol, p, cIter)
@@ -239,7 +249,7 @@ def maximize_stiffness(structure: Structure, *args,
             elif cIter >= maxiter:
                 terminate = True
             else:
-                terminate = (p >= p_stop)
-        
-    femsolver.K[:, :, :] = K_bulk_0
+                terminate = p >= p_stop
+
+    femsolver.update_stiffness(K_virgin)
     return OptRes(dens, comp, vol, p, cIter)

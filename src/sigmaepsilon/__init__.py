@@ -1,4 +1,10 @@
-# -*- coding: utf-8 -*-
-__version__ = "0.0.25c2"
+from .fem.mesh import FemMesh, SolidMesh
+from .fem.pointdata import PointData
+from .fem.structure import Structure
+from .fem.linemesh import LineMesh
+from .fem.surfacemesh import SurfaceMesh
+from .material.beam.bernoulli.section import BeamSection
+
+__version__ = "0.0.26"
 
 __description__ = "High-Performance Computational Mechanics in Python."

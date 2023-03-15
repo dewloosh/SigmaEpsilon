@@ -4,7 +4,8 @@
 [![CircleCI](https://circleci.com/gh/dewloosh/SigmaEpsilon.svg?style=shield)](https://circleci.com/gh/dewloosh/SigmaEpsilon) 
 [![Documentation Status](https://readthedocs.org/projects/sigmaepsilon/badge/?version=latest)](https://sigmaepsilon.readthedocs.io/en/latest/?badge=latest) 
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PyPI](https://badge.fury.io/py/sigmaepsilon.svg)](https://pypi.org/project/sigmaepsilon) 
+[![PyPI](https://badge.fury.io/py/sigmaepsilon.svg)](https://pypi.org/project/sigmaepsilon)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 > **Warning**
 > This package is under active development and in an **alpha stage**. Come back later, or star the repo to make sure you don’t miss the first stable release!
@@ -17,7 +18,8 @@ Head over to the Quick Examples page in the docs to explore our gallery of examp
 
 * A `solid` submodule to analyze and optimize solid structures of all kinds with the **Finite Element Method**. The implementations so far only cover linear behaviour, but with practically no limits on the complexity of the shape and topology of the domain under investigation.
 
-## **Installation**
+## Installation
+
 This is optional, but we suggest you to create a dedicated virtual enviroment at all times to avoid conflicts with your other projects. Create a folder, open a command shell in that folder and use the following command
 
 ```console
@@ -52,14 +54,17 @@ To run all tests, open up a console in the root directory of the project and typ
 
 We use Numba's JIT compiler to speed up heavy computations, and it relies on the C++ redistributable package. It is likely already installed on your system, but if it is not, you can download it from Microsoft's website under "Other Tools, Frameworks, and Redistributables".
 
-must have 
-  * `Numba`, `NumPy`, `SciPy`, `SymPy`, `awkward`
+must have
+
+* `Numba`, `NumPy`, `SciPy`, `SymPy`, `awkward`
 
 strongly suggested
-  * `PyVista`, `Plotly`, `matplotlib`, `sectionproperties`
 
-optional 
-  * `networkx`
+* `PyVista`, `Plotly`, `matplotlib`, `sectionproperties`
+
+optional
+
+* `networkx`
 
 ## **License**
 
