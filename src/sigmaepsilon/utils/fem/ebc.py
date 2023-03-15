@@ -2,9 +2,12 @@ from typing import Iterable, Union
 
 import numpy as np
 from numpy import ndarray
+from numba import njit, prange
 
 from polymesh.utils.space import index_of_closest_point
 from polymesh.space import PointCloud
+
+__cache = True
 
 
 def link_opposite_sides(

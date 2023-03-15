@@ -1,2 +1,2 @@
-polymesh>=0.0.12
-latexdocs
+polymesh>=0.0.14
+latexdocs>=0.0.2

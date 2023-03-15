@@ -1,4 +1,4 @@
-from typing import Iterable, Union, Tuple
+from typing import Iterable, Union, Tuple, Callable
 from abc import abstractmethod
 import numpy as np
 from numpy import ndarray, concatenate as conc
@@ -6,16 +6,27 @@ from scipy.sparse import coo_matrix as coo
 
 from neumann.linalg import ReferenceFrame
 from neumann import atleast1d, atleast2d, repeat_diagonal_2d
-from polymesh.utils.space import index_of_closest_point
+
 from polymesh.space import PointCloud
+from polymesh.cell import PolyCell3d
+from polymesh.utils.space import index_of_closest_point
+from polymesh.utils.tet import _pip_tet_bulk_knn_, _pip_tet_bulk_
+from polymesh.utils import (
+    points_of_cells, 
+    cell_centers_bulk2, 
+    k_nearest_neighbours,
+)
+from polymesh.utils.cells.utils import (
+    _find_first_hits_, _find_first_hits_knn_
+)
 
 from .mesh import FemMesh
 from .dofmap import DOF
 from .constants import DEFAULT_DIRICHLET_PENALTY
-from ..utils.fem.ebc import link_opposite_sides, link_points_to_points
+from ..utils.fem.ebc import link_points_to_points
 
 
-__all__ = ["NodalSupport", "NodeToNode", "FaceToFace"]
+__all__ = ["NodalSupport", "NodeToNode", "FaceToFace", "BodyToBody"]
 
 
 class EssentialBoundaryCondition:
@@ -29,6 +40,106 @@ class EssentialBoundaryCondition:
         ...
 
 
+class BodyToBody(EssentialBoundaryCondition):
+    """
+    Constrains the dofs of two touching bodies by gluing them together.
+    
+    Parameters
+    ----------
+    source: PolyCell
+        The source body.
+    target: PolyCell
+        The target body.
+    dofs: Iterable, Optional
+        The global degrees of freedom to glue together.
+    penalty: float, Optional
+        The penalty value.
+    lazy: bool, Optional
+        Default is True.
+    tol: float, Optional
+        Floating point tolerance for detecting point in polygons. Default is 1e-12.
+    k: int, Optional
+        THe number of neighbours.
+    """
+    def __init__(
+        self,
+        source: PolyCell3d,
+        target: PolyCell3d,
+        dofs: Iterable = None,
+        penalty: float = DEFAULT_DIRICHLET_PENALTY,
+        lazy: bool = True,
+        tol: float = 1e-12,
+        k: int = 4
+    ):
+        assert source.NDIM == 3, "Source must be a 3 dimensional body!"
+        assert target.NDIM == 3, "Source must be a 3 dimensional body!"
+        assert source.container.source() is target.container.source(), (
+            "The source and the target must belong to the same pointcloud!"
+        )
+        assert source.container.source() is source.container.root(), (
+            "The mesh must be brought to a standard form!"
+        )
+        assert isinstance(target.__class__.monomsfnc, Callable), (
+            "The class is not equipped with the tools for this operation."
+        )
+        self.source = source
+        self.target = target
+        self.penalty = penalty
+        self.lazy = lazy
+        self.k = k
+        self.tol = tol
+        
+        if isinstance(dofs, Iterable):
+            self.dofmap = DOF.dofmap(dofs)
+        else:
+            self.dofmap = None
+            
+    def assemble(self, mesh: FemMesh) -> Tuple[coo, ndarray]:        
+        S: PolyCell3d = self.source
+        T: PolyCell3d = self.target
+               
+        coords = S.source_coords()
+        
+        inds_S = S.unique_indices()
+        coords_S = coords[inds_S]
+        
+        tetra_T = T.to_tetrahedra(flatten=True)
+        ecoords_T = points_of_cells(coords, tetra_T, centralize=False)
+
+        if self.lazy:
+            centers_T = cell_centers_bulk2(ecoords_T)
+            k = min(self.k, len(centers_T))
+            neighbours = k_nearest_neighbours(centers_T, coords_S, k=k)
+            pips = _pip_tet_bulk_knn_(coords_S, ecoords_T, neighbours, self.tol)
+        else:
+            pips = _pip_tet_bulk_(coords_S, ecoords_T, self.tol)
+        # pips : (nP, nE)
+        
+        pip = np.squeeze(np.any(pips, axis=1))  # (nP,)
+        id_S = np.where(pip)[0]  # indices of coords_S that are on the surface of T
+        pips = pips[id_S]
+        if self.lazy:
+            points_to_cells = _find_first_hits_knn_(pips, neighbours)
+        else:
+            points_to_cells = _find_first_hits_(pips)
+        # points_to_cells : (nP,)
+        
+        tetmap_T = T.__class__.tetmap()
+        i_T = np.floor(np.arange(len(tetra_T)) / len(tetmap_T)).astype(int)
+        id_T = i_T[points_to_cells]  # indices of T that contain any points of S
+        
+        """monomsfnc = T.__class__.monomsfnc
+        lc_T = T.lcoords()
+        centers_T = T.centers()[id_T]
+        ecoords_T = T.points_of_cells()[id_T]
+        ecoords_T = _centralize_cells_coords_(ecoords_T)
+        coords_S = coords_S[id_S]
+        monoms_glob_T = monomsfnc(ecoords_T)
+        monoms_glob_S = monomsfnc(coords_S - centers_T)
+        loc_T = _glob_to_loc_bulk_2_c_(lc_T, monoms_glob_T, monoms_glob_S, centers_T)
+        return loc_T"""
+
+
 class NodeToNode(EssentialBoundaryCondition):
     """
     Constrains relative motion of nodes.
@@ -36,7 +147,7 @@ class NodeToNode(EssentialBoundaryCondition):
     Parameters
     ----------
     imap : Union[dict, ndarray, list]
-        An iterable describeing pairs of nodes.
+        An iterable describing pairs of nodes.
     penalty : float, Optional
         Penalty value for Courant-type penalization.
         Default is `~sigmaepsilon.fem.constants.DEFAULT_DIRICHLET_PENALTY`.
@@ -94,9 +205,6 @@ class NodeToNode(EssentialBoundaryCondition):
         nF = nI * len(dmap)
         fdata = np.tile([1, -1], nF)
         frows = np.repeat(np.arange(nF), 2)
-        # i_source = np.stack([dmap + (i_ * nDOF) for i_ in imap[:, 0]], axis=0)
-        # i_target = np.stack([dmap + (i_ * nDOF) for i_ in imap[:, 1]], axis=0)
-        # fcols = np.stack([i_source.flatten(), i_target.flatten()], axis=1).flatten()
         i_source = conc([dmap + (i_ * nDOF) for i_ in imap[:, 0]])
         i_target = conc([dmap + (i_ * nDOF) for i_ in imap[:, 1]])
         fcols = np.stack([i_source, i_target], axis=1).flatten()
@@ -226,10 +334,3 @@ class NodalSupport(EssentialBoundaryCondition):
         fp[inds] = self.penalty * fdata
         Kp.eliminate_zeros()
         return Kp, fp
-
-
-def periodic_essential_bc(
-    mesh: FemMesh, axis: Union[int, Iterable[int]] = 0
-) -> NodeToNode:
-    imap = link_opposite_sides(mesh.points(), axis)
-    return NodeToNode(imap)

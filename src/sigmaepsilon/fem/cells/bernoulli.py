@@ -315,7 +315,7 @@ class BernoulliBase(BernoulliBeam):
         forces = np.moveaxis(forces, 1, -1)
         # forces -> (nE, nNE, nSTRE, nRHS)
 
-        *_, dshpf = self.Geometry.generate(update=False, return_symbolic=False)
+        *_, dshpf = self.Geometry.generate_class_functions(update=False, return_symbolic=False)
         dshp_geom = np.squeeze(dshpf([[i] for i in local_points]))
         # dshp_geom -> (nNE, nNE)
         _postproc_bernoulli_internal_forces_L_(forces, dshp_geom, jac)
