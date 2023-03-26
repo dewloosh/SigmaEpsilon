@@ -4,7 +4,7 @@ import numpy as np
 
 from neumann.linalg import CartesianFrame
 
-from ...utils.fem.ebc import link_opposite_sides
+from .ebc import _link_opposite_sides_sym, _link_opposite_sides
 from .utils import (
     _strain_field_3d_bulk,
     _postproc_3d_gauss_stresses,
@@ -13,18 +13,24 @@ from .utils import (
     _calc_avg_hooke_shell,
     _transform_3d_strain_loads_to_surfaces,
 )
-from sigmaepsilon.fem import FemMesh, Structure
+from sigmaepsilon.fem import Structure
 from sigmaepsilon.fem.ebc import NodeToNode
 
 
 class RepresentativeSurfaceElement(Structure):
-    @staticmethod
-    def periodic_essential_ebc(
-        mesh: FemMesh, axis: Union[int, Iterable[int]] = 0
+    
+    def __init__(self, *args, symmetric:bool=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.symmetric = symmetric
+    
+    def _periodic_essential_ebc(
+        self, axis: Union[int, Iterable[int]] = 0,
     ) -> NodeToNode:
-        imap = link_opposite_sides(mesh.points(), axis)
-        return NodeToNode(imap)
-
+        if self.symmetric:
+            return _link_opposite_sides_sym(self.mesh.points(), axis)
+        else:
+            return _link_opposite_sides(self.mesh, axis)
+        
     def ABD(self):
         """
         Returns the elasticity matrix for a Kirchhoff-Love plate.
@@ -53,7 +59,6 @@ class RepresentativeSurfaceElement(Structure):
         # mesh data
         points = mesh.points()
         [(xmin, xmax), (ymin, ymax), (_, zmax)] = points.bounds()
-        center = points.center()
         area = (xmax - xmin) * (ymax - ymin)
 
         # nodal loads
@@ -73,7 +78,7 @@ class RepresentativeSurfaceElement(Structure):
         mesh.pd.fixity = nodal_fixity
 
         # nodal supports to guarantee peridic displacement solution
-        periodicity_constraints = self.periodic_essential_ebc(mesh, axis=[0, 1])
+        periodicity_constraints = self._periodic_essential_ebc(axis=[0, 1])
 
         # initial strain loads
         blocks = list(mesh.cellblocks(inclusive=True))
@@ -84,6 +89,7 @@ class RepresentativeSurfaceElement(Structure):
             if block.cd.NDIM == 3:
                 block.cd.strain_loads = strain_loads
             elif block.cd.NDIM == 2:
+                raise NotImplementedError
                 surface_frames = CartesianFrame(block.cd.frames, assume_cartesian=True)
                 strain_loads = _transform_3d_strain_loads_to_surfaces(
                     strain_loads, surface_frames
@@ -93,7 +99,6 @@ class RepresentativeSurfaceElement(Structure):
                 raise NotImplementedError
 
         # solve BVP
-        # self.clear_constraints()
         self.constraints.append(periodicity_constraints)
         self.linear_static_analysis()
 

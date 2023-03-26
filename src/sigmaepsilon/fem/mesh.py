@@ -69,6 +69,9 @@ class FemMesh(PolyData, ABC_FemMesh):
         super().__init__(
             *args, point_fields=point_fields, cell_fields=cell_fields, **kwargs
         )
+        
+    def __getitem__(self, key) -> "FemMesh":
+        return super().__getitem__(key)
 
     @property
     def pd(self) -> PointData:
