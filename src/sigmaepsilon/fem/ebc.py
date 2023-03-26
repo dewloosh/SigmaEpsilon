@@ -10,20 +10,15 @@ from neumann import atleast1d, atleast2d, repeat_diagonal_2d
 from polymesh.space import PointCloud
 from polymesh.cell import PolyCell3d
 from polymesh.utils.space import index_of_closest_point
-from polymesh.utils.tet import _pip_tet_bulk_knn_, _pip_tet_bulk_
-from polymesh.utils import (
-    points_of_cells, 
-    cell_centers_bulk2, 
-    k_nearest_neighbours,
-)
-from polymesh.utils.cells.utils import (
-    _find_first_hits_, _find_first_hits_knn_
-)
 
 from .mesh import FemMesh
 from .dofmap import DOF
 from .constants import DEFAULT_DIRICHLET_PENALTY
-from ..utils.fem.ebc import link_points_to_points
+from ..utils.fem.ebc import (
+    link_points_to_points, 
+    link_points_to_body,
+    _body_to_body_stiffness_data_,
+)
 
 
 __all__ = ["NodalSupport", "NodeToNode", "FaceToFace", "BodyToBody"]
@@ -34,7 +29,7 @@ class EssentialBoundaryCondition:
     Base class for Dirichlet boundary conditions accounted for
     using Courant-type penalization.
     """
-
+            
     @abstractmethod
     def assemble(self, mesh: FemMesh) -> Tuple[coo, ndarray]:
         ...
@@ -50,8 +45,9 @@ class BodyToBody(EssentialBoundaryCondition):
         The source body.
     target: PolyCell
         The target body.
-    dofs: Iterable, Optional
-        The global degrees of freedom to glue together.
+    dofs: Iterable, Optinal
+        An iterable of the constrained global degrees of freedom. It not specified, 
+        all degrees of freedom are constrained.
     penalty: float, Optional
         The penalty value.
     lazy: bool, Optional
@@ -60,86 +56,98 @@ class BodyToBody(EssentialBoundaryCondition):
         Floating point tolerance for detecting point in polygons. Default is 1e-12.
     k: int, Optional
         THe number of neighbours.
+        
+    Notes
+    -----
+    The two bodies must have a common surface.
     """
     def __init__(
         self,
-        source: PolyCell3d,
-        target: PolyCell3d,
+        source: PolyCell3d=None,
+        target: PolyCell3d=None,
         dofs: Iterable = None,
         penalty: float = DEFAULT_DIRICHLET_PENALTY,
         lazy: bool = True,
         tol: float = 1e-12,
-        k: int = 4
-    ):
-        assert source.NDIM == 3, "Source must be a 3 dimensional body!"
-        assert target.NDIM == 3, "Source must be a 3 dimensional body!"
-        assert source.container.source() is target.container.source(), (
-            "The source and the target must belong to the same pointcloud!"
-        )
-        assert source.container.source() is source.container.root(), (
-            "The mesh must be brought to a standard form!"
-        )
-        assert isinstance(target.__class__.monomsfnc, Callable), (
-            "The class is not equipped with the tools for this operation."
-        )
+        k: int = 4,
+        touching: bool=False,
+        factors: ndarray=None,
+        indices: ndarray=None
+    ):  
+        if source and target:
+            assert source.NDIM == 3, "Source must be a 3 dimensional body!"
+            assert target.NDIM == 3, "Source must be a 3 dimensional body!"
+            assert source.container.source() is target.container.source(), (
+                "The source and the target must belong to the same pointcloud!"
+            )
+            assert source.container.source() is source.container.root(), (
+                "The mesh must be brought to a standard form!"
+            )
+            assert isinstance(target.__class__.monomsfnc, Callable), (
+                "The class is not equipped with the tools for this operation."
+            )
         self.source = source
         self.target = target
         self.penalty = penalty
         self.lazy = lazy
         self.k = k
         self.tol = tol
+        self.touching = touching
+        self.factors=factors
+        self.indices=indices
         
         if isinstance(dofs, Iterable):
             self.dofmap = DOF.dofmap(dofs)
         else:
             self.dofmap = None
+    
+    def assemble(self, mesh: FemMesh) -> Tuple[coo, ndarray]: 
+        if (self.factors is None) or (self.indices is None):
+            S: PolyCell3d = self.source
+            T: PolyCell3d = self.target
             
-    def assemble(self, mesh: FemMesh) -> Tuple[coo, ndarray]:        
-        S: PolyCell3d = self.source
-        T: PolyCell3d = self.target
-               
-        coords = S.source_coords()
-        
-        inds_S = S.unique_indices()
-        coords_S = coords[inds_S]
-        
-        tetra_T = T.to_tetrahedra(flatten=True)
-        ecoords_T = points_of_cells(coords, tetra_T, centralize=False)
-
-        if self.lazy:
-            centers_T = cell_centers_bulk2(ecoords_T)
-            k = min(self.k, len(centers_T))
-            neighbours = k_nearest_neighbours(centers_T, coords_S, k=k)
-            pips = _pip_tet_bulk_knn_(coords_S, ecoords_T, neighbours, self.tol)
+            assert S.container.root() == mesh, \
+                "The input mesh must be the root of both the source and the target."
+            assert T.container.root() == mesh, \
+                "The input mesh must be the root of both the source and the target."
+            
+            if self.touching:
+                coords, topo_source_surface = S.extract_surface(detach=False)
+                source_indices = np.unique(topo_source_surface)
+            else:
+                coords = S.source_coords()
+                source_indices = S.unique_indices()
+            
+            source_coords = coords[source_indices]
+            factors, indices = link_points_to_body(
+                PointCloud(source_coords, inds=source_indices),
+                T, self.lazy, self.tol, self.k
+            )
         else:
-            pips = _pip_tet_bulk_(coords_S, ecoords_T, self.tol)
-        # pips : (nP, nE)
-        
-        pip = np.squeeze(np.any(pips, axis=1))  # (nP,)
-        id_S = np.where(pip)[0]  # indices of coords_S that are on the surface of T
-        pips = pips[id_S]
-        if self.lazy:
-            points_to_cells = _find_first_hits_knn_(pips, neighbours)
+            factors, indices = self.factors, self.indices
+            
+        nDOF = mesh.NDOFN
+        nN = len(mesh.pointdata)
+        N = nDOF * nN
+        if self.dofmap is None:
+            dmap = np.arange(nDOF)
         else:
-            points_to_cells = _find_first_hits_(pips)
-        # points_to_cells : (nP,)
+            dmap = self.dofmap
+        dmap = np.array(dmap, dtype=int)
         
-        tetmap_T = T.__class__.tetmap()
-        i_T = np.floor(np.arange(len(tetra_T)) / len(tetmap_T)).astype(int)
-        id_T = i_T[points_to_cells]  # indices of T that contain any points of S
-        
-        """monomsfnc = T.__class__.monomsfnc
-        lc_T = T.lcoords()
-        centers_T = T.centers()[id_T]
-        ecoords_T = T.points_of_cells()[id_T]
-        ecoords_T = _centralize_cells_coords_(ecoords_T)
-        coords_S = coords_S[id_S]
-        monoms_glob_T = monomsfnc(ecoords_T)
-        monoms_glob_S = monomsfnc(coords_S - centers_T)
-        loc_T = _glob_to_loc_bulk_2_c_(lc_T, monoms_glob_T, monoms_glob_S, centers_T)
-        return loc_T"""
-
-
+        factors, indices = \
+            _body_to_body_stiffness_data_(factors, indices, dmap, nDOF)
+        fdata = factors.flatten()
+        frows = np.repeat(np.arange(factors.shape[0]), factors.shape[1])
+        fcols = indices.flatten()
+        factors = coo((fdata, (frows, fcols)), shape=(factors.shape[0], N))
+                
+        Kp = self.penalty * (factors.T @ factors)
+        fp = np.zeros(N, dtype=float)
+        Kp.eliminate_zeros()
+        return Kp, fp
+            
+    
 class NodeToNode(EssentialBoundaryCondition):
     """
     Constrains relative motion of nodes.
@@ -151,6 +159,13 @@ class NodeToNode(EssentialBoundaryCondition):
     penalty : float, Optional
         Penalty value for Courant-type penalization.
         Default is `~sigmaepsilon.fem.constants.DEFAULT_DIRICHLET_PENALTY`.
+    dofs: Iterable, Optinal
+        An iterable of the constrained degrees of freedom. It not specified, all
+        degrees of freedom are constrained.
+    source: PointCloud, Optional
+        The source pointcloud. Only if 'imap' is not provided.
+    target: PointCloud, Optional
+        The target pointcloud. Only if 'imap' is not provided. 
 
     Example
     -------
@@ -194,14 +209,17 @@ class NodeToNode(EssentialBoundaryCondition):
         else:
             imap = np.array(self.imap).astype(int)
         nI = len(imap)
+        
         nDOF = mesh.NDOFN
         nN = len(mesh.pointdata)
         N = nDOF * nN
+        
         if self.dofmap is None:
             dmap = np.arange(nDOF)
         else:
             dmap = self.dofmap
         dmap = np.array(dmap, dtype=int)
+        
         nF = nI * len(dmap)
         fdata = np.tile([1, -1], nF)
         frows = np.repeat(np.arange(nF), 2)
@@ -209,6 +227,7 @@ class NodeToNode(EssentialBoundaryCondition):
         i_target = conc([dmap + (i_ * nDOF) for i_ in imap[:, 1]])
         fcols = np.stack([i_source, i_target], axis=1).flatten()
         factors = coo((fdata, (frows, fcols)), shape=(nF, N))
+        
         Kp = self.penalty * (factors.T @ factors)
         fp = np.zeros(N, dtype=float)
         Kp.eliminate_zeros()
@@ -296,7 +315,7 @@ class NodalSupport(EssentialBoundaryCondition):
         if self.frame is not None:
             if not isinstance(self.frame, ReferenceFrame):
                 raise TypeError(
-                    "Invalid frame type. Read the " + "docs of the NodalSupport class."
+                    "Invalid frame type. Read the docs of the NodalSupport class."
                 )
         else:
             self.frame = ReferenceFrame(dim=3)
@@ -318,7 +337,7 @@ class NodalSupport(EssentialBoundaryCondition):
         N = nDOF * nN
         c, r = divmod(nDOF, 3)
         assert r == 0, (
-            "The number of deegrees of freedom per" + " node must be a multiple of 3."
+            "The number of deegrees of freedom per node must be a multiple of 3."
         )
         dcm = self.frame.dcm(source=mesh.frame)
         nodal_dcm = repeat_diagonal_2d(dcm, c)[self.dofmap]
