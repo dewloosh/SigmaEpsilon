@@ -10,7 +10,6 @@ from neumann.linalg import is_pos_def
 
 from .sym import smat_sym_ortho_3d
 
-
 __all__ = ["elastic_compliance_matrix", "elastic_stiffness_matrix"]
 
 

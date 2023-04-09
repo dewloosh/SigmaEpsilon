@@ -83,7 +83,7 @@ class RepresentativeSurfaceElement(Structure):
         # initial strain loads
         blocks = list(mesh.cellblocks(inclusive=True))
         for block in blocks:
-            centers = block.centers()
+            centers = block.cd.centers()
             strain_loads = np.zeros((centers.shape[0], 6, NSTRE))
             _strain_field_3d_bulk(centers, out=strain_loads, NSTRE=NSTRE)
             if block.cd.NDIM == 3:
@@ -110,13 +110,13 @@ class RepresentativeSurfaceElement(Structure):
             hooke_block = block.cd.elastic_material_stiffness_matrix()
             gp, gw = block.cd.quadrature["full"]
             if block.cd.NDIM == 3:
-                cell_forces = block.internal_forces(points=gp, flatten=False)
+                cell_forces = block.cd.internal_forces(points=gp, flatten=False)
                 # cell_forces = block.internal_forces(points=gp, flatten=False, target='global')
-                ec = block.cells_coords()
+                ec = block.cd.coords()
                 dshp = block.cd.shape_function_derivatives(gp)
                 jac = block.cd.jacobian_matrix(dshp=dshp, ecoords=ec)
                 djac = block.cd.jacobian(jac=jac)
-                ec = block.cells_coords(points=gp)
+                ec = block.cd.coords(points=gp)
                 _postproc_3d_gauss_stresses(cell_forces, ec, gw, djac, hooke)
                 _calc_avg_hooke_3d_to_shell(hooke_block, ec, gw, djac, hooke_avg)
             elif block.cd.NDIM == 2:
