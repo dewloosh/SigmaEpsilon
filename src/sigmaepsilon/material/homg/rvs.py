@@ -140,4 +140,5 @@ class RepresentativeSurfaceElement(Structure):
         result = hooke_avg - hooke
         if NSTRE == 8:
             result[6:8, 6:8] = hooke[6:8, 6:8] * 5 / 6
+        result = (result + result.T) / 2
         return result
