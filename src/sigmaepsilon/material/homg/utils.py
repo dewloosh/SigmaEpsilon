@@ -2,8 +2,6 @@ import numpy as np
 from numpy import ndarray
 from numba import njit, prange
 
-from neumann.linalg import Tensor2x3, CartesianFrame, ReferenceFrame
-
 __cache = True
 
 
@@ -79,23 +77,6 @@ def _strain_arrays_3d_to_Kirchhoff(loads: ndarray) -> ndarray:
     res[:, 1, :] = loads[:, 1, :]
     res[:, 2, :] = loads[:, 5, :]
     return res
-
-
-def _transform_3d_strain_loads_to_surfaces(
-    loads: ndarray, target: ReferenceFrame
-) -> ndarray:
-    nS2d = loads.shape[-1]
-    arrays = _expand_strain_arrays_3d(loads)
-    source = CartesianFrame(dim=3)
-    for i in range(nS2d):
-        tensors = Tensor2x3(arrays[:, :, :, i], frame=source, bulk=True)
-        arrays[:, :, :, i] = tensors.show(target)
-    arrays = _collapse_strain_arrays_3d(arrays)
-    if nS2d == 8:
-        arrays = _strain_arrays_3d_to_Mindlin(arrays)
-    else:
-        arrays = _strain_arrays_3d_to_Kirchhoff(arrays)
-    return arrays
 
 
 @njit(nogil=True, parallel=True, fastmath=True, cache=__cache)

@@ -1,3 +1,3 @@
 from .beam import *
 from .surface import *
-from .homg.rvs import RepresentativeSurfaceElement
+from .homg.rve import RepresentativeVolumeElement
