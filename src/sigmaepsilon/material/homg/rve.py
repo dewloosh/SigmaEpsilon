@@ -1,23 +1,19 @@
 from typing import Iterable, Union
 
 import numpy as np
-
-from neumann.linalg import CartesianFrame
+from numpy import ndarray
 
 from .ebc import _link_opposite_sides_sym, _link_opposite_sides
 from .utils import (
     _strain_field_3d_bulk,
     _postproc_3d_gauss_stresses,
-    _postproc_shell_gauss_dynams,
     _calc_avg_hooke_3d_to_shell,
-    _calc_avg_hooke_shell,
-    _transform_3d_strain_loads_to_surfaces,
 )
 from sigmaepsilon.fem import Structure
 from sigmaepsilon.fem.ebc import NodeToNode
 
 
-class RepresentativeSurfaceElement(Structure):
+class RepresentativeVolumeElement(Structure):
     
     def __init__(self, *args, symmetric:bool=False, **kwargs):
         super().__init__(*args, **kwargs)
@@ -31,29 +27,55 @@ class RepresentativeSurfaceElement(Structure):
         else:
             return _link_opposite_sides(self.mesh, axis)
         
-    def ABD(self):
+    def ABD(self) -> ndarray:
         """
         Returns the elasticity matrix for a Kirchhoff-Love plate.
+        
+        Returns
+        -------
+        numpy.ndarray
+            The 6x6 elastic stiffness matrix.
         """
-        return self.homogenize(model="KL")
+        return self.homogenize(target="KL")
 
-    def ABDS(self):
+    def ABDS(self) -> ndarray:
         """
         Returns the elasticity matrix for a Mindlin-Reissner plate.
+        
+        Returns
+        -------
+        numpy.ndarray
+            The 8x8 elastic stiffness matrix.
         """
-        return self.homogenize(model="MR")
+        return self.homogenize(target="MR")
 
-    def homogenize(self, model: str = "MR"):
+    def homogenize(self, target: str = "MR") -> ndarray:
         """
         Returns the homogenized elasticity matrix for a Mindlin-Reissner or a
         Kirchhoff-Love plate.
+        
+        Parameters
+        ----------
+        target: str, Optional
+            The target model. Accepted values are 'MR' for Mindlin-Reissner
+            shells and 'KL' for Kirchhoff-Love shells.
+        
+        Returns
+        -------
+        numpy.ndarray
+            The elastic stiffness matrix.
         """
+        target = target.lower()
+        if target in ["mr", "kl"]:
+            return self._to_shell(target)
+    
+    def _to_shell(self, target: str = "MR") -> ndarray:
         mesh = self.mesh
         NDOFN = mesh.NDOFN
 
-        if model.lower() == "mr":
+        if target.lower() == "mr":
             NSTRE = 8
-        elif model.lower() == "kl":
+        elif target.lower() == "kl":
             NSTRE = 6
 
         # mesh data
@@ -90,11 +112,6 @@ class RepresentativeSurfaceElement(Structure):
                 block.cd.strain_loads = strain_loads
             elif block.cd.NDIM == 2:
                 raise NotImplementedError
-                surface_frames = CartesianFrame(block.cd.frames, assume_cartesian=True)
-                strain_loads = _transform_3d_strain_loads_to_surfaces(
-                    strain_loads, surface_frames
-                )
-                block.cd.strain_loads = strain_loads
             else:
                 raise NotImplementedError
 
@@ -121,15 +138,6 @@ class RepresentativeSurfaceElement(Structure):
                 _calc_avg_hooke_3d_to_shell(hooke_block, ec, gw, djac, hooke_avg)
             elif block.cd.NDIM == 2:
                 raise NotImplementedError
-                cell_forces = block.internal_forces(
-                    points=gp, flatten=False, target="global"
-                )
-                ec = block.cells_coords()
-                dshp = block.cd.shape_function_derivatives(gp)
-                jac = block.cd.jacobian_matrix(dshp=dshp, ecoords=ec)
-                djac = block.cd.jacobian(jac=jac)
-                _postproc_shell_gauss_dynams(cell_forces, gw, djac, hooke)
-                _calc_avg_hooke_shell(hooke_block, block.cd.areas(), hooke_avg)
             else:
                 raise NotImplementedError
 
