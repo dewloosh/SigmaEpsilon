@@ -137,6 +137,9 @@ notebooks/*.parquet
 notebooks/*.json
 notebooks/*.npz
 
+#VSCode
+.vscode/*
+
 # topopt
 #.src/sigmaepsilon/topopt/
 .dash/
