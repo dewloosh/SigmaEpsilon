@@ -140,6 +140,7 @@ def _finalize_ortho(**params):
 
         params = _find_all_ortho_params(**params)
         assert _has_all_params_ortho(**params), "Something went wrong!"
+        return params
 
 
 def _get_iso_params(**kwargs):
