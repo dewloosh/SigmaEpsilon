@@ -46,7 +46,7 @@ jobs:
           command: |
             pip install wheel twine
             python setup.py sdist bdist_wheel
-            python -m twine upload --repository --verbose testpypi dist/*
+            python -m twine upload --repository testpypi dist/*
 
   pypi_publish:
     docker:
@@ -58,7 +58,7 @@ jobs:
           command: |
             pip install wheel twine
             python setup.py sdist bdist_wheel
-            python -m twine upload --skip-existing --verbose dist/*
+            python -m twine upload --skip-existing dist/*
   
   test310:  # This is the name of the job, feel free to change it to better match what you're trying to do!
     # These next lines defines a docker executors: https://circleci.com/docs/2.0/executor-types/
