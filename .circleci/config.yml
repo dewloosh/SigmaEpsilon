@@ -145,6 +145,7 @@ workflows:
             - pypi deploy
           requires:
             - test310
+            - test_pypi_publish
           filters:
             branches:
               only:
