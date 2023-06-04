@@ -1,9 +1,15 @@
+from typing import Union
+
 from numba import njit, prange
 import numpy as np
 from numpy import ndarray
 
+from neumann.linalg import ReferenceFrame
+from polymesh import PolyData
+
 from .solid import Solid
 from ...utils.material.hmh import HMH_3d
+from ...material import ElasticityTensor
 
 __cache = True
 
@@ -54,7 +60,7 @@ class Solid3d(Solid):
 
     See Also
     --------
-    :class:`sigmaepsilon.fem.model.solid.Solid`
+    :class:`~sigmaepsilon.fem.model.solid.Solid`
     """
 
     dofs = ("UX", "UY", "UZ")
@@ -70,13 +76,13 @@ class Solid3d(Solid):
 
         Parameters
         ----------
-        pcoords : numpy.ndarray, Optional
+        pcoords: numpy.ndarray, Optional
             Locations of evaluation points. Either 'pcoords' or
             both 'dshp' and 'jac' must be provided.
-        dshp : numpy.ndarray, Optional
+        dshp: numpy.ndarray, Optional
             Shape function derivatives evaluated at some points.
             Only required if 'pcoords' is not provided.
-        jac : numpy.ndarray
+        jac: numpy.ndarray
             Jacobian matrices evaluated at some points.
             Only required if 'pcoords' is not provided.
 
@@ -99,15 +105,13 @@ class Solid3d(Solid):
         Evaluates the Huber-Mises-Hencky stress at multiple points
         of multiple cells.
 
-        s11, s22, s33, s12, s13, s23
-
         Parameters
         ----------
-        stresses : numpy.ndarray, Optional
+        stresses: numpy.ndarray, Optional
             Array of shape (nE, nP, nSTRE), where nE, nP and nSTRE
             are the number of elements, evaulation points and stress
             components. The stresses are expected in the order
-            s11, s22, s33, s12, s13, s23.
+            s11, s22, s33, s23, s13, s12.
 
         Returns
         -------
@@ -116,3 +120,23 @@ class Solid3d(Solid):
             number of elements and evaulation points.
         """
         return HMH_3d_bulk_multi(stresses)
+    
+    def elastic_material_stiffness_matrix(
+        self, target: Union[str, ReferenceFrame] = "local",
+    ) -> ndarray:
+        if isinstance(target, str) and target == "local":
+            return self.material_stiffness
+        
+        if isinstance(target, str):
+            assert target == "global"
+            container : PolyData = self.container
+            target = container.source().frame
+        else:
+            if not isinstance(target, ReferenceFrame):
+                raise TypeError("'target' should be an instance of ReferenceFrame")
+            
+        source = ReferenceFrame(self.frames)
+        tensor = ElasticityTensor(self.material_stiffness, frame=source, tensorial=False)
+        return tensor.contracted_components(target=target)
+        
+        

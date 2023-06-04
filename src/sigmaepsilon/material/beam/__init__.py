@@ -1,1 +1,3 @@
-from .bernoulli import *
+from .bernoulli import BeamSection
+
+__all__ = ["BeamSection"]
