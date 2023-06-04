@@ -15,6 +15,6 @@ __all__ = [
     "BeamSection",
 ]
 
-__version__ = "0.0.35"
+__version__ = "0.0.36"
 __description__ = "High-Performance Computational Mechanics in Python."
 __project_name__ = "SigmaEpsilon"  # for Sphinx

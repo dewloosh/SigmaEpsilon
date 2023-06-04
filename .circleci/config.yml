@@ -46,7 +46,7 @@ jobs:
           command: |
             pip install wheel twine
             python setup.py sdist bdist_wheel
-            python -m twine upload --repository testpypi dist/*
+            python -m twine upload --repository --verbose testpypi dist/*
 
   pypi_publish:
     docker:
@@ -58,9 +58,9 @@ jobs:
           command: |
             pip install wheel twine
             python setup.py sdist bdist_wheel
-            python -m twine upload --skip-existing dist/*
+            python -m twine upload --skip-existing --verbose dist/*
   
-  test-310:  # This is the name of the job, feel free to change it to better match what you're trying to do!
+  test310:  # This is the name of the job, feel free to change it to better match what you're trying to do!
     # These next lines defines a docker executors: https://circleci.com/docs/2.0/executor-types/
     # You can specify an image from dockerhub or use one of the convenience images from CircleCI's Developer Hub
     # A list of available CircleCI docker convenience images are available here: https://circleci.com/developer/images/image/cimg/python
@@ -111,7 +111,7 @@ jobs:
     # Then run your tests!
     # CircleCI will report the results back to your VCS provider.
     
-    working_directory: ~/project
+    working_directory: ~/project/tox
     
     steps:
       - checkout
@@ -120,28 +120,31 @@ jobs:
           command: tox
 
 workflows:
-  build_test_publish:
+  main:
     jobs:
-      - test-310
+      - test310
+      
       - test-tox:
           filters:
             branches:
               only:
                 - tox
+      
       - test_pypi_publish:
           context:
             - pypi deploy
           requires:
-            - test-310
+            - test310
           filters:
             branches:
               only:
-                - nightly
+                - main
+      
       - pypi_publish:
           context:
             - pypi deploy
           requires:
-            - test-310
+            - test310
           filters:
             branches:
               only:
