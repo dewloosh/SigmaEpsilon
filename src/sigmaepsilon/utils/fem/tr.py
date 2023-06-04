@@ -160,3 +160,13 @@ def tr_nodal_loads_bulk(nodal_loads: ndarray, dcm: ndarray) -> ndarray:
     nodal_loads = np.swapaxes(nodal_loads, 1, 2)
     # (nE, nRHS, nNE * nDOF) -> (nE, nNE * nDOF, nRHS)
     return nodal_loads
+
+
+@njit(nogil=True, parallel=True, cache=__cache)
+def _scatter_element_frames(frames: ndarray, N: int):
+    nE = frames.shape[0]
+    res = np.zeros((nE, N, 3, 3), dtype=frames.dtype)
+    for iE in prange(nE):
+        for iN in prange(N):
+            res[iE, iN, :, :] = frames[iE]
+    return res

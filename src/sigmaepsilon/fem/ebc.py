@@ -15,7 +15,7 @@ from .mesh import FemMesh
 from .dofmap import DOF
 from .constants import DEFAULT_DIRICHLET_PENALTY
 from ..utils.fem.ebc import (
-    link_points_to_points, 
+    link_points_to_points,
     link_points_to_body,
     _body_to_body_stiffness_data_,
 )
@@ -29,7 +29,7 @@ class EssentialBoundaryCondition:
     Base class for Dirichlet boundary conditions accounted for
     using Courant-type penalization.
     """
-            
+
     @abstractmethod
     def assemble(self, mesh: FemMesh) -> Tuple[coo, ndarray]:
         ...
@@ -38,7 +38,7 @@ class EssentialBoundaryCondition:
 class BodyToBody(EssentialBoundaryCondition):
     """
     Constrains the dofs of two touching bodies by gluing them together.
-    
+
     Parameters
     ----------
     source: PolyCell
@@ -46,7 +46,7 @@ class BodyToBody(EssentialBoundaryCondition):
     target: PolyCell
         The target body.
     dofs: Iterable, Optinal
-        An iterable of the constrained global degrees of freedom. It not specified, 
+        An iterable of the constrained global degrees of freedom. It not specified,
         all degrees of freedom are constrained.
     penalty: float, Optional
         The penalty value.
@@ -56,36 +56,37 @@ class BodyToBody(EssentialBoundaryCondition):
         Floating point tolerance for detecting point in polygons. Default is 1e-12.
     k: int, Optional
         THe number of neighbours.
-        
+
     Notes
     -----
     The two bodies must have a common surface.
     """
+
     def __init__(
         self,
-        source: PolyCell3d=None,
-        target: PolyCell3d=None,
+        source: PolyCell3d = None,
+        target: PolyCell3d = None,
         dofs: Iterable = None,
         penalty: float = DEFAULT_DIRICHLET_PENALTY,
         lazy: bool = True,
         tol: float = 1e-12,
         k: int = 4,
-        touching: bool=False,
-        factors: ndarray=None,
-        indices: ndarray=None
-    ):  
+        touching: bool = False,
+        factors: ndarray = None,
+        indices: ndarray = None,
+    ):
         if source and target:
             assert source.NDIM == 3, "Source must be a 3 dimensional body!"
             assert target.NDIM == 3, "Source must be a 3 dimensional body!"
-            assert source.container.source() is target.container.source(), (
-                "The source and the target must belong to the same pointcloud!"
-            )
-            assert source.container.source() is source.container.root(), (
-                "The mesh must be brought to a standard form!"
-            )
-            assert isinstance(target.__class__.monomsfnc, Callable), (
-                "The class is not equipped with the tools for this operation."
-            )
+            assert (
+                source.container.source() is target.container.source()
+            ), "The source and the target must belong to the same pointcloud!"
+            assert (
+                source.container.source() is source.container.root()
+            ), "The mesh must be brought to a standard form!"
+            assert isinstance(
+                target.__class__.monomsfnc, Callable
+            ), "The class is not equipped with the tools for this operation."
         self.source = source
         self.target = target
         self.penalty = penalty
@@ -93,39 +94,44 @@ class BodyToBody(EssentialBoundaryCondition):
         self.k = k
         self.tol = tol
         self.touching = touching
-        self.factors=factors
-        self.indices=indices
-        
+        self.factors = factors
+        self.indices = indices
+
         if isinstance(dofs, Iterable):
             self.dofmap = DOF.dofmap(dofs)
         else:
             self.dofmap = None
-    
-    def assemble(self, mesh: FemMesh) -> Tuple[coo, ndarray]: 
+
+    def assemble(self, mesh: FemMesh) -> Tuple[coo, ndarray]:
         if (self.factors is None) or (self.indices is None):
             S: PolyCell3d = self.source
             T: PolyCell3d = self.target
-            
-            assert S.container.root() == mesh, \
-                "The input mesh must be the root of both the source and the target."
-            assert T.container.root() == mesh, \
-                "The input mesh must be the root of both the source and the target."
-            
+
+            assert (
+                S.container.root() == mesh
+            ), "The input mesh must be the root of both the source and the target."
+            assert (
+                T.container.root() == mesh
+            ), "The input mesh must be the root of both the source and the target."
+
             if self.touching:
                 coords, topo_source_surface = S.extract_surface(detach=False)
                 source_indices = np.unique(topo_source_surface)
             else:
                 coords = S.source_coords()
                 source_indices = S.unique_indices()
-            
+
             source_coords = coords[source_indices]
             factors, indices = link_points_to_body(
                 PointCloud(source_coords, inds=source_indices),
-                T, self.lazy, self.tol, self.k
+                T,
+                self.lazy,
+                self.tol,
+                self.k,
             )
         else:
             factors, indices = self.factors, self.indices
-            
+
         nDOF = mesh.NDOFN
         nN = len(mesh.pointdata)
         N = nDOF * nN
@@ -134,20 +140,19 @@ class BodyToBody(EssentialBoundaryCondition):
         else:
             dmap = self.dofmap
         dmap = np.array(dmap, dtype=int)
-        
-        factors, indices = \
-            _body_to_body_stiffness_data_(factors, indices, dmap, nDOF)
+
+        factors, indices = _body_to_body_stiffness_data_(factors, indices, dmap, nDOF)
         fdata = factors.flatten()
         frows = np.repeat(np.arange(factors.shape[0]), factors.shape[1])
         fcols = indices.flatten()
         factors = coo((fdata, (frows, fcols)), shape=(factors.shape[0], N))
-                
+
         Kp = self.penalty * (factors.T @ factors)
         fp = np.zeros(N, dtype=float)
         Kp.eliminate_zeros()
         return Kp, fp
-            
-    
+
+
 class NodeToNode(EssentialBoundaryCondition):
     """
     Constrains relative motion of nodes.
@@ -165,7 +170,7 @@ class NodeToNode(EssentialBoundaryCondition):
     source: PointCloud, Optional
         The source pointcloud. Only if 'imap' is not provided.
     target: PointCloud, Optional
-        The target pointcloud. Only if 'imap' is not provided. 
+        The target pointcloud. Only if 'imap' is not provided.
 
     Example
     -------
@@ -209,17 +214,17 @@ class NodeToNode(EssentialBoundaryCondition):
         else:
             imap = np.array(self.imap).astype(int)
         nI = len(imap)
-        
+
         nDOF = mesh.NDOFN
         nN = len(mesh.pointdata)
         N = nDOF * nN
-        
+
         if self.dofmap is None:
             dmap = np.arange(nDOF)
         else:
             dmap = self.dofmap
         dmap = np.array(dmap, dtype=int)
-        
+
         nF = nI * len(dmap)
         fdata = np.tile([1, -1], nF)
         frows = np.repeat(np.arange(nF), 2)
@@ -227,7 +232,7 @@ class NodeToNode(EssentialBoundaryCondition):
         i_target = conc([dmap + (i_ * nDOF) for i_ in imap[:, 1]])
         fcols = np.stack([i_source, i_target], axis=1).flatten()
         factors = coo((fdata, (frows, fcols)), shape=(nF, N))
-        
+
         Kp = self.penalty * (factors.T @ factors)
         fp = np.zeros(N, dtype=float)
         Kp.eliminate_zeros()
@@ -336,9 +341,9 @@ class NodalSupport(EssentialBoundaryCondition):
         nN = len(mesh.pointdata)
         N = nDOF * nN
         c, r = divmod(nDOF, 3)
-        assert r == 0, (
-            "The number of deegrees of freedom per node must be a multiple of 3."
-        )
+        assert (
+            r == 0
+        ), "The number of deegrees of freedom per node must be a multiple of 3."
         dcm = self.frame.dcm(source=mesh.frame)
         nodal_dcm = repeat_diagonal_2d(dcm, c)[self.dofmap]
         factors = repeat_diagonal_2d(nodal_dcm, nI)

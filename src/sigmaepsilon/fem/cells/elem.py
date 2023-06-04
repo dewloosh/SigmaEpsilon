@@ -11,6 +11,9 @@ from neumann import atleast1d, atleastnd, ascont
 from neumann.utils import to_range_1d
 from neumann.linalg.sparse.jaggedarray import JaggedArray
 
+from ...material import CauchyStressTensor
+from ...utils.material.tr import _tr_stresses_3d_bulk_multi
+from ...utils.material.imap import _map_6x1_to_3x3, _map_3x3_to_6x1
 from ...utils.fem.preproc import (
     fem_coeff_matrix_coo,
     assert_min_diagonals_bulk,
@@ -31,7 +34,8 @@ from ...utils.fem.tr import (
     element_dcm,
     element_dcm_bulk,
     tr_element_vectors_bulk_multi as tr_vectors,
-    tr_element_matrices_bulk as tr2d,
+    tr_element_matrices_bulk as tr_matrices,
+    _scatter_element_frames,
 )
 from ...utils.fem.fem import (
     topo_to_gnum,
@@ -71,22 +75,21 @@ class FiniteElement(CellData, FemMixin):
     def direction_cosine_matrix(
         self,
         *_,
-        source: Union[ndarray, str] = None,
-        target: Union[ndarray, str] = None,
+        source: Union[ndarray, str, ReferenceFrame] = None,
+        target: Union[ndarray, str, ReferenceFrame] = None,
         N: int = None,
         **__,
     ) -> ndarray:
         """
-        Returns the DCM matrix from local to global for all elements
-        in the block.
+        Returns the DCM matrix for all elements in the block.
 
         Parameters
         ----------
-        source : str or ReferenceFrame, Optional
+        source: Union[ndarray, str, ReferenceFrame], Optional
             A source frame. Default is None.
-        target : str or ReferenceFrame, Optional
+        target: Union[ndarray, str, ReferenceFrame], Optional
             A target frame. Default is None.
-        N : int, Optional
+        N: int, Optional
             Number of points. If not specified, the number of nodes is inferred from
             the class of the instance the function is called upon. Default is None.
 
@@ -96,28 +99,29 @@ class FiniteElement(CellData, FemMixin):
             The dcm matrix for linear transformations from source to target.
         """
         nNE = self.__class__.NNODE if N is None else N
-        nDOF = self.container.root().NDOFN
+        mesh_source = self.container.source()
+        nDOF = mesh_source.NDOFN
         c, r = divmod(nDOF, 3)
         assert r == 0, (
             "The default mechanism assumes that the number of "
             + "deegrees of freedom per node is a multiple of 3."
         )
+
         ndcm = nodal_dcm_bulk(self.frames, c)
         dcm = element_dcm_bulk(ndcm, nNE, nDOF)  # (nE, nEVAB, nEVAB)
+
         if source is None and target is None:
             target = "global"
+
+        if isinstance(target, str) and target == "global":
+            target = ReferenceFrame(mesh_source.frame)
+
+        if isinstance(source, str) and source == "global":
+            source = ReferenceFrame(mesh_source.frame)
+
         if source is not None:
-            if isinstance(source, str):
-                if source == "global":
-                    S = ReferenceFrame(dim=dcm.shape[-1])
-                    return ReferenceFrame(dcm).dcm(source=S)
-            elif isinstance(source, ReferenceFrame):
+            if isinstance(source, ReferenceFrame):
                 if len(source) == 3:
-                    c, r = divmod(nDOF, 3)
-                    assert r == 0, (
-                        "The default mechanism assumes that the number of "
-                        + "deegrees of freedom per node is a multiple of 3."
-                    )
                     s_ndcm = nodal_dcm(source.dcm(), c)
                     s_dcm = element_dcm(s_ndcm, nNE, nDOF)  # (nEVAB, nEVAB)
                     source = ReferenceFrame(s_dcm)
@@ -125,17 +129,8 @@ class FiniteElement(CellData, FemMixin):
             else:
                 raise NotImplementedError
         elif target is not None:
-            if isinstance(target, str):
-                if target == "global":
-                    T = ReferenceFrame(dim=dcm.shape[-1])
-                    return ReferenceFrame(dcm).dcm(target=T)
-            elif isinstance(target, ReferenceFrame):
+            if isinstance(target, ReferenceFrame):
                 if len(target) == 3:
-                    c, r = divmod(nDOF, 3)
-                    assert r == 0, (
-                        "The default mechanism assumes that the number of "
-                        + "deegrees of freedom per node is a multiple of 3."
-                    )
                     t_ndcm = nodal_dcm(target.dcm(), c)
                     t_dcm = element_dcm(t_ndcm, nNE, nDOF)  # (nEVAB, nEVAB)
                     target = ReferenceFrame(t_dcm)
@@ -159,19 +154,19 @@ class FiniteElement(CellData, FemMixin):
 
         Parameters
         ----------
-        points : float or Iterable, Optional
+        points: float or Iterable, Optional
                 Points of evaluation. If provided, it is assumed that the given values
                 are wrt. the range [0, 1], unless specified otherwise with the 'rng'
                 parameter. If not provided, results are returned for the nodes of the
                 selected elements. Default is None.
-        rng : Iterable, Optional
+        rng: Iterable, Optional
             Range where the points of evauation are understood. Only for 1d cells.
             Default is [0, 1].
-        cells : int or Iterable[int], Optional
+        cells: int or Iterable[int], Optional
             Indices of cells. If not provided, results are returned for all cells.
             If cells are provided, the function returns a dictionary, with the cell
             indices being the keys. Default is None.
-        target : str or ReferenceFrame, Optional
+        target: str or ReferenceFrame, Optional
             Reference frame for the output. A value of None or 'local' refers to the
             local system of the cells. Default is 'local'.
 
@@ -262,15 +257,15 @@ class FiniteElement(CellData, FemMixin):
 
         Parameters
         ----------
-        points : float or Iterable[float], Optional
+        points: float or Iterable[float], Optional
                 Points of evaluation. If provided, it is assumed that the given values
                 are wrt. the range [0, 1], unless specified otherwise with the 'rng'
                 parameter. If not provided, results are returned for the nodes of the
                 selected elements. Default is None.
-        rng : Iterable, Optional
+        rng: Iterable, Optional
             Range where the points of evauation are understood. Only for 1d cells.
             Default is [0, 1].
-        cells : int or Iterable[int], Optional
+        cells: int or Iterable[int], Optional
             Indices of cells. If not provided, results are returned for all cells.
             Default is None.
 
@@ -334,14 +329,14 @@ class FiniteElement(CellData, FemMixin):
 
         Parameters
         ----------
-        points : float or Iterable, Optional
+        points: float or Iterable, Optional
                  Points of evaluation. If provided, it is assumed that the given values
                  are wrt. the range [0, 1], unless specified otherwise with the 'rng'
                  parameter. If not provided, results are returned for the nodes of the
                  selected elements. Default is None.
-        rng : Iterable, Optional
+        rng: Iterable, Optional
             Range where the points of evauation are understood. Default is [0, 1].
-        cells : int or Iterable[int], Optional
+        cells: int or Iterable[int], Optional
             Indices of cells. If not provided, results are returned for all cells.
             Default is None.
 
@@ -399,10 +394,10 @@ class FiniteElement(CellData, FemMixin):
 
         Parameters
         ----------
-        cells : int or Iterable[int], Optional
+        cells: int or Iterable[int], Optional
             Indices of cells. If not provided, results are returned for all cells.
             Default is None.
-        target : Union[str, ReferenceFrame], Optional
+        target: Union[str, ReferenceFrame], Optional
             The target frame. Default is 'local', which means that the returned
             forces should be understood as coordinates of generalized vectors in
             the local frames of the cells.
@@ -498,6 +493,51 @@ class FiniteElement(CellData, FemMixin):
         # forces -> (nE, nP, nSTRE, nRHS)
         return forces
 
+    def _transform_internal_forces_(
+        self,
+        forces: ndarray,  # (nE, nP, nSTRE, nRHS)
+        target: Union[str, ReferenceFrame] = "local",
+        cells: Union[int, Iterable[int]] = None,
+    ) -> ndarray:
+        # The implementation here should apply to solidsm and dedicated mechanisms
+        # should be implemented at the corresponding base classes
+        nDIM = self.NDIM
+
+        if target is not None:
+            if isinstance(target, str) and target == "local":
+                values = forces
+            else:
+                if isinstance(target, str):
+                    assert target == "global"
+                    target = self.container.source().frame
+                else:
+                    if not isinstance(target, ReferenceFrame):
+                        raise TypeError(
+                            "'target' should be an instance of ReferenceFrame"
+                        )
+
+                if nDIM == 3:
+                    values = np.moveaxis(forces, -1, -2)
+                    nE, nP, nRHS, nSTRE = values.shape
+                    dcm = ReferenceFrame(self.frames[cells]).dcm(target=target)
+                    dcm = _scatter_element_frames(dcm, nP)
+                    values = _map_6x1_to_3x3(values)
+                    values = _tr_stresses_3d_bulk_multi(ascont(values), dcm)
+                    values = _map_3x3_to_6x1(values)
+                    values = np.moveaxis(values, -1, -2)
+                else:
+                    # FIXME Move this to the dedicated base class
+                    values = np.moveaxis(forces, -1, 1)
+                    nE, nRHS, nP, nSTRE = values.shape
+                    values = values.reshape(nE, nRHS, nP * nSTRE)
+                    dcm = self.direction_cosine_matrix(N=nP, target=target)[cells]
+                    values = tr_vectors(values, dcm)
+                    values = values.reshape(nE, nRHS, nP, nSTRE)
+                    values = np.moveaxis(values, 1, -1)
+        else:
+            values = forces
+        return values
+
     def internal_forces(
         self,
         *_,
@@ -513,18 +553,18 @@ class FiniteElement(CellData, FemMixin):
 
         Parameters
         ----------
-        points : float or Iterable[float], Optional
+        points: float or Iterable[float], Optional
                 Points of evaluation. If provided, it is assumed that the given values
                 are wrt. the range [0, 1], unless specified otherwise with the 'rng'
                 parameter. If not provided, results are returned for the nodes of the
                 selected elements. Default is None.
-        rng : Iterable[float], Optional
+        rng: Iterable[float], Optional
             Range where the points of evauation are understood. Only for 1d cells.
             Default is [0, 1].
-        cells : int or Iterable[int], Optional
+        cells: int or Iterable[int], Optional
             Indices of cells. If not provided, results are returned for all cells.
             Default is None.
-        target : Union[str, ReferenceFrame], Optional
+        target: Union[str, ReferenceFrame], Optional
             The target frame. Default is 'local', which means that the returned forces
             should be understood as coordinates of generalized vectors in the local
             frames of the cells.
@@ -561,29 +601,14 @@ class FiniteElement(CellData, FemMixin):
                 points = np.array(self.lcoords())
 
         forces = self._internal_forces_(cells=cells, points=points)
+        forces = self._transform_internal_forces_(forces, cells=cells, target=target)
         # forces -> (nE, nP, nSTRE, nRHS)
 
-        if target is not None:
-            if isinstance(target, str) and target == "local":
-                values = forces
-            else:
-                # transform values to a destination frame, or return
-                # the forces in the local frames of the cells
-                values = np.moveaxis(forces, -1, 1)
-                nE, nRHS, nP, nSTRE = values.shape
-                values = values.reshape(nE, nRHS, nP * nSTRE)
-                dcm = self.direction_cosine_matrix(N=nP, target=target)[cells]
-                values = tr_vectors(values, dcm)
-                values = values.reshape(nE, nRHS, nP, nSTRE)
-                values = np.moveaxis(values, 1, -1)
-        else:
-            values = forces
-
         if flatten:
-            nE, nP, nSTRE, nRHS = values.shape
-            values = values.reshape(nE, nP * nSTRE, nRHS)
+            nE, nP, nSTRE, nRHS = forces.shape
+            forces = forces.reshape(nE, nP * nSTRE, nRHS)
 
-        return values
+        return forces
 
     def global_dof_numbering(self, *_, **kwargs) -> Union[JaggedArray, ndarray]:
         """
@@ -619,13 +644,13 @@ class FiniteElement(CellData, FemMixin):
 
         Parameters
         ----------
-        transform : bool, Optional
+        transform: bool, Optional
             If True, local matrices are transformed to the global frame.
             Default is True.
-        minval : float, Optional
+        minval: float, Optional
             A minimal value for the entries in the main diagonal. Set it to a negative
             value to diable its effect. Default is 1e-12.
-        sparse : bool, Optional
+        sparse: bool, Optional
             If True, the returned object is a sparse COO matrix. Default is False.
 
         Returns
@@ -734,13 +759,13 @@ class FiniteElement(CellData, FemMixin):
 
         Parameters
         ----------
-        transform : bool, Optional
+        transform: bool, Optional
             If True, local matrices are transformed to the global frame.
             Default is True.
-        minval : float, Optional
+        minval: float, Optional
             A minimal value for the entries in the main diagonal. Set it to a
             negative value to diable its effect. Default is 1e-12.
-        sparse : bool, Optional
+        sparse: bool, Optional
             If True, the returned object is a sparse COO matrix.
             Default is False.
 
@@ -856,10 +881,10 @@ class FiniteElement(CellData, FemMixin):
 
         Parameters
         ----------
-        assemble : bool, Optional
+        assemble: bool, Optional
             If True, the values are returned with a matching shape to the total
             system. Default is False.
-        transform : bool, Optional
+        transform: bool, Optional
             If True, local matrices are transformed to the global frame.
             Default is True.
 
@@ -906,18 +931,18 @@ class FiniteElement(CellData, FemMixin):
 
         Parameters
         ----------
-        values : numpy.ndarray, Optional
+        values: numpy.ndarray, Optional
             Strain loads as a 3d numpy array of shape (nE, nS, nRHS).
             The array must contain values for all cells (nE), strain
             components (nS) and load cases (nL).
-        return_zeroes : bool, Optional
+        return_zeroes: bool, Optional
             Controls what happends if there are no strain loads provided.
             If True, a zero array is retured with correct shape, otherwise None.
             Default is False.
-        transform : bool, Optional
+        transform: bool, Optional
             If True, local matrices are transformed to the global frame.
             Default is True.
-        assemble : bool, Optional
+        assemble: bool, Optional
             If True, the values are returned with a matching shape to the total
             system. Default is False.
 
@@ -1003,19 +1028,19 @@ class FiniteElement(CellData, FemMixin):
 
         Parameters
         ----------
-        values : numpy.ndarray, Optional
+        values: numpy.ndarray, Optional
             Body load values for all cells. Default is None.
         constant : bool, Optional
             Set this True if the input represents a constant load.
             Default is False.
-        assemble : bool, Optional
+        assemble: bool, Optional
             If True, the values are returned with a matching shape to the total
             system. Default is False.
-        return_zeroes : bool, Optional
+        return_zeroes: bool, Optional
             Controls what happends if there are no strain loads provided.
             If True, a zero array is retured with correct shape, otherwise None.
             Default is False.
-        transform : bool, Optional
+        transform: bool, Optional
             If True, local matrices are transformed to the global frame.
             Default is True.
 
@@ -1096,7 +1121,7 @@ class FiniteElement(CellData, FemMixin):
 
         Parameters
         ----------
-        values : numpy.ndarray
+        values: numpy.ndarray
             2d or 3d numpy float array of material densities of shape
             (nE, nNE * nDOF, nRHS) or (nE, nNE * nDOF), where nE, nNE,
             nDOF and nRHS stand for the number of elements, nodes per
@@ -1184,9 +1209,9 @@ class FiniteElement(CellData, FemMixin):
             Forwarded to :func:`direction_cosine_matrix`
         **kwargs
             Forwarded to :func:`direction_cosine_matrix`
-        A : numpy.ndarray
+        A: numpy.ndarray
             The coefficient matrix in the source frame.
-        invert : bool, Optional
+        invert: bool, Optional
             If True, the DCM matrices are transposed before transformation.
             This makes this function usable in both directions.
             Default is False.
@@ -1198,7 +1223,7 @@ class FiniteElement(CellData, FemMixin):
         """
         # DCM from local to global
         dcm = self.direction_cosine_matrix(*args, **kwargs)
-        return A if dcm is None else tr2d(A, dcm, invert)
+        return A if dcm is None else tr_matrices(A, dcm, invert)
 
     def _transform_nodal_loads_(self, nodal_loads: ndarray) -> ndarray:
         """
@@ -1206,7 +1231,7 @@ class FiniteElement(CellData, FemMixin):
 
         Parameters
         ----------
-        nodal_loads : numpy.ndarray
+        nodal_loads: numpy.ndarray
             A 3d array of shape (nE, nEVAB, nRHS).
 
         Returns
@@ -1229,7 +1254,7 @@ class FiniteElement(CellData, FemMixin):
 
         Parameters
         ----------
-        nodal_loads : numpy.ndarray
+        nodal_loads: numpy.ndarray
             A 3d array of shape (nE, nEVAB, nRHS).
 
         Returns

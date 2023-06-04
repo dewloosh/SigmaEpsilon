@@ -121,6 +121,14 @@ class Surface(MetaSurface):
 
     __layerclass__ = SurfaceLayer
 
+    @property
+    def eccentricity(self):
+        return self.get("eccentricity", 0.0)
+
+    @eccentricity.setter
+    def eccentricity(self, value: float):
+        self["eccentricity"] = value
+
     @abstractclassmethod
     def Hooke(cls):
         raise NotImplementedError
@@ -157,14 +165,15 @@ class Surface(MetaSurface):
         """
         Sets thickness ranges for the layers.
         """
+        ecc = self.eccentricity
         layers = self.layers()
         t = sum([layer.t for layer in layers])
-        layers[0].tmin = -t / 2
+        layers[0].tmin = ecc - t / 2
         nLayers = len(layers)
         for i in range(nLayers - 1):
             layers[i].tmax = layers[i].tmin + layers[i].t
             layers[i + 1].tmin = layers[i].tmax
-        layers[-1].tmax = t / 2
+        layers[-1].tmax = ecc + t / 2
         for layer in layers:
             layer.zi = [layer.loc_to_z(l_) for l_ in layer.__loc__]
         return True

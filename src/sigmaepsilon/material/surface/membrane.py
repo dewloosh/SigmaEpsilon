@@ -4,8 +4,8 @@ import sympy as sy
 from numpy import ndarray
 from numpy.linalg import inv
 
-from ..hooke.utils import _get_elastic_params
-from ..hooke.sym import smat_sym_ortho_3d
+from ...utils.material.hooke import _get_elastic_params
+from ...utils.material.symbolic import smat_sym_ortho_3d
 
 from .meta import Surface, SurfaceLayer
 
