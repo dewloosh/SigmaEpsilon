@@ -26,7 +26,6 @@ class HookeError(Exception):
 
 
 def _find_all_ortho_params(**params):
-
     # select 9 parameters (3 shear moduli and 6 from the others)
     _params = dict()
     Young, Poisson, Shear = _group_params(**params)
@@ -127,7 +126,7 @@ def _finalize_ortho(**params):
     else:
         E, NU, G = _group_params(**params)
         nE, nNU, nG = len(E), len(NU), len(G)
-        
+
         if not nG == 3:
             msg = "The three shear moduli must be provided!"
             raise HookeError(msg)
@@ -395,8 +394,7 @@ def _get_elastic_params(isoplane: str = None, **params):
         params = _get_iso_params(**E, **NU, **G)
     elif nParams == 5:
         if not isinstance(isoplane, str):
-            raise ValueError(
-                "The plane of isotropy must be specified. See the docs!")
+            raise ValueError("The plane of isotropy must be specified. See the docs!")
         if isoplane in ["23", "32"]:
             params = _get_triso_params_23(**E, **NU, **G)
         elif isoplane in ["12", "21"]:
@@ -428,7 +426,7 @@ def elastic_compliance_matrix(
         If the number of specified engineering constants is 5, it suggests a transversely
         orthotropic material. In this case, the parameter 'isoplane' defines the plane of
         isotropy. Valid choices are '12', '23' and '13'. Default is None.
-        
+
     Raises
     ------
     ~sigmaepsilon.material.hooke.utils.HookeError
@@ -444,7 +442,8 @@ def elastic_compliance_matrix(
     if verify:
         if not is_pos_def(S):
             raise HookeError(
-                "The parameters does not result in a positive definite material!")
+                "The parameters does not result in a positive definite material!"
+            )
     return S
 
 
@@ -463,7 +462,7 @@ def elastic_stiffness_matrix(*args, verify: bool = False, **kwargs) -> ndarray:
         If the number of specified engineering constants is 5, it suggests a transversely
         orthotropic material. In this case, the parameter 'isoplane' defines the plane of
         isotropy. Valid choices are '12', '23' and '13'. Default is None.
-        
+
     Raises
     ------
     ~sigmaepsilon.material.hooke.utils.HookeError
@@ -477,5 +476,6 @@ def elastic_stiffness_matrix(*args, verify: bool = False, **kwargs) -> ndarray:
     if verify:
         if not is_pos_def(C):
             raise HookeError(
-                "The parameters does not result in a positive definite material!")
+                "The parameters does not result in a positive definite material!"
+            )
     return C

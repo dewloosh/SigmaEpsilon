@@ -17,5 +17,5 @@ __all__ = [
     "Structure",
     "NodalSupport",
     "NodeToNode",
-    "RepresentativeVolumeElement"
+    "RepresentativeVolumeElement",
 ]

@@ -21,7 +21,7 @@ def link_points_to_points(
 
 
 def link_points_to_body(
-    points: PointCloud, 
+    points: PointCloud,
     body: PolyCell3d,
     lazy: bool = True,
     tol: float = 1e-12,
@@ -30,14 +30,13 @@ def link_points_to_body(
     source_coords = points.show()
     source_indices = points.id
     topo_target = body.topology()
-        
-    i_source, i_target, locations_target = \
-        body.locate(source_coords, lazy, tol, k)
+
+    i_source, i_target, locations_target = body.locate(source_coords, lazy, tol, k)
     source_indices = source_indices[i_source]
     topo_target = topo_target[i_target]
-    
+
     shp_target = body.shape_function_values(locations_target)
-            
+
     nE, nNE = topo_target.shape
     factors = np.zeros((nE, nNE + 1), dtype=float)
     indices = np.zeros((nE, nNE + 1), dtype=int)
@@ -45,13 +44,13 @@ def link_points_to_body(
     factors[:, :nNE] = shp_target
     indices[:, -1] = source_indices
     indices[:, :nNE] = topo_target
-    
+
     return factors, indices
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
 def _body_to_body_stiffness_data_(
-    nodal_factors:ndarray, nodal_indices:ndarray, dofmap:ndarray, ndof:int
+    nodal_factors: ndarray, nodal_indices: ndarray, dofmap: ndarray, ndof: int
 ) -> Tuple[ndarray]:
     nN, nV = nodal_factors.shape
     nDOF = dofmap.shape[0]
@@ -60,7 +59,7 @@ def _body_to_body_stiffness_data_(
     indices = np.zeros((nR, nV), dtype=nodal_indices.dtype)
     for i in prange(nN):
         for j in prange(nDOF):
-            ii = i*nDOF + j
+            ii = i * nDOF + j
             for k in prange(nV):
                 ik = nodal_indices[i, k] * ndof + dofmap[j]
                 factors[ii, k] = nodal_factors[i, k]

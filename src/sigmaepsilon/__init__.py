@@ -6,13 +6,13 @@ from .fem.surfacemesh import SurfaceMesh
 from .material.beam.bernoulli.section import BeamSection
 
 __all__ = [
-    "FemMesh", 
-    "SolidMesh", 
+    "FemMesh",
+    "SolidMesh",
     "PointData",
-    "Structure", 
-    "LineMesh", 
-    "SurfaceMesh", 
-    "BeamSection"
+    "Structure",
+    "LineMesh",
+    "SurfaceMesh",
+    "BeamSection",
 ]
 
 __version__ = "0.0.35"

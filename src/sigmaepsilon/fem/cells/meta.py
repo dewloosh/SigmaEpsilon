@@ -145,7 +145,7 @@ class FemMixin:
 
     def kinetic_strains(self, *, cells: Iterable, points: Iterable) -> ndarray:
         raise NotImplementedError
-    
+
     def centers(self, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 

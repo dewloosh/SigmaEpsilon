@@ -163,7 +163,7 @@ def tr_nodal_loads_bulk(nodal_loads: ndarray, dcm: ndarray) -> ndarray:
 
 
 @njit(nogil=True, parallel=True, cache=__cache)
-def _scatter_element_frames(frames:ndarray, N:int):
+def _scatter_element_frames(frames: ndarray, N: int):
     nE = frames.shape[0]
     res = np.zeros((nE, N, 3, 3), dtype=frames.dtype)
     for iE in prange(nE):

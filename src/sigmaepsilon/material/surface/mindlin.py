@@ -8,8 +8,8 @@ import sympy as sy
 from ...utils.material.hooke import _get_elastic_params
 from ...utils.material.mindlin import (
     _get_shell_material_stiffness_matrix,
-    shell_rotation_matrix
-    )
+    shell_rotation_matrix,
+)
 from ...utils.material.symbolic import smat_sym_ortho_3d
 from .meta import Surface, SurfaceLayer
 
@@ -48,7 +48,7 @@ class MindlinShellLayer(SurfaceLayer):
         T = self.rotation_matrix()
         R = np.diag([1.0, 1.0, 2.0, 2.0, 2.0])
         self._hooke = inv(T) @ Cm @ R @ T @ inv(R)
-        #self._hooke = T @ Cm @ inv(R) @ T.T @ R
+        # self._hooke = T @ Cm @ inv(R) @ T.T @ R
         return self._hooke
 
     def rotation_matrix(self) -> Tuple[ndarray, ndarray]:
@@ -56,7 +56,7 @@ class MindlinShellLayer(SurfaceLayer):
         Returns the rotation matrix.
         """
         return shell_rotation_matrix(self.angle, rad=False)
-        
+
     def elastic_stiffness_matrix(self) -> ndarray:
         """
         Returns the uncorrected stiffness contribution to the layer.
@@ -193,20 +193,20 @@ class MindlinShell(Surface):
         B22 = ABDS[1, 4]
         D22 = ABDS[4, 4]
         S44 = ABDS[7, 7]
-        
+
         ABDS_inv = np.linalg.inv(ABDS[:6, :6])
         alpha_x = ABDS_inv[0, 3]
         beta_x = ABDS_inv[3, 3]
         alpha_y = ABDS_inv[1, 4]
         beta_y = ABDS_inv[4, 4]
-        
-        eta_x = 1 / (A11*D11 - B11**2)
-        eta_y = 1 / (A22*D22 - B22**2)
+
+        eta_x = 1 / (A11 * D11 - B11**2)
+        eta_y = 1 / (A22 * D22 - B22**2)
         alpha_x = -B11 * eta_x
         beta_x = A11 * eta_x
         alpha_y = -B22 * eta_y
         beta_y = A22 * eta_y
-        
+
         # Create shear factors. These need to be multiplied with the shear
         # force in order to obtain shear stress at a given height. Since the
         # shear stress distribution is of 2nd order, the factors are

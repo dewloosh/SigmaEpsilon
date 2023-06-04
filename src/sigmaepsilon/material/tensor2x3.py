@@ -13,17 +13,17 @@ __all__ = ["Tensor2x3"]
 class Tensor2x3(Tensor2):
     """
     A class to represent the 4th order stiffness tensor.
-    
+
     Parameters
     ----------
     tensorial: bool, Optional
-        Set this to True, if the tensor describes the relationship of stresses and 
+        Set this to True, if the tensor describes the relationship of stresses and
         tensorial strains. Default is False.
     symbolic: bool, Optional
         If True, the tensor is stored in symbolic form, and the components are stored as
         a `SymPy` matrix. Default is False.
     """
-        
+
     def __init__(self, *args, **kwargs):
         if len(args) > 0 and isinstance(args[0], ndarray):
             arr = args[0]
@@ -55,31 +55,29 @@ class Tensor2x3(Tensor2):
                         raise ValueError("Incorrect input!")
             else:
                 raise TensorShapeMismatchError("Invalid shape!")
-            
+
             super().__init__(arr, *args[1:], **kwargs)
-        else:                
+        else:
             super().__init__(*args, **kwargs)
-                                
+
     @classmethod
     def _verify_input(cls, arr: ndarray, *_, bulk: bool = False, **kwargs) -> bool:
         if bulk:
-            return (
-                (len(arr.shape) >= 3 and arr.shape[-2:] == (3, 3)) or
-                (len(arr.shape) >= 2 and arr.shape[-1] == 6)
+            return (len(arr.shape) >= 3 and arr.shape[-2:] == (3, 3)) or (
+                len(arr.shape) >= 2 and arr.shape[-1] == 6
             )
         else:
-            return (
-                (len(arr.shape) == 2 and arr.shape[-2:] == (3, 3)) or
-                (len(arr.shape) == 1 and arr.shape[-1] == 6)
+            return (len(arr.shape) == 2 and arr.shape[-2:] == (3, 3)) or (
+                len(arr.shape) == 1 and arr.shape[-1] == 6
             )
-                                
+
     def transform_components(self, dcm: ndarray) -> ndarray:
         """
         Returns the components of the transformed numerical tensor, based on
         the provided direction cosine matrix.
         """
         return _tr_tensors2(self.array, dcm)
-    
+
     def contracted_components(self, *args, **kwargs) -> ndarray:
         """
         Returns the 1d representation of the tensor(s). The contraction

@@ -35,7 +35,7 @@ from ...utils.fem.tr import (
     element_dcm_bulk,
     tr_element_vectors_bulk_multi as tr_vectors,
     tr_element_matrices_bulk as tr_matrices,
-    _scatter_element_frames
+    _scatter_element_frames,
 )
 from ...utils.fem.fem import (
     topo_to_gnum,
@@ -106,19 +106,19 @@ class FiniteElement(CellData, FemMixin):
             "The default mechanism assumes that the number of "
             + "deegrees of freedom per node is a multiple of 3."
         )
-        
+
         ndcm = nodal_dcm_bulk(self.frames, c)
         dcm = element_dcm_bulk(ndcm, nNE, nDOF)  # (nE, nEVAB, nEVAB)
-        
+
         if source is None and target is None:
             target = "global"
-        
-        if isinstance(target, str) and target=="global":
+
+        if isinstance(target, str) and target == "global":
             target = ReferenceFrame(mesh_source.frame)
-            
-        if isinstance(source, str) and source=="global":    
+
+        if isinstance(source, str) and source == "global":
             source = ReferenceFrame(mesh_source.frame)
-        
+
         if source is not None:
             if isinstance(source, ReferenceFrame):
                 if len(source) == 3:
@@ -492,9 +492,9 @@ class FiniteElement(CellData, FemMixin):
         forces = ascont(np.moveaxis(forces, 1, -1))
         # forces -> (nE, nP, nSTRE, nRHS)
         return forces
-    
+
     def _transform_internal_forces_(
-        self, 
+        self,
         forces: ndarray,  # (nE, nP, nSTRE, nRHS)
         target: Union[str, ReferenceFrame] = "local",
         cells: Union[int, Iterable[int]] = None,
@@ -502,7 +502,7 @@ class FiniteElement(CellData, FemMixin):
         # The implementation here should apply to solidsm and dedicated mechanisms
         # should be implemented at the corresponding base classes
         nDIM = self.NDIM
-        
+
         if target is not None:
             if isinstance(target, str) and target == "local":
                 values = forces
@@ -512,8 +512,10 @@ class FiniteElement(CellData, FemMixin):
                     target = self.container.source().frame
                 else:
                     if not isinstance(target, ReferenceFrame):
-                        raise TypeError("'target' should be an instance of ReferenceFrame")
-                    
+                        raise TypeError(
+                            "'target' should be an instance of ReferenceFrame"
+                        )
+
                 if nDIM == 3:
                     values = np.moveaxis(forces, -1, -2)
                     nE, nP, nRHS, nSTRE = values.shape
@@ -601,7 +603,7 @@ class FiniteElement(CellData, FemMixin):
         forces = self._internal_forces_(cells=cells, points=points)
         forces = self._transform_internal_forces_(forces, cells=cells, target=target)
         # forces -> (nE, nP, nSTRE, nRHS)
-        
+
         if flatten:
             nE, nP, nSTRE, nRHS = forces.shape
             forces = forces.reshape(nE, nP * nSTRE, nRHS)

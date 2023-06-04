@@ -11,28 +11,30 @@ class SmallStrainTensor(Tensor2x3):
     """
     A class to represent the 2nd order small strain tensor.
     """
-        
+
     def __init__(self, *args, tensorial: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
         if self._array is not None and not tensorial:
             _strain_to_tensorial(self._array)
-                                
-    def contracted_components(self, *args, engineering:bool=True, **kwargs) -> ndarray:
+
+    def contracted_components(
+        self, *args, engineering: bool = True, **kwargs
+    ) -> ndarray:
         """
         Returns the engineering components.
         """
         arr = super().contracted_components(*args, **kwargs)
         if engineering:
-              _strain_to_engineering(arr)
+            _strain_to_engineering(arr)
         return arr
-    
+
     def transpose(self, *_, **__) -> "SmallStrainTensor":
         """
         Returns the instance itself without modification regardless
         of the parameters (since the object is symmetric).
         """
         return self
-    
+
 
 def _strain_to_tensorial(S: ndarray):
     if S.shape[-1] == 6:

@@ -11,9 +11,9 @@ __cache = True
 
 
 def _tr_strains_to_local_frames(
-    strains: ndarray, 
-    global_frame: Union[ndarray, ReferenceFrame], 
-    local_frames: ndarray
+    strains: ndarray,
+    global_frame: Union[ndarray, ReferenceFrame],
+    local_frames: ndarray,
 ) -> ndarray:
     if isinstance(global_frame, ndarray):
         source = ReferenceFrame(global_frame)

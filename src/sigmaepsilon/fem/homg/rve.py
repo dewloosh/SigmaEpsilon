@@ -19,23 +19,23 @@ __all__ = ["RepresentativeVolumeElement"]
 
 
 class RepresentativeVolumeElement(Structure):
-    
-    def __init__(self, *args, symmetric:bool=False, **kwargs):
+    def __init__(self, *args, symmetric: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
         self.symmetric = symmetric
-    
+
     def _periodic_essential_ebc(
-        self, axis: Union[int, Iterable[int]] = 0,
+        self,
+        axis: Union[int, Iterable[int]] = 0,
     ) -> NodeToNode:
         if self.symmetric:
             return _link_opposite_sides_sym(self.mesh.points(), axis)
         else:
             return _link_opposite_sides(self.mesh, axis)
-        
+
     def ABD(self) -> ndarray:
         """
         Returns the elasticity matrix for a Kirchhoff-Love plate.
-        
+
         Returns
         -------
         numpy.ndarray
@@ -46,7 +46,7 @@ class RepresentativeVolumeElement(Structure):
     def ABDS(self) -> ndarray:
         """
         Returns the elasticity matrix for a Mindlin-Reissner plate.
-        
+
         Returns
         -------
         numpy.ndarray
@@ -58,13 +58,13 @@ class RepresentativeVolumeElement(Structure):
         """
         Returns the homogenized elasticity matrix for a Mindlin-Reissner or a
         Kirchhoff-Love plate.
-        
+
         Parameters
         ----------
         target: str, Optional
             The target model. Accepted values are 'MR' for Mindlin-Reissner
             shells and 'KL' for Kirchhoff-Love shells.
-        
+
         Returns
         -------
         numpy.ndarray
@@ -73,11 +73,11 @@ class RepresentativeVolumeElement(Structure):
         target = target.lower()
         if target in ["mr", "kl"]:
             return self._to_shell(target)
-    
+
     def _to_shell(self, target: str = "MR") -> ndarray:
         mesh = self.mesh
         NDOFN = mesh.NDOFN
-        
+
         global_frame: ReferenceFrame = mesh.frame
 
         if target.lower() == "mr":
@@ -132,10 +132,12 @@ class RepresentativeVolumeElement(Structure):
         hooke_avg = np.zeros_like(hooke)
         for block in blocks:
             block.cd.strain_loads = None
-            hooke_block = block.cd.elastic_material_stiffness_matrix(target='global')
+            hooke_block = block.cd.elastic_material_stiffness_matrix(target="global")
             gp, gw = block.cd.quadrature["full"]
             if block.cd.NDIM == 3:
-                cell_forces = block.cd.internal_forces(points=gp, flatten=False, target='global')
+                cell_forces = block.cd.internal_forces(
+                    points=gp, flatten=False, target="global"
+                )
                 ec = block.cd.coords()
                 dshp = block.cd.shape_function_derivatives(gp)
                 jac = block.cd.jacobian_matrix(dshp=dshp, ecoords=ec)

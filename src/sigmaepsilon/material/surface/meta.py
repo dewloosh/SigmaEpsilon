@@ -120,11 +120,11 @@ class Surface(MetaSurface):
     """
 
     __layerclass__ = SurfaceLayer
-    
+
     @property
     def eccentricity(self):
         return self.get("eccentricity", 0.0)
-    
+
     @eccentricity.setter
     def eccentricity(self, value: float):
         self["eccentricity"] = value

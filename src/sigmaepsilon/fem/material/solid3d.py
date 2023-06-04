@@ -120,23 +120,24 @@ class Solid3d(Solid):
             number of elements and evaulation points.
         """
         return HMH_3d_bulk_multi(stresses)
-    
+
     def elastic_material_stiffness_matrix(
-        self, target: Union[str, ReferenceFrame] = "local",
+        self,
+        target: Union[str, ReferenceFrame] = "local",
     ) -> ndarray:
         if isinstance(target, str) and target == "local":
             return self.material_stiffness
-        
+
         if isinstance(target, str):
             assert target == "global"
-            container : PolyData = self.container
+            container: PolyData = self.container
             target = container.source().frame
         else:
             if not isinstance(target, ReferenceFrame):
                 raise TypeError("'target' should be an instance of ReferenceFrame")
-            
+
         source = ReferenceFrame(self.frames)
-        tensor = ElasticityTensor(self.material_stiffness, frame=source, tensorial=False)
+        tensor = ElasticityTensor(
+            self.material_stiffness, frame=source, tensorial=False
+        )
         return tensor.contracted_components(target=target)
-        
-        
