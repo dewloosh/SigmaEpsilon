@@ -4,23 +4,23 @@ from typing import Tuple, Union, Iterable
 from linkeddeepdict import LinkedDeepDict
 from neumann import atleast2d
 
-from .problem import NavierProblem
+from .problem import NavierPlateProblem
 from .loads import LoadGroup, NavierLoadError
-from .preproc import lhs_Navier
+from .preproc import lhs_Navier, rhs_Kirchhoff
 from .postproc import postproc
 from .proc import linsolve_Kirchhoff, linsolve_Mindlin
 
 
-class RectangularPlate(NavierProblem):
+class RectangularPlate(NavierPlateProblem):
     """
     A class to handle semi-analytic solutions of rectangular plates with
     specific boudary conditions.
 
     Parameters
     ----------
-    size : Tuple[float]
+    size: Tuple[float]
         The size of the rectangle.
-    shape : Tuple[int]
+    shape: Tuple[int]
         Numbers of harmonic terms involved in both directions.
     """
 
@@ -69,9 +69,9 @@ class RectangularPlate(NavierProblem):
 
         Parameters
         ----------
-        loads : Union[dict, LoadGroup]
+        loads: Union[dict, LoadGroup]
             The loads.
-        points : Iterable
+        points: Iterable
             2d float array of coordinates, where the results are to be evaluated.
 
         Returns
@@ -95,9 +95,9 @@ class RectangularPlate(NavierProblem):
 
         # SOLUTION
         if self.S is None:
-            """_RHS = rhs_Kirchhoff(RHS, self.length)
+            _RHS = rhs_Kirchhoff(RHS, self.size, self.shape)
             coeffs = linsolve_Kirchhoff(LHS, _RHS)
-            del _RHS"""
+            del _RHS
             # (nLHS, nRHS, nMN)
         else:
             coeffs = linsolve_Mindlin(LHS, RHS)

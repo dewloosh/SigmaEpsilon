@@ -2,7 +2,7 @@ from typing import Union
 
 import numpy as np
 from numpy import ndarray
-from numba import njit, prange
+from numba import njit
 
 from neumann.linalg import ReferenceFrame
 from sigmaepsilon.material import SmallStrainTensor

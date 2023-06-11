@@ -25,17 +25,17 @@ def rectangle_coordinates(
 
     Parameters
     ----------
-    region : Iterable, Optional
+    region: Iterable, Optional
         An iterable of length 4 with values x0, y0, w, and h. Here x0 and y0 are
         the coordinates of the bottom-left corner, w and h are the width and height
         of the region.
-    xy : Iterable, Optional
+    xy: Iterable, Optional
         The position of the bottom-left corner as an iterable of length 2.
-    w : float, Optional
+    w: float, Optional
         The width of the region.
-    h : float, Optional
+    h: float, Optional
         The height of the region.
-    center : Iterable, Optional
+    center: Iterable, Optional
         The coordinates of the center of the region.
 
     Returns
@@ -66,11 +66,3 @@ def rectangle_coordinates(
     else:
         ValueError("Invalid definition!")
     return points
-
-
-def sin1d(x, i=1, L=1):
-    return np.sin(x * np.pi * i / L)
-
-
-def cos1d(x, i=1, L=1):
-    return np.cos(x * np.pi * i / L)

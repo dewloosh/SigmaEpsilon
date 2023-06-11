@@ -21,7 +21,7 @@ def postproc(
     loads: ndarray,
     D: Union[float, ndarray],
     S: Union[float, ndarray] = None,
-):
+) -> ndarray:
     """
     Calculates postprocessing items.
     """
@@ -75,22 +75,22 @@ def postproc(
 @njit(nogil=True, parallel=True, cache=True)
 def postproc_Bernoulli(
     L: float, N: int, points: ndarray, solution: ndarray, EI: ndarray, loads
-):
+) -> ndarray:
     """
     JIT-compiled function that calculates post-processing quantities
     at selected ponts for multiple left- and right-hand sides.
 
     Parameters
     ----------
-    L : float
+    L: float
         The length of the beam.
-    N : int
+    N: int
         The number of harmonic terms.
-    points : numpy.ndarray
+    points: numpy.ndarray
         1d array of shape (nP,) of coordinates.
-    solution : numpy.ndarray
+    solution: numpy.ndarray
         Results of a Navier solution as a 3d array of shape (nRHS, nLHS, N).
-    EI : float
+    EI: float
         Bending stiffnesses as a 3d float array of shape (nLHS, 3, 3).
 
     Returns
@@ -137,24 +137,24 @@ def postproc_Bernoulli(
 @njit(nogil=True, parallel=True, cache=True)
 def postproc_Timoshenko(
     L: float, N: int, points: ndarray, solution: ndarray, EI: ndarray, GA: ndarray
-):
+) -> ndarray:
     """
     JIT-compiled function that calculates post-processing quantities
     at selected ponts for multiple left- and right-hand sides.
 
     Parameters
     ----------
-    L : float
+    L: float
         The length of the beam.
-    N : int
+    N: int
         The number of harmonic terms.
-    points : numpy.ndarray
+    points: numpy.ndarray
         1d array of shape (nP,) of coordinates.
-    solution : numpy.ndarray
+    solution: numpy.ndarray
         Results of a Navier solution as a 4d array of shape (nRHS, nLHS, N, 2).
-    EI : float
+    EI: float
         Bending stiffnesses as an 1d float array of shape (nLHS).
-    GA : float
+    GA: float
         Corrected shear stiffnesses as an 1d float array of shape (nLHS).
 
     Returns
@@ -201,25 +201,25 @@ def postproc_Timoshenko(
 @njit(nogil=True, parallel=True, cache=True)
 def postproc_Mindlin(
     size, shape: ndarray, points: ndarray, solution: ndarray, D: ndarray, S: ndarray
-):
+) -> ndarray:
     """
     JIT-compiled function that calculates post-processing quantities
     at selected ponts for multiple left- and right-hand sides.
 
     Parameters
     ----------
-    size : numpy.ndarray
+    size: numpy.ndarray
         Sizes in both directions as an 1d float array of length 2.
-    shape : numpy.ndarray
+    shape: numpy.ndarray
         Number of harmonic terms involved in both directions as an
         1d integer array of length 2.
-    points : numpy.ndarray
+    points: numpy.ndarray
         2d array of shape (nP, 2) of coordinates.
-    solution : numpy.ndarray
+    solution: numpy.ndarray
         Results of a Navier solution as a 4d array of shape (nRHS, nLHS, M * N, 3).
-    D : numpy.ndarray
+    D: numpy.ndarray
         Bending stiffnesses as a 3d float array of shape (nLHS, 3, 3).
-    S : numpy.ndarray
+    S: numpy.ndarray
         Corrected shear stiffness as a 3d float array of shape (nLHS, 2, 2).
 
     Returns
@@ -317,23 +317,23 @@ def postproc_Mindlin(
 @njit(nogil=True, parallel=True, cache=True)
 def postproc_Kirchhoff(
     size, shape: ndarray, points: ndarray, solution: ndarray, D: ndarray, loads: ndarray
-):
+) -> ndarray:
     """
     JIT-compiled function that calculates post-processing quantities
     at selected ponts for multiple left- and right-hand sides.
 
     Parameters
     ----------
-    size : numpy.ndarray
+    size: numpy.ndarray
         Sizes in both directions as an 1d float array of length 2.
-    shape : numpy.ndarray
+    shape: numpy.ndarray
         Number of harmonic terms involved in both directions as an
         1d integer array of length 2.
-    points : numpy.ndarray
+    points: numpy.ndarray
         2d array of point coordinates of shape (nP, 2).
-    solution : numpy.ndarray
+    solution: numpy.ndarray
         results of a Navier solution as a 3d array of shape (nRHS, nLHS, M * N).
-    D : numpy.ndarray
+    D: numpy.ndarray
         3d array of bending stiffness terms (nLHS, 3, 3).
 
     Returns

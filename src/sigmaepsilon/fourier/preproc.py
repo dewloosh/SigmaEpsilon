@@ -13,7 +13,6 @@ def lhs_Navier(
     *,
     D: Union[float, ndarray],
     S: Union[float, ndarray] = None,
-    **kw
 ) -> ndarray:
     """
     Returns coefficient matrices for a Navier solution, for a single or
@@ -21,14 +20,14 @@ def lhs_Navier(
 
     Parameters
     ----------
-    size : Union[float, Tuple[float]]
+    size: Union[float, Tuple[float]]
         The size of the problem. Scalar for a beam, 2-tuple for a plate.
-    shape : Union[int, Tuple[int]]
+    shape: Union[int, Tuple[int]]
         The number of harmonic terms used. Scalar for a beam, 2-tuple for a plate.
-    D : Union[float, ndarray]
+    D: Union[float, numpy.ndarray]
         2d or 3d float array of bending stiffnesses for a plate, scalar or 1d float array
         for a beam.
-    S : Union[float, ndarray], Optional
+    S: Union[float, numpy.ndarray], Optional
         2d or 3d float array of shear stiffnesses for a plate, scalar or 1d float array
         for a beam. Only for Mindlin-Reissner plates and Euler-Bernoulli beams.
         plates. Default is None.
@@ -70,14 +69,14 @@ def lhs_Navier_Mindlin(size: tuple, shape: tuple, D: ndarray, S: ndarray) -> nda
 
     Parameters
     ----------
-    size : tuple
+    size: tuple
         Tuple of floats, containing the sizes of the rectagle.
-    shape : tuple
+    shape: tuple
         Tuple of integers, containing the number of harmonic terms
         included in both directions.
-    D : numpy.ndarray
+    D: numpy.ndarray
         3d float array of bending stiffnesses.
-    S : numpy.ndarray
+    S: numpy.ndarray
         3d float array of shear stiffnesses.
 
     Note
@@ -94,7 +93,8 @@ def lhs_Navier_Mindlin(size: tuple, shape: tuple, D: ndarray, S: ndarray) -> nda
     M, N = shape
     res = np.zeros((nLHS, M * N, 3, 3), dtype=D.dtype)
     for iLHS in prange(nLHS):
-        D11, D12, D22, D66 = D[iLHS, 0, 0], D[iLHS, 0, 1], D[iLHS, 1, 1], D[iLHS, 2, 2]
+        D11, D12, D22, D66 = D[iLHS, 0, 0], D[iLHS,
+                                              0, 1], D[iLHS, 1, 1], D[iLHS, 2, 2]
         S44, S55 = S[iLHS, 0, 0], S[iLHS, 1, 1]
         for m in prange(1, M + 1):
             for n in prange(1, N + 1):
@@ -133,12 +133,12 @@ def lhs_Navier_Kirchhoff(size: tuple, shape: tuple, D: ndarray) -> ndarray:
 
     Parameters
     ----------
-    size : tuple
+    size: tuple
         Tuple of floats, containing the sizes of the rectagle.
-    shape : tuple
+    shape: tuple
         Tuple of integers, containing the number of harmonic terms
         included in both directions.
-    D : numpy.ndarray
+    D: numpy.ndarray
         3d float array of bending stiffnesses.
 
     Returns
@@ -147,21 +147,26 @@ def lhs_Navier_Kirchhoff(size: tuple, shape: tuple, D: ndarray) -> ndarray:
         2d float array of coefficients.
     """
     Lx, Ly = size
+    Lx4 = Lx**4
+    Ly4 = Ly**4
+    Lx2Ly2 = Lx**2 * Ly**2
+    Lx4Ly4 = Lx**4 * Ly**4
     nLHS = D.shape[0]
     M, N = shape
     res = np.zeros((nLHS, M * N), dtype=D.dtype)
     for iLHS in prange(nLHS):
-        D11, D12, D22, D66 = D[iLHS, 0, 0], D[iLHS, 0, 1], D[iLHS, 1, 1], D[iLHS, 2, 2]
+        D11, D12, D22, D66 = D[iLHS, 0, 0], D[iLHS,
+                                              0, 1], D[iLHS, 1, 1], D[iLHS, 2, 2]
         for m in prange(1, M + 1):
             for n in prange(1, N + 1):
                 iMN = (m - 1) * N + n - 1
                 res[iLHS, iMN] = (
-                    PI**4 * D11 * m**4 / Lx**4
-                    + 2 * PI**4 * D12 * m**2 * n**2 / (Lx**2 * Ly**2)
-                    + PI**4 * D22 * n**4 / Ly**4
-                    + 4 * PI**4 * D66 * m**2 * n**2 / (Lx**2 * Ly**2)
+                    D11 * m**4 * Ly4
+                    + 2 * D12 * m**2 * n**2 * Lx2Ly2
+                    + D22 * n**4 * Lx4
+                    + 4 * D66 * m**2 * n**2 * Lx2Ly2
                 )
-    return res
+    return PI**4 * res / Lx4Ly4
 
 
 @njit(nogil=True, parallel=True, cache=True)
@@ -172,11 +177,11 @@ def lhs_Navier_Bernoulli(L: float, N: int, EI: ndarray) -> ndarray:
 
     Parameters
     ----------
-    L : float
+    L: float
         The length of the beam.
-    N : int
+    N: int
         The number of harmonic terms.
-    EI : numpy.ndarray
+    EI: numpy.ndarray
         1d float array of bending stiffnesses.
 
     Returns
@@ -200,13 +205,13 @@ def lhs_Navier_Timoshenko(L: float, N: int, EI: ndarray, GA: ndarray) -> ndarray
 
     Parameters
     ----------
-    L : float
+    L: float
         The length of the beam.
-    N : int
+    N: int
         The number of harmonic terms.
-    EI : numpy.ndarray
+    EI: numpy.ndarray
         1d float array of bending stiffnesses.
-    GA : numpy.ndarray
+    GA: numpy.ndarray
         1d float array of shear stiffnesses.
 
     Note
@@ -246,6 +251,26 @@ def rhs_Bernoulli(coeffs: ndarray, L: float) -> ndarray:
     return res
 
 
+@njit(nogil=True, parallel=True, cache=True)
+def rhs_Kirchhoff(coeffs: ndarray, size: tuple, shape: tuple) -> ndarray:
+    """
+    Calculates unknowns for Bernoulli Beams.
+    """
+    Lx, Ly = size
+    M, N = shape
+    nRHS = coeffs.shape[0]
+    res = np.zeros((nRHS, M * N))
+    cx = PI / Ly
+    cy = - PI / Ly
+    for i in prange(nRHS):
+        for m in prange(M):
+            for n in prange(N):
+                mn = m * N + n
+                res[i, mn] = coeffs[i, mn, 0] + coeffs[i, mn, 1] * \
+                    cx * (n + 1) + coeffs[i, mn, 2] * cy * (m + 1)
+    return res
+
+
 def rhs_line_const(L: float, N: int, v: ndarray, x: ndarray) -> ndarray:
     """
     Returns coefficients for constant loads over line segments in
@@ -265,7 +290,7 @@ def _line_const_(L: float, N: int, x: ndarray, values: ndarray) -> ndarray:
             f, m = values[iR]
             c = PI * n / L
             rhs[iR, iN, 0] = (2 * f / (PI * n)) * (cos(c * xa) - cos(c * xb))
-            rhs[iR, iN, 1] = (2 * m / (PI * n)) * (sin(c * xb) - sin(c * xa))
+            rhs[iR, iN, 1] = (2 * m / L) * (sin(c * xb) - sin(c * xa))
     return rhs
 
 
@@ -334,7 +359,8 @@ def _rect_const_(
         for m in prange(1, M + 1):
             for n in prange(1, N + 1):
                 mn = (m - 1) * N + n - 1
-                rhs[iR, mn, :] = __rect_const__(size, m, n, xc, yc, w, h, values[iR])
+                rhs[iR, mn, :] = __rect_const__(
+                    size, m, n, xc, yc, w, h, values[iR])
     return rhs
 
 
@@ -350,12 +376,12 @@ def _conc1d_(L: tuple, N: tuple, values: ndarray, points: ndarray) -> ndarray:
     PI = np.pi
     for iRHS in prange(nRHS):
         x = points[iRHS]
-        f, m = values[iRHS]
+        force, moment = values[iRHS]
         Sx = PI * x / L
         for n in prange(1, N + 1):
             i = n - 1
-            rhs[iRHS, i, 0] = c * f * sin(n * Sx)
-            rhs[iRHS, i, 1] = c * m * cos(n * Sx)
+            rhs[iRHS, i, 0] = c * force * sin(n * Sx)
+            rhs[iRHS, i, 1] = c * moment * cos(n * Sx)
     return rhs
 
 
@@ -380,6 +406,6 @@ def _conc2d_(size: tuple, shape: tuple, values: ndarray, points: ndarray) -> nda
             for n in prange(1, N + 1):
                 mn = (m - 1) * N + n - 1
                 rhs[iRHS, mn, 0] = c * fz * sin(m * Sx) * sin(n * Sy)
-                rhs[iRHS, mn, 1] = c * mx * cos(m * Sx) * sin(n * Sy)
-                rhs[iRHS, mn, 2] = c * my * sin(m * Sx) * cos(n * Sy)
+                rhs[iRHS, mn, 1] = c * mx * sin(m * Sx) * cos(n * Sy)
+                rhs[iRHS, mn, 2] = c * my * cos(m * Sx) * sin(n * Sy)
     return rhs

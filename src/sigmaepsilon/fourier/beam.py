@@ -14,18 +14,19 @@ from .proc import linsolve_Bernoulli, linsolve_Timoshenko
 class NavierBeam(NavierProblem):
     """
     A class to handle simply-supported plates and their solution
-    using Navier's approach.
+    using Navier's approach. The beam's cross section is in the y-z
+    plane and it is bent about the z axis.
 
     Parameters
     ----------
-    length : float
+    length: float
         The length of the beam.
-    N : int, Optional
+    N: int, Optional
         The number of harmonic terms involved in the approximation.
         Default is 100.
-    EI : float
+    EI: float
         Bending stiffness. Default is None.
-    GA : float, Optional
+    GA: float, Optional
         Shear stiffness. Only for Timoshenko beams. Default is None.
 
     Examples
@@ -41,7 +42,6 @@ class NavierBeam(NavierProblem):
 
     >>> from sigmaepsilon.fourier import NavierBeam
     >>> beam = NavierBeam(10.0, 100, EI=2000.0, GA=1500.0)
-
     """
 
     def __init__(
@@ -62,9 +62,9 @@ class NavierBeam(NavierProblem):
 
         Parameters
         ----------
-        loads : Union[dict, LoadGroup]
+        loads: Union[dict, LoadGroup]
             The loads. If it is an array, it should be a 2d float array.
-        points : float or Iterable
+        points: float or Iterable
             A float or an 1d iterable of coordinates, where the results are
             to be evaluated. If it is a scalar, the resulting dictionary
             contains 1d arrays for every quantity, for every load case. If
