@@ -3,6 +3,7 @@ from typing import Iterable, Union
 import numpy as np
 from numpy import sin, cos, ndarray, pi as PI
 from numba import njit, prange
+import xarray as xr
 
 from neumann import atleast1d, atleast2d, atleast3d, atleast4d, itype_of_ftype
 
@@ -25,7 +26,6 @@ def postproc(
     """
     Calculates postprocessing items.
     """
-    # ABDS = atleast3d(ABDS)
     ftype = solution.dtype
     itype = itype_of_ftype(ftype)
     if S is not None:
@@ -69,7 +69,29 @@ def postproc(
     # (N, nLHS, nRHS, nP, ...)
     res = np.sum(res, axis=0)
     # (nLHS, nRHS, nP, ...)
-    return res
+    return _results_to_xarray(res)
+
+
+def _results_to_xarray(arr: ndarray):
+    nLHS, nRHS, nP, nX = arr.shape
+    if nX == 5:
+        comps = ["UY", "ROTZ", "CZ", "EXZ", "MZ", "QY"]
+    elif nX == 13:
+        comps = ["UZ", "ROTX", "ROTY", "CX", "CY", "CXY", "EXZ",
+                 "EYZ", "MX", "MY", "MXY", "QX", "QY"]
+    else:
+        raise NotImplementedError
+
+    return xr.DataArray(
+        arr,
+        coords=[
+            np.arange(nLHS),
+            np.arange(nRHS),
+            np.arange(nP),
+            comps
+        ],
+        dims=["lhs", "load_case", "point", "component"]
+    )
 
 
 @njit(nogil=True, parallel=True, cache=True)
@@ -130,7 +152,8 @@ def postproc_Bernoulli(
                     res[iN, iLHS, iRHS, iP, 1] = vn * arg * Cn
                     res[iN, iLHS, iRHS, iP, 2] = -vn * arg**2 * Sn
                     res[iN, iLHS, iRHS, iP, 4] = -EI[iLHS] * vn * arg**2 * Sn
-                    res[iN, iLHS, iRHS, iP, 5] = (EI[iLHS] * vn * arg**3 + q) * Cn
+                    res[iN, iLHS, iRHS, iP, 5] = (
+                        EI[iLHS] * vn * arg**3 + q) * Cn
     return res
 
 
@@ -194,10 +217,11 @@ def postproc_Timoshenko(
                     res[iN, iLHS, iRHS, iP, 2] = -rn * arg * Sn
                     res[iN, iLHS, iRHS, iP, 3] = (vn * arg - rn) * Cn
                     res[iN, iLHS, iRHS, iP, 4] = -EI[iLHS] * rn * arg * Sn
-                    res[iN, iLHS, iRHS, iP, 5] = GA[iLHS] * (vn * arg - rn) * Cn
+                    res[iN, iLHS, iRHS, iP, 5] = GA[iLHS] * \
+                        (vn * arg - rn) * Cn
     return res
 
-
+# fmt: off
 @njit(nogil=True, parallel=True, cache=True)
 def postproc_Mindlin(
     size, shape: ndarray, points: ndarray, solution: ndarray, D: ndarray, S: ndarray
@@ -279,41 +303,44 @@ def postproc_Mindlin(
                         Amn, Bmn, Cmn = solution[iLHS, iRHS, iMN]
                         Sn = sin(PI * n * yp / Ly)
                         Cn = cos(PI * n * yp / Ly)
-                        res[iMN, iLHS, iRHS, iP, UZ] = Cmn * Sm * Sn
-                        res[iMN, iLHS, iRHS, iP, ROTX] = Amn * Sm * Cn
-                        res[iMN, iLHS, iRHS, iP, ROTY] = Bmn * Sn * Cm
-                        res[iMN, iLHS, iRHS, iP, CX] = -PI * Bmn * m * Sm * Sn / Lx
-                        res[iMN, iLHS, iRHS, iP, CY] = PI * Amn * n * Sm * Sn / Ly
+                        res[iMN, iLHS, iRHS, iP, UZ] = Amn * Sm * Sn
+                        res[iMN, iLHS, iRHS, iP, ROTX] = Bmn * Sm * Cn
+                        res[iMN, iLHS, iRHS, iP, ROTY] = Cmn * Sn * Cm
+                        res[iMN, iLHS, iRHS, iP, CX] = - \
+                            PI * Cmn * m * Sm * Sn / Lx
+                        res[iMN, iLHS, iRHS, iP, CY] = PI * \
+                            Bmn * n * Sm * Sn / Ly
                         res[iMN, iLHS, iRHS, iP, CXY] = (
-                            -PI * Amn * m * Cm * Cn / Lx + PI * Bmn * n * Cm * Cn / Ly
+                            - PI * Bmn * m * Cm * Cn / Lx + PI * Cmn * n * Cm * Cn / Ly
                         )
                         res[iMN, iLHS, iRHS, iP, EXZ] = (
-                            Bmn * Sn * Cm + PI * Cmn * m * Sn * Cm / Lx
+                            Cmn * Sn * Cm + PI * Amn * m * Sn * Cm / Lx
                         )
                         res[iMN, iLHS, iRHS, iP, EYZ] = (
-                            -Amn * Sm * Cn + PI * Cmn * n * Sm * Cn / Ly
+                            - Bmn * Sm * Cn + PI * Amn * n * Sm * Cn / Ly
                         )
                         res[iMN, iLHS, iRHS, iP, MX] = (
-                            PI * Amn * D12 * n * Sm * Sn / Ly
-                            - PI * Bmn * D11 * m * Sm * Sn / Lx
+                            PI * Bmn * D12 * n * Sm * Sn / Ly
+                            - PI * Cmn * D11 * m * Sm * Sn / Lx
                         )
                         res[iMN, iLHS, iRHS, iP, MY] = (
-                            PI * Amn * D22 * n * Sm * Sn / Ly
-                            - PI * Bmn * D12 * m * Sm * Sn / Lx
+                            PI * Bmn * D22 * n * Sm * Sn / Ly
+                            - PI * Cmn * D12 * m * Sm * Sn / Lx
                         )
                         res[iMN, iLHS, iRHS, iP, MXY] = (
-                            -PI * Amn * D66 * m * Cm * Cn / Lx
-                            + PI * Bmn * D66 * n * Cm * Cn / Ly
+                            - PI * Bmn * D66 * m * Cm * Cn / Lx
+                            + PI * Cmn * D66 * n * Cm * Cn / Ly
                         )
                         res[iMN, iLHS, iRHS, iP, QX] = (
-                            Bmn * S55 * Sn * Cm + PI * Cmn * S55 * m * Sn * Cm / Lx
+                            Cmn * S55 * Sn * Cm + PI * Amn * S55 * m * Sn * Cm / Lx
                         )
                         res[iMN, iLHS, iRHS, iP, QY] = (
-                            -Amn * S44 * Sm * Cn + PI * Cmn * S44 * n * Sm * Cn / Ly
+                            -Bmn * S44 * Sm * Cn + PI * Amn * S44 * n * Sm * Cn / Ly
                         )
     return res
+# fmt: on
 
-
+# fmt: off
 @njit(nogil=True, parallel=True, cache=True)
 def postproc_Kirchhoff(
     size, shape: ndarray, points: ndarray, solution: ndarray, D: ndarray, loads: ndarray
@@ -394,8 +421,10 @@ def postproc_Kirchhoff(
                         Cmn = solution[iLHS, iRHS, iMN]
                         qxx, qyy = loads[iRHS, iMN, :2]
                         res[iMN, iLHS, iRHS, iP, UZ] = Cmn * Sm * Sn
-                        res[iMN, iLHS, iRHS, iP, ROTX] = PI * Cmn * n * Sm * Cn / Ly
-                        res[iMN, iLHS, iRHS, iP, ROTY] = -PI * Cmn * m * Sn * Cm / Lx
+                        res[iMN, iLHS, iRHS, iP, ROTX] = PI * \
+                            Cmn * n * Sm * Cn / Ly
+                        res[iMN, iLHS, iRHS, iP, ROTY] = - \
+                            PI * Cmn * m * Sn * Cm / Lx
                         res[iMN, iLHS, iRHS, iP, CX] = (
                             PI**2 * Cmn * m**2 * Sm * Sn / Lx**2
                         )
@@ -414,41 +443,21 @@ def postproc_Kirchhoff(
                             + PI**2 * Cmn * D22 * n**2 * Sm * Sn / Ly**2
                         )
                         res[iMN, iLHS, iRHS, iP, MXY] = (
-                            -2 * PI**2 * Cmn * D66 * m * n * Cm * Cn / (Lx * Ly)
+                            -2 * PI**2 * Cmn * D66 * m *
+                            n * Cm * Cn / (Lx * Ly)
                         )
                         res[iMN, iLHS, iRHS, iP, QX] = (
                             PI**3 * Cmn * D11 * m**3 * Sn * Cm / Lx**3
-                            + PI**3
-                            * Cmn
-                            * D12
-                            * m
-                            * n**2
-                            * Sn
-                            * Cm
-                            / (Lx * Ly**2)
-                            + 2
-                            * PI**3
-                            * Cmn
-                            * D66
-                            * m
-                            * n**2
-                            * Sn
-                            * Cm
-                            / (Lx * Ly**2)
+                            + PI**3 * Cmn * D12 * m * n**2 * Sn * Cm / (Lx * Ly**2)
+                            + 2 * PI**3 * Cmn * D66 * m * n**2 * Sn * Cm / (Lx * Ly**2)
                             + qxx * Sn * Cm
                         )
                         res[iMN, iLHS, iRHS, iP, QY] = (
-                            PI**3 * Cmn * D12 * m**2 * n * Sm * Cn / (Lx**2 * Ly)
+                            PI**3 * Cmn * D12 * m**2 *
+                            n * Sm * Cn / (Lx**2 * Ly)
                             + PI**3 * Cmn * D22 * n**3 * Sm * Cn / Ly**3
-                            + 2
-                            * PI**3
-                            * Cmn
-                            * D66
-                            * m**2
-                            * n
-                            * Sm
-                            * Cn
-                            / (Lx**2 * Ly)
+                            + 2 * PI**3 * Cmn * D66 * m**2 * n * Sm * Cn / (Lx**2 * Ly)
                             + qyy * Sm * Cn
                         )
     return res
+# fmt: on

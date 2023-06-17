@@ -1,2 +1,3 @@
 polymesh>=0.0.25
 latexdocs>=0.0.2
+xarray

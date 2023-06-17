@@ -93,34 +93,34 @@ def lhs_Navier_Mindlin(size: tuple, shape: tuple, D: ndarray, S: ndarray) -> nda
     M, N = shape
     res = np.zeros((nLHS, M * N, 3, 3), dtype=D.dtype)
     for iLHS in prange(nLHS):
-        D11, D12, D22, D66 = D[iLHS, 0, 0], D[iLHS,
-                                              0, 1], D[iLHS, 1, 1], D[iLHS, 2, 2]
-        S44, S55 = S[iLHS, 0, 0], S[iLHS, 1, 1]
+        D11, D12, D22, D66 = (
+            D[iLHS, 0, 0], D[iLHS,0, 1], D[iLHS, 1, 1], D[iLHS, 2, 2]
+        )
+        S55, S44 = S[iLHS, 0, 0], S[iLHS, 1, 1]
         for m in prange(1, M + 1):
             for n in prange(1, N + 1):
                 iMN = (m - 1) * N + n - 1
-                res[iLHS, iMN, 0, 0] = (
-                    -(PI**2) * D22 * n**2 / Ly**2
-                    - PI**2 * D66 * m**2 / Lx**2
-                    - S44
+                res[iLHS, iMN, 0, 0] = PI**2 * (
+                    S44 * n**2 / Ly**2 
+                    + S55 * m**2 / Lx**2
                 )
-                res[iLHS, iMN, 0, 1] = PI**2 * D12 * m * n / (
-                    Lx * Ly
-                ) + PI**2 * D66 * m * n / (Lx * Ly)
-                res[iLHS, iMN, 0, 2] = PI * S44 * n / Ly
-                res[iLHS, iMN, 1, 0] = -(PI**2) * D12 * m * n / (
-                    Lx * Ly
-                ) - PI**2 * D66 * m * n / (Lx * Ly)
+                res[iLHS, iMN, 0, 1] = - PI * S44 * n / Ly
+                res[iLHS, iMN, 0, 2] = PI * S55 * m / Lx
+                res[iLHS, iMN, 1, 0] = res[iLHS, iMN, 0, 1]
                 res[iLHS, iMN, 1, 1] = (
+                    PI**2 * D66 * m**2 / Lx**2
+                    + PI**2 * D22 * n**2 / Ly**2
+                    + S44
+                )
+                res[iLHS, iMN, 1, 2] = - PI**2 * m * n * (
+                    D12 + D66
+                ) / Lx / Ly
+                res[iLHS, iMN, 2, 0] = res[iLHS, iMN, 0, 2]
+                res[iLHS, iMN, 2, 1] = res[iLHS, iMN, 1, 2]
+                res[iLHS, iMN, 2, 2] = (
                     PI**2 * D11 * m**2 / Lx**2
                     + PI**2 * D66 * n**2 / Ly**2
                     + S55
-                )
-                res[iLHS, iMN, 1, 2] = PI * S55 * m / Lx
-                res[iLHS, iMN, 2, 0] = -PI * S44 * n / Ly
-                res[iLHS, iMN, 2, 1] = PI * S55 * m / Lx
-                res[iLHS, iMN, 2, 2] = (
-                    PI**2 * S44 * n**2 / Ly**2 + PI**2 * S55 * m**2 / Lx**2
                 )
     return res
 
@@ -155,8 +155,9 @@ def lhs_Navier_Kirchhoff(size: tuple, shape: tuple, D: ndarray) -> ndarray:
     M, N = shape
     res = np.zeros((nLHS, M * N), dtype=D.dtype)
     for iLHS in prange(nLHS):
-        D11, D12, D22, D66 = D[iLHS, 0, 0], D[iLHS,
-                                              0, 1], D[iLHS, 1, 1], D[iLHS, 2, 2]
+        D11, D12, D22, D66 = (
+            D[iLHS, 0, 0], D[iLHS,0, 1], D[iLHS, 1, 1], D[iLHS, 2, 2]
+        )
         for m in prange(1, M + 1):
             for n in prange(1, N + 1):
                 iMN = (m - 1) * N + n - 1
