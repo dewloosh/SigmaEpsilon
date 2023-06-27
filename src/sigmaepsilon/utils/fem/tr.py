@@ -14,9 +14,9 @@ def nodal_dcm(dcm: ndarray, N: int = 2) -> ndarray:
 
     Parameters
     ----------
-    dcm : numpy.ndarray
+    dcm: numpy.ndarray
         A 3x3 direction cosine matrix.
-    N : int, Optional
+    N: int, Optional
         The number of triplets that make up a nodal vector.
         Default is 2, which means 6 dofs per node.
 
@@ -40,9 +40,9 @@ def nodal_dcm_bulk(dcm: ndarray, N: int = 2) -> ndarray:
 
     Parameters
     ----------
-    dcm : numpy.ndarray
+    dcm: numpy.ndarray
         A 3x3 direction cosine matrix for each element (4d).
-    N : int, Optional
+    N: int, Optional
         The number of triplets that make up a nodal vector.
         Default is 2, which means 6 dofs per node.
 
@@ -96,12 +96,12 @@ def tr_element_vectors_bulk_multi(
 
     Parameters
     ----------
-    values : numpy.ndarray
+    values: numpy.ndarray
         The values to transform as an array of shape (nE, nRHS, nX).
-    dcm : numpy.ndarray
+    dcm: numpy.ndarray
         The direct cosine matrix of the transformation as an
         array of shape (nE, nX).
-    invert : bool, Optional
+    invert: bool, Optional
         If True, the DCM matrices are transposed before transformation.
         This makes this function usable in both directions.
         Default is False.
@@ -144,7 +144,7 @@ def tr_nodal_loads_bulk(nodal_loads: ndarray, dcm: ndarray) -> ndarray:
 
     Parameters
     ----------
-    nodal_loads : numpy.ndarray
+    nodal_loads: numpy.ndarray
         A 3d array of shape (nE, nEVAB, nRHS).
 
     Returns

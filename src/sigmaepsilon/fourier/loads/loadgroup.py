@@ -251,4 +251,3 @@ class LoadGroup(ABC_LoadGroup):
 
     def __repr__(self):
         return "LoadGroup(%s)" % (dict.__repr__(self))
-

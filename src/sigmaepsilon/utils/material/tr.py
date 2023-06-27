@@ -15,7 +15,5 @@ def _tr_stresses_3d_bulk_multi(arr: ndarray, dcm: ndarray):
             dcm_ = dcm[iE, iP]
             dcm_T = dcm_.T
             for iRHS in prange(nRHS):
-                res[iE, iP, iRHS, :, :] = (
-                    dcm_ @ arr[iE, iP, iRHS] @ dcm_T
-                )
+                res[iE, iP, iRHS, :, :] = dcm_ @ arr[iE, iP, iRHS] @ dcm_T
     return res

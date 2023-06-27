@@ -94,17 +94,19 @@ def lhs_Navier_Mindlin(size: tuple, shape: tuple, D: ndarray, S: ndarray) -> nda
     res = np.zeros((nLHS, M * N, 3, 3), dtype=D.dtype)
     for iLHS in prange(nLHS):
         D11, D12, D22, D66 = (
-            D[iLHS, 0, 0], D[iLHS,0, 1], D[iLHS, 1, 1], D[iLHS, 2, 2]
+            D[iLHS, 0, 0],
+            D[iLHS, 0, 1],
+            D[iLHS, 1, 1],
+            D[iLHS, 2, 2],
         )
         S55, S44 = S[iLHS, 0, 0], S[iLHS, 1, 1]
         for m in prange(1, M + 1):
             for n in prange(1, N + 1):
                 iMN = (m - 1) * N + n - 1
                 res[iLHS, iMN, 0, 0] = PI**2 * (
-                    S44 * n**2 / Ly**2 
-                    + S55 * m**2 / Lx**2
+                    S44 * n**2 / Ly**2 + S55 * m**2 / Lx**2
                 )
-                res[iLHS, iMN, 0, 1] = - PI * S44 * n / Ly
+                res[iLHS, iMN, 0, 1] = -PI * S44 * n / Ly
                 res[iLHS, iMN, 0, 2] = PI * S55 * m / Lx
                 res[iLHS, iMN, 1, 0] = res[iLHS, iMN, 0, 1]
                 res[iLHS, iMN, 1, 1] = (
@@ -112,9 +114,7 @@ def lhs_Navier_Mindlin(size: tuple, shape: tuple, D: ndarray, S: ndarray) -> nda
                     + PI**2 * D22 * n**2 / Ly**2
                     + S44
                 )
-                res[iLHS, iMN, 1, 2] = - PI**2 * m * n * (
-                    D12 + D66
-                ) / Lx / Ly
+                res[iLHS, iMN, 1, 2] = -(PI**2) * m * n * (D12 + D66) / Lx / Ly
                 res[iLHS, iMN, 2, 0] = res[iLHS, iMN, 0, 2]
                 res[iLHS, iMN, 2, 1] = res[iLHS, iMN, 1, 2]
                 res[iLHS, iMN, 2, 2] = (
@@ -156,7 +156,10 @@ def lhs_Navier_Kirchhoff(size: tuple, shape: tuple, D: ndarray) -> ndarray:
     res = np.zeros((nLHS, M * N), dtype=D.dtype)
     for iLHS in prange(nLHS):
         D11, D12, D22, D66 = (
-            D[iLHS, 0, 0], D[iLHS,0, 1], D[iLHS, 1, 1], D[iLHS, 2, 2]
+            D[iLHS, 0, 0],
+            D[iLHS, 0, 1],
+            D[iLHS, 1, 1],
+            D[iLHS, 2, 2],
         )
         for m in prange(1, M + 1):
             for n in prange(1, N + 1):
@@ -262,13 +265,16 @@ def rhs_Kirchhoff(coeffs: ndarray, size: tuple, shape: tuple) -> ndarray:
     nRHS = coeffs.shape[0]
     res = np.zeros((nRHS, M * N))
     cx = PI / Ly
-    cy = - PI / Ly
+    cy = -PI / Ly
     for i in prange(nRHS):
         for m in prange(M):
             for n in prange(N):
                 mn = m * N + n
-                res[i, mn] = coeffs[i, mn, 0] + coeffs[i, mn, 1] * \
-                    cx * (n + 1) + coeffs[i, mn, 2] * cy * (m + 1)
+                res[i, mn] = (
+                    coeffs[i, mn, 0]
+                    + coeffs[i, mn, 1] * cx * (n + 1)
+                    + coeffs[i, mn, 2] * cy * (m + 1)
+                )
     return res
 
 
@@ -360,8 +366,7 @@ def _rect_const_(
         for m in prange(1, M + 1):
             for n in prange(1, N + 1):
                 mn = (m - 1) * N + n - 1
-                rhs[iR, mn, :] = __rect_const__(
-                    size, m, n, xc, yc, w, h, values[iR])
+                rhs[iR, mn, :] = __rect_const__(size, m, n, xc, yc, w, h, values[iR])
     return rhs
 
 

@@ -9,7 +9,7 @@ class NavierProblem:
     @abstractmethod
     def solve(self, *args, **kwargs):
         ...
-        
+
 
 class NavierPlateProblem(NavierProblem):
     """

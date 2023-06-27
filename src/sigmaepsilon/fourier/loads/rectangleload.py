@@ -87,47 +87,57 @@ class RectangleLoad(LoadGroup):
         p = problem if problem is not None else self.problem
         x = np.array(self["x"], dtype=float)
         v = self["v"]
-                
-        if isinstance(v[0], Number) and isinstance(v[1], Number) and isinstance(v[2], Number):
-            v = np.array(v, dtype=float) 
+
+        if (
+            isinstance(v[0], Number)
+            and isinstance(v[1], Number)
+            and isinstance(v[2], Number)
+        ):
+            v = np.array(v, dtype=float)
             return rhs_rect_const(p.size, p.shape, x, v)
         else:
             Lx, Ly = p.size
             M, N = p.shape
             N_monte_carlo = 1000
-            
+
             rhs = np.zeros((1, M * N, 3), dtype=x.dtype)
-            
-            fnc = lambda x, ij : np.sin(x[:, 0] * np.pi * ij[0] / Lx) * np.sin(x[:, 1] * np.pi * ij[1] / Ly)
+
+            fnc = lambda x, ij: np.sin(x[:, 0] * np.pi * ij[0] / Lx) * np.sin(
+                x[:, 1] * np.pi * ij[1] / Ly
+            )
             if isinstance(v[0], str):
                 str_expr = v[0]
             elif isinstance(v[0], Number):
                 str_expr = str(v[0])
             else:
                 raise TypeError("Invalid load type at position 0.")
-            
+
             rhs[0, :, 0] = _coeffs_rect_load_mc(str_expr, x, p, fnc, N_monte_carlo)
-            
-            fnc = lambda x, ij : np.sin(x[:, 0] * np.pi * ij[0] / Lx) * np.cos(x[:, 1] * np.pi * ij[1] / Ly)
+
+            fnc = lambda x, ij: np.sin(x[:, 0] * np.pi * ij[0] / Lx) * np.cos(
+                x[:, 1] * np.pi * ij[1] / Ly
+            )
             if isinstance(v[1], str):
                 str_expr = v[1]
             elif isinstance(v[1], Number):
                 str_expr = str(v[1])
             else:
                 raise TypeError("Invalid load type at position 1.")
-            
+
             rhs[0, :, 1] = _coeffs_rect_load_mc(str_expr, x, p, fnc, N_monte_carlo)
-            
-            fnc = lambda x, ij : np.cos(x[:, 0] * np.pi * ij[0] / Lx) * np.sin(x[:, 1] * np.pi * ij[1] / Ly)
+
+            fnc = lambda x, ij: np.cos(x[:, 0] * np.pi * ij[0] / Lx) * np.sin(
+                x[:, 1] * np.pi * ij[1] / Ly
+            )
             if isinstance(v[2], str):
                 str_expr = v[2]
             elif isinstance(v[2], Number):
                 str_expr = str(v[2])
             else:
                 raise TypeError("Invalid load type at position 2.")
-            
+
             rhs[0, :, 2] = _coeffs_rect_load_mc(str_expr, x, p, fnc, N_monte_carlo)
-            
+
             return rhs
 
     def __repr__(self):

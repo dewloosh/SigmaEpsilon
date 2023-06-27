@@ -1,4 +1,7 @@
+from typing import Iterable
+
 from neumann import atleast2d, atleastnd
+from numpy import ndarray
 
 from ...utils.material import stresses_from_strains
 from ...utils.fem.fem import topo_to_gnum
@@ -8,23 +11,30 @@ from .solid import Solid
 class Surface(Solid):
     strn = ("exx", "eyy", "exy", "kxx", "kyy", "kxy", "exz", "eyz")
 
-    def model_stiffness_matrix(self, *args, **kwargs):
+    def model_stiffness_matrix(self, *args, **kwargs) -> ndarray:
         C = self.material_stiffness_matrix()
         t = self.thickness()
         return self.model_stiffness_matrix_iso_homg(C, t)
 
     @classmethod
-    def model_stiffness_matrix_iso_homg(cls, *args, **kwargs):
+    def model_stiffness_matrix_iso_homg(cls, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
     @classmethod
-    def material_strains(cls, *args, **kwargs):
+    def material_strains(cls, *args, **kwargs) -> ndarray:
         raise NotImplementedError
 
-    def ABDS(self, *args, **kwargs):
+    def ABDS(self, *args, **kwargs) -> ndarray:
         return self.model_stiffness_matrix(*args, **kwargs)
 
-    def strains_at(self, lcoords, *args, z=None, topo=None, **kwargs):
+    def strains_at(
+        self,
+        lcoords: Iterable,
+        *args,
+        z: Iterable = None,
+        topo: ndarray = None,
+        **kwargs
+    ) -> ndarray:
         if topo is None:
             topo = self.topology().to_numpy()
         lcoords = atleast2d(lcoords)
@@ -50,7 +60,9 @@ class Surface(Solid):
             model_strains = self.model_strains(dofsol1d, gnum, B)
             return self.material_strains(model_strains, z, t)
 
-    def stresses_at(self, *args, z=None, topo=None, **kwargs):
+    def stresses_at(
+        self, *args, z: Iterable = None, topo: ndarray = None, **kwargs
+    ) -> ndarray:
         """
         Returns stresses for every node of every element.
         """

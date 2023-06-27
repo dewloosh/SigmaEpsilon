@@ -1,3 +1,5 @@
+from numpy import ndarray
+
 from polymesh.utils.cells.q4 import area_Q4_bulk
 from polymesh.cells import Q4 as Quadrilateral
 from polymesh.utils.cells.gauss import (
@@ -21,7 +23,7 @@ class Q4_M(ABC, Membrane, Quadrilateral, FiniteElement):
         "reduced": Gauss_Legendre_Quad_1(),
     }
 
-    def areas(self, *args, **kwargs):
+    def areas(self, *args, **kwargs) -> ndarray:
         """This shadows the original geometrical implementation."""
         topo = self.topology().to_numpy() if topo is None else topo
         return area_Q4_bulk(self.local_coordinates(topo=topo))

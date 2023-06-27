@@ -40,7 +40,7 @@ class ABC_LoadGroup(LinkedDeepDict, metaclass=ABCMeta_LoadGroup):
     """
 
     __slots__ = ()
-    
+
     @staticmethod
     def _string_to_dtype_(tag: str = None):
         return _string_to_dtype_[tag]

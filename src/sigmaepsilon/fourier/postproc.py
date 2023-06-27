@@ -77,20 +77,28 @@ def _results_to_xarray(arr: ndarray):
     if nX == 5:
         comps = ["UY", "ROTZ", "CZ", "EXZ", "MZ", "QY"]
     elif nX == 13:
-        comps = ["UZ", "ROTX", "ROTY", "CX", "CY", "CXY", "EXZ",
-                 "EYZ", "MX", "MY", "MXY", "QX", "QY"]
+        comps = [
+            "UZ",
+            "ROTX",
+            "ROTY",
+            "CX",
+            "CY",
+            "CXY",
+            "EXZ",
+            "EYZ",
+            "MX",
+            "MY",
+            "MXY",
+            "QX",
+            "QY",
+        ]
     else:
         raise NotImplementedError
 
     return xr.DataArray(
         arr,
-        coords=[
-            np.arange(nLHS),
-            np.arange(nRHS),
-            np.arange(nP),
-            comps
-        ],
-        dims=["lhs", "load_case", "point", "component"]
+        coords=[np.arange(nLHS), np.arange(nRHS), np.arange(nP), comps],
+        dims=["lhs", "load_case", "point", "component"],
     )
 
 
@@ -152,8 +160,7 @@ def postproc_Bernoulli(
                     res[iN, iLHS, iRHS, iP, 1] = vn * arg * Cn
                     res[iN, iLHS, iRHS, iP, 2] = -vn * arg**2 * Sn
                     res[iN, iLHS, iRHS, iP, 4] = -EI[iLHS] * vn * arg**2 * Sn
-                    res[iN, iLHS, iRHS, iP, 5] = (
-                        EI[iLHS] * vn * arg**3 + q) * Cn
+                    res[iN, iLHS, iRHS, iP, 5] = (EI[iLHS] * vn * arg**3 + q) * Cn
     return res
 
 
@@ -217,9 +224,9 @@ def postproc_Timoshenko(
                     res[iN, iLHS, iRHS, iP, 2] = -rn * arg * Sn
                     res[iN, iLHS, iRHS, iP, 3] = (vn * arg - rn) * Cn
                     res[iN, iLHS, iRHS, iP, 4] = -EI[iLHS] * rn * arg * Sn
-                    res[iN, iLHS, iRHS, iP, 5] = GA[iLHS] * \
-                        (vn * arg - rn) * Cn
+                    res[iN, iLHS, iRHS, iP, 5] = GA[iLHS] * (vn * arg - rn) * Cn
     return res
+
 
 # fmt: off
 @njit(nogil=True, parallel=True, cache=True)

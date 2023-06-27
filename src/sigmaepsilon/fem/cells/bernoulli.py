@@ -13,16 +13,15 @@ from ...utils.fem.cells.bernoulli import (
     global_shape_function_derivatives_Bernoulli_bulk as gdshpB,
     lumped_mass_matrices_direct_Bernoulli as dlump,
 )
-
 from ...utils.fem.postproc import (
     approx_element_solution_bulk,
     calculate_internal_forces_bulk,
 )
-from ..material.beam import (
-    BernoulliBeam,
+from ...utils.fem.bernoulli import (
     _postproc_bernoulli_internal_forces_H_,
     _postproc_bernoulli_internal_forces_L_,
 )
+from ..material.bernoulli import BernoulliBeam
 
 __all__ = ["BernoulliBase"]
 
@@ -60,12 +59,12 @@ class BernoulliBase(BernoulliBeam):
 
         Parameters
         ----------
-        pcoords : float or Iterable[float]
+        pcoords: float or Iterable[float]
             Locations of the evaluation points.
-        rng : Iterable, Optional
+        rng: Iterable, Optional
             The range in which the locations ought to be understood,
             typically [0, 1] or [-1, 1]. Default is [0, 1].
-        lengths : Iterable, Optional
+        lengths: Iterable, Optional
             The lengths of the beams in the block. Default is None.
 
         Returns
@@ -106,18 +105,18 @@ class BernoulliBase(BernoulliBeam):
 
         Parameters
         ----------
-        pcoords : float or Iterable, Optional
+        pcoords: float or Iterable, Optional
             Locations of the evaluation points. Default is None.
-        rng : Iterable, Optional
+        rng: Iterable, Optional
             The range in which the locations ought to be understood,
             typically [0, 1] or [-1, 1]. Only if 'pcoords' is provided.
             Default is [0, 1].
-        lengths : Iterable, Optional
+        lengths: Iterable, Optional
             The lengths of the beams in the block. Default is None.
-        jac : Iterable, Optional
+        jac: Iterable, Optional
             The jacobian matrix as a float array of shape (nE, nP, 1, 1), evaluated for
             each point in each cell. Default is None.
-        dshp : Iterable, Optional
+        dshp: Iterable, Optional
             The shape function derivatives of the master element as a float array of
             shape (nP, nNE, nDOF=6, 3), evaluated at a 'nP' number of points.
             Default is None.
@@ -165,9 +164,9 @@ class BernoulliBase(BernoulliBeam):
 
         Parameters
         ----------
-        pcoords : float or Iterable
+        pcoords: float or Iterable
             Locations of the evaluation points.
-        rng : Iterable, Optional
+        rng: Iterable, Optional
             The range in which the locations ought to be understood,
             typically [0, 1] or [-1, 1]. Default is [0, 1].
 
@@ -176,7 +175,7 @@ class BernoulliBase(BernoulliBeam):
         These parameters are for advanced users and can be omitted.
         They are here only to avoid repeated evaulation of common quantities.
 
-        lengths : Iterable, Optional
+        lengths: Iterable, Optional
             The lengths of the beams in the block. Default is None.
 
         Returns
@@ -208,7 +207,7 @@ class BernoulliBase(BernoulliBeam):
 
         Parameters
         ----------
-        values : numpy.ndarray
+        values: numpy.ndarray
             2d or 3d numpy float array of material densities of shape
             (nE, nNE * nDOF, nRHS) or (nE, nNE * nDOF), where nE, nNE, nDOF and nRHS
             stand for the number of elements, nodes per element, number of degrees

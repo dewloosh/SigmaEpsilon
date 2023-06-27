@@ -3,10 +3,4 @@ from .lineload import LineLoad
 from .pointload import PointLoad
 from .rectangleload import RectangleLoad
 
-__all__ = [
-    "LoadGroup", 
-    "NavierLoadError", 
-    "RectangleLoad", 
-    "LineLoad", 
-    "PointLoad"
-]
+__all__ = ["LoadGroup", "NavierLoadError", "RectangleLoad", "LineLoad", "PointLoad"]
